@@ -1,0 +1,73 @@
+const mongoose = require("mongoose");
+const User = require("../models/User");
+
+/* GET CART */
+const getCart = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate("cart.productId");
+    res.json(user.cart);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch cart" });
+  }
+};
+
+/* SYNC CART */
+const syncCart = async (req, res) => {
+  try {
+    console.log("REQ USER 👉", req.user);
+    console.log("REQ BODY 👉", req.body);
+
+    const { cart } = req.body;
+
+    if (!Array.isArray(cart)) {
+      return res.status(400).json({ message: "Invalid cart format" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ VALIDATE & CAST ObjectId
+    const formattedCart = cart.map((item) => {
+      if (!mongoose.Types.ObjectId.isValid(item.productId)) {
+        throw new Error(`Invalid productId: ${item.productId}`);
+      }
+
+      return {
+        productId: new mongoose.Types.ObjectId(item.productId),
+        qty: Number(item.qty) || 1,
+      };
+    });
+
+    user.cart = formattedCart;
+    await user.save();
+
+    res.json({ message: "Cart synced successfully", cart: user.cart });
+  } catch (err) {
+    console.error("🔥 CART SYNC ERROR:", err.message);
+
+    res.status(400).json({
+      message: err.message || "Cart sync failed",
+    });
+  }
+};
+
+/* CLEAR CART */
+const clearCart = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    user.cart = [];
+    await user.save();
+
+    res.json({ message: "Cart cleared" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to clear cart" });
+  }
+};
+
+module.exports = {
+  getCart,
+  syncCart,
+  clearCart,
+};

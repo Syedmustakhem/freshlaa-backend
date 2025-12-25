@@ -1,0 +1,37 @@
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+const authRoutes = require("./src/routes/auth.routes");
+const productRoutes = require("./src/routes/product.routes");
+const orderRoutes = require("./src/routes/order.routes");
+const addressRoutes = require("./src/routes/address.routes");
+const cartRoutes = require("./src/routes/cart.routes");
+const userRoutes = require("./src/routes/user.routes");
+const shopifyRoutes = require("./src/routes/shopify.routes");
+const notificationRoutes = require("./src/routes/notification.routes");
+const paymentRoutes = require("./src/routes/payment.routes");
+const app = express();
+
+/* ---------- MIDDLEWARE ---------- */
+app.use(cors());
+app.use(express.json());
+
+/* ---------- ROUTES ---------- */
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/shopify", shopifyRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/payment", paymentRoutes);
+
+
+/* ---------- HEALTH CHECK ---------- */
+app.get("/", (req, res) => {
+  res.send("Freshlaa Backend Running ✅");
+});
+
+
+module.exports = app;
