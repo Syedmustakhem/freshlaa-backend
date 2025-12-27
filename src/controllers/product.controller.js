@@ -4,7 +4,9 @@ const Product = require("../models/Product");
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.find({ isActive: true })
-      .sort({ createdAt: -1 });
+      .select("name price image qty category stock isFeatured isTrending offerPercentage")
+      .sort({ createdAt: -1 })
+      .lean(); // 🚀 SPEED BOOST
 
     res.json(products);
   } catch (err) {
