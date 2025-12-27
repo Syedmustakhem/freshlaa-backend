@@ -1,42 +1,67 @@
 const Address = require("../models/Address");
 
-/* ➕ Add Address */
+/* ✅ ADD ADDRESS */
 exports.addAddress = async (req, res) => {
   try {
     const address = await Address.create({
+      user: req.user._id, // coming from auth middleware
       ...req.body,
-      userId: req.user.id,
     });
 
-    res.json(address);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to add address" });
+    res.status(201).json({
+      success: true,
+      address,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to add address",
+    });
   }
 };
 
-/* 📄 Get User Addresses */
+/* ✅ GET USER ADDRESSES */
 exports.getAddresses = async (req, res) => {
   try {
     const addresses = await Address.find({
-      userId: req.user.id,
+      user: req.user._id,
     }).sort({ createdAt: -1 });
 
-    res.json(addresses);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch addresses" });
+    res.json({
+      success: true,
+      addresses,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch addresses",
+    });
   }
 };
 
-/* ❌ Delete Address */
+/* ✅ DELETE ADDRESS */
 exports.deleteAddress = async (req, res) => {
   try {
-    await Address.findOneAndDelete({
+    const address = await Address.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.id,
+      user: req.user._id,
     });
 
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ message: "Delete failed" });
+    if (!address) {
+      return res.status(404).json({
+        success: false,
+        message: "Address not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Address deleted",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete address",
+    });
   }
 };
