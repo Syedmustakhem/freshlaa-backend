@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const auth = require("../middlewares/auth.middleware");
 
 /* ---------- RAZORPAY INSTANCE ---------- */
 const razorpay = new Razorpay({
@@ -10,7 +11,7 @@ const razorpay = new Razorpay({
 });
 
 /* ---------- CREATE ORDER ---------- */
-router.post("/create", async (req, res) => {
+router.post("/create", auth, async (req, res) => {
   try {
     const { amount } = req.body;
 
@@ -22,26 +23,20 @@ router.post("/create", async (req, res) => {
     }
 
     const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // ₹ → paise
+      amount: Math.round(amount * 100),
       currency: "INR",
       receipt: `order_${Date.now()}`,
     });
 
-    return res.json({
-      success: true,
-      order,
-    });
+    res.json({ success: true, order });
   } catch (error) {
-    console.error("❌ Razorpay create order error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create order",
-    });
+    console.error("Razorpay create error:", error);
+    res.status(500).json({ success: false });
   }
 });
 
 /* ---------- VERIFY PAYMENT ---------- */
-router.post("/verify", async (req, res) => {
+router.post("/verify", auth, async (req, res) => {
   try {
     const {
       razorpay_order_id,
@@ -53,7 +48,7 @@ router.post("/verify", async (req, res) => {
 
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
+      .update(body)
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
@@ -63,17 +58,13 @@ router.post("/verify", async (req, res) => {
       });
     }
 
-    // ✅ Payment verified
-    return res.json({
+    res.json({
       success: true,
-      message: "Payment verified successfully",
+      message: "Payment verified",
     });
   } catch (error) {
-    console.error("❌ Razorpay verify error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Verification failed",
-    });
+    console.error("Razorpay verify error:", error);
+    res.status(500).json({ success: false });
   }
 });
 
