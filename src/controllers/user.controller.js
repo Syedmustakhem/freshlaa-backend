@@ -4,10 +4,12 @@ const User = require("../models/User");
 exports.getProfile = async (req, res) => {
   try {
     res.json({
-      id: req.user._id,
-      name: req.user.name,
-      phone: req.user.phone,
-      createdAt: req.user.createdAt,
+      success: true,
+      user: {
+        phone: req.user.phone,
+        name: req.user.name,
+        email: req.user.email,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to get profile" });
@@ -17,19 +19,25 @@ exports.getProfile = async (req, res) => {
 /* UPDATE PROFILE */
 exports.updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, email } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    user.name = name || user.name;
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) user.email = email;
+
     await user.save();
 
     res.json({
-      message: "Profile updated",
-      name: user.name,
+      success: true,
+      user: {
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: "Profile update failed" });
