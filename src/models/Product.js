@@ -22,24 +22,30 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    shopifyId: {
+
+    category: {
       type: String,
-      unique: true,
-      sparse: true,
+      required: true,
+      lowercase: true,
+      index: true,
     },
 
-    source: {
-      type: String,
-      enum: ["shopify", "manual"],
-      default: "manual",
+    unit: {
+      type: String, // "1 kg", "500 ml"
+      required: true,
     },
 
-    allowShopifySync: {
-  type: Boolean,
-  default: true, // IMPORTANT
-},
+    image: {
+      type: String, // image URL
+      required: true,
+    },
 
-    /* 🔥 NEW FIELDS */
+    stock: {
+      type: Number,
+      default: 100,
+    },
+
+    /* 🔥 FLAGS (USED BY ROUTES) */
     isFeatured: {
       type: Boolean,
       default: false,
@@ -52,34 +58,24 @@ const productSchema = new mongoose.Schema(
 
     offerPercentage: {
       type: Number,
-      default: 0,
-    },
-
-    category: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
-    },
-
-    image: {
-      type: String, // Cloudinary / S3 URL
-      required: true,
-    },
-
-    unit: {
-      type: String, // "1 kg", "500 ml"
-      required: true,
-    },
-
-    stock: {
-      type: Number,
-      default: 100,
+      default: 0, // 10 = 10% OFF
     },
 
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    /* 🔒 SOURCE CONTROL */
+    source: {
+      type: String,
+      enum: ["manual"],
+      default: "manual",
+    },
+
+    allowShopifySync: {
+      type: Boolean,
+      default: false, // 🔴 PERMANENTLY DISABLED
     },
   },
   { timestamps: true }

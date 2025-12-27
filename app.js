@@ -7,7 +7,6 @@ const orderRoutes = require("./src/routes/order.routes");
 const addressRoutes = require("./src/routes/address.routes");
 const cartRoutes = require("./src/routes/cart.routes");
 const userRoutes = require("./src/routes/user.routes");
-const shopifyRoutes = require("./src/routes/shopify.routes");
 const notificationRoutes = require("./src/routes/notification.routes");
 
 const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
@@ -26,7 +25,6 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/user", userRoutes);
-app.use("/api/shopify", shopifyRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.use("/api/payment-methods", paymentMethodRoutes); // ✅ DB
