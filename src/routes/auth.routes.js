@@ -1,12 +1,10 @@
-const express = require("express");
+// routes/auth.routes.js
+import express from "express";
+import { sendOtp, verifyOtp } from "../controllers/auth.controller.js";
+
 const router = express.Router();
 
-const {
-  login,
-  deleteAccount,
-} = require("../controllers/auth.controller");
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
 
-router.post("/login", login);
-router.post("/delete-account", deleteAccount); // ✅ ADD
-
-module.exports = router;
+export default router;

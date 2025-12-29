@@ -3,17 +3,11 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema(
   {
     /* 🔐 AUTH */
-    firebaseUid: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
-
     phone: {
       type: String,
       required: true,
       unique: true,
+      index: true,
     },
 
     /* 🔔 PUSH NOTIFICATIONS */
@@ -48,16 +42,23 @@ const userSchema = new mongoose.Schema(
           },
         },
       ],
-      default: [], // ✅ prevents undefined cart errors
+      default: [],
     },
 
     /* ⏱️ META */
     lastLogin: {
       type: Date,
+      default: Date.now,
+    },
+
+    /* 🛡️ STATUS */
+    isBlocked: {
+      type: Boolean,
+      default: false,
     },
   },
   {
-    timestamps: true, // createdAt & updatedAt
+    timestamps: true,
   }
 );
 
