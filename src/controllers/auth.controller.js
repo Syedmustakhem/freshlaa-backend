@@ -23,7 +23,7 @@ export const sendOtp = async (req, res) => {
     let { phone } = req.body;
     phone = normalizePhone(phone);
 
-    // 🇮🇳 Strict India validation
+    // 🇮🇳 India validation
     if (!/^\+91[6-9]\d{9}$/.test(phone)) {
       return res.status(400).json({
         success: false,
@@ -31,14 +31,14 @@ export const sendOtp = async (req, res) => {
       });
     }
 
-    // 🔥 Remove old OTP sessions (CRITICAL FIX)
+    // 🔥 Clear old OTP sessions
     await OtpSession.deleteMany({ phone });
 
-    // 📡 Provider request
+    // 📡 Provider API
     const response = await axios.post(
       `${process.env.OTP_API_BASE_URL}/send-otp`,
       {
-        mobile: phone.slice(3), // 10 digits only
+        mobile: phone.slice(3), // remove +91
         countryCode: "91",
       },
       { headers: OTP_HEADERS }
@@ -103,7 +103,7 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // 📡 Verify OTP with provider
+    // 📡 Verify with provider
     const response = await axios.post(
       `${process.env.OTP_API_BASE_URL}/verify-otp`,
       {
@@ -121,7 +121,7 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // 🔥 OTP USED — DELETE ALL SESSIONS (VERY IMPORTANT)
+    // 🔥 OTP used → remove all sessions
     await OtpSession.deleteMany({ phone });
 
     // 👤 Find or create user
@@ -156,6 +156,36 @@ export const verifyOtp = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "OTP verification failed",
+    });
+  }
+};
+
+/* ---------------- DELETE ACCOUNT ---------------- */
+export const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user.id; // from JWT middleware
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // 🗑️ Delete user
+    await User.deleteOne({ _id: userId });
+
+    return res.json({
+      success: true,
+      message: "Account deleted permanently",
+    });
+
+  } catch (err) {
+    console.error("DELETE ACCOUNT ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete account",
     });
   }
 };
