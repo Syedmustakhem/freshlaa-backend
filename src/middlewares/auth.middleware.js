@@ -1,8 +1,8 @@
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 /* ---------------- JWT PROTECT ---------------- */
-export const protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
     let token;
 
@@ -33,13 +33,9 @@ export const protect = async (req, res, next) => {
       });
     }
 
-    req.user = {
-      id: user._id,
-      phone: user.phone,
-    };
+    req.user = user; // ✅ attach full user (BEST PRACTICE)
 
     next();
-
   } catch (err) {
     console.error("AUTH MIDDLEWARE ERROR:", err.message);
     return res.status(401).json({
@@ -48,3 +44,5 @@ export const protect = async (req, res, next) => {
     });
   }
 };
+
+module.exports = protect;
