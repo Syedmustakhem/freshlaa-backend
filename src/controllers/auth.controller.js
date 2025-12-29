@@ -2,7 +2,6 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import OtpSession from "../models/OtpSession.js";
-
 /* ---------------- CONFIG ---------------- */
 
 const OTP_HEADERS = {
