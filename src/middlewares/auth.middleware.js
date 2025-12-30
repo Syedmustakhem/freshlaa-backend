@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-/* JWT PROTECT */
 const protect = async (req, res, next) => {
   try {
     let token;
@@ -16,7 +15,7 @@ const protect = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Not authorized, token missing",
+        message: "Not authorized",
       });
     }
 
@@ -30,16 +29,14 @@ const protect = async (req, res, next) => {
       });
     }
 
-    req.user = user;
+    req.user = { id: user._id, phone: user.phone };
     next();
-
   } catch (err) {
-    console.error("AUTH ERROR:", err.message);
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired token",
+      message: "Invalid token",
     });
   }
 };
 
-module.exports = protect;
+module.exports = { protect };
