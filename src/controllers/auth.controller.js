@@ -7,7 +7,6 @@ const OtpSession = require("../models/OtpSession");
 
 const OTP_URL = process.env.OTP_API_BASE_URL;
 // https://sotp-api.lucentinnovation.com/v6/otp
-
 const OTP_HEADERS = {
   Authorization: process.env.OTP_API_TOKEN, // ✅ NO Bearer
   shop_name: process.env.OTP_SHOP_NAME,     // freshlaa
