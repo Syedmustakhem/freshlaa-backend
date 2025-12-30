@@ -9,11 +9,10 @@ const OTP_URL = process.env.OTP_API_BASE_URL;
 // https://sotp-api.lucentinnovation.com/v6/otp
 
 const OTP_HEADERS = {
-  Authorization: `Bearer ${process.env.OTP_API_TOKEN}`, // API KEY
-  shop_name: process.env.OTP_SHOP_NAME,                 // freshlaa
+  Authorization: process.env.OTP_API_TOKEN, // ✅ NO Bearer
+  shop_name: process.env.OTP_SHOP_NAME,     // freshlaa
   "Content-Type": "application/json",
 };
-
 const OTP_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes
 
 /* ================== SEND OTP ================== */
