@@ -5,12 +5,12 @@ const OtpSession = require("../models/OtpSession");
 
 /* ================== CONFIG ================== */
 
-const OTP_URL = process.env.OTP_API_BASE_URL; 
-// 👉 https://sotp-api.lucentinnovation.com/v6/otp
+const OTP_URL = process.env.OTP_API_BASE_URL;
+// https://sotp-api.lucentinnovation.com/v6/otp
 
 const OTP_HEADERS = {
-  Authorization: `Bearer ${process.env.OTP_API_TOKEN}`, // 🔑 API KEY
-  shop_name: process.env.OTP_SHOP_NAME,                 // 🏪 freshlaa
+  Authorization: `Bearer ${process.env.OTP_API_TOKEN}`, // API KEY
+  shop_name: process.env.OTP_SHOP_NAME,                 // freshlaa
   "Content-Type": "application/json",
 };
 
@@ -28,10 +28,10 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-    // 🔥 Clear previous OTPs
+    // 🔥 Clear old OTPs
     await OtpSession.deleteMany({ phone });
 
-    const response = await axios.post(
+    await axios.post(
       OTP_URL,
       {
         username: `+91${phone}`,
@@ -55,7 +55,6 @@ exports.sendOtp = async (req, res) => {
       message: "OTP sent successfully",
       expiresIn: 120,
     });
-
   } catch (err) {
     console.error("SEND OTP ERROR:", err.response?.data || err.message);
     return res.status(500).json({
@@ -103,7 +102,6 @@ exports.resendOtp = async (req, res) => {
       message: "OTP resent successfully",
       expiresIn: 120,
     });
-
   } catch (err) {
     console.error("RESEND OTP ERROR:", err.response?.data || err.message);
     return res.status(500).json({
@@ -121,7 +119,7 @@ exports.verifyOtp = async (req, res) => {
     if (!phone || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Missing phone or OTP",
+        message: "Phone and OTP required",
       });
     }
 
@@ -157,10 +155,10 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    // 🔥 OTP verified → clear sessions
+    // 🔥 OTP verified → cleanup
     await OtpSession.deleteMany({ phone });
 
-    // 👤 Find or create user
+    // 👤 Create or update user
     let user = await User.findOne({ phone });
     if (!user) {
       user = await User.create({
@@ -184,7 +182,6 @@ exports.verifyOtp = async (req, res) => {
       token,
       user,
     });
-
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err.response?.data || err.message);
     return res.status(500).json({
@@ -199,13 +196,21 @@ exports.deleteAccount = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
     await User.findByIdAndDelete(userId);
+    await OtpSession.deleteMany({ phone: user.phone });
 
     return res.json({
       success: true,
       message: "Account deleted successfully",
     });
-
   } catch (err) {
     console.error("DELETE ACCOUNT ERROR:", err.message);
     return res.status(500).json({

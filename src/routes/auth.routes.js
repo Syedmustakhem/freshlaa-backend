@@ -8,14 +8,22 @@ const {
   deleteAccount,
 } = require("../controllers/auth.controller");
 
-const { protect } = require("../middlewares/auth.middleware");
+const protect = require("../middlewares/auth.middleware");
 
-/* OTP */
+/* ================= OTP AUTH ================= */
+
+// Send OTP
 router.post("/send-otp", sendOtp);
+
+// Resend OTP
 router.post("/resend-otp", resendOtp);
+
+// Verify OTP (login / register)
 router.post("/verify-otp", verifyOtp);
 
-/* ACCOUNT */
+/* ================= ACCOUNT ================= */
+
+// Delete account (JWT required)
 router.delete("/delete-account", protect, deleteAccount);
 
 module.exports = router;
