@@ -2,24 +2,12 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OtpSession = require("../models/OtpSession");
+const generateLucentJwt = require("../utils/lucentJwt");
 
-/* ================== LUCENT JWT (CRITICAL FIX) ================== */
-const generateLucentJwt = () => {
-  return jwt.sign(
-    {
-      iss: process.env.OTP_API_KEY,
-      exp: Math.floor(Date.now() / 1000) + 10 * 60, // 10 minutes
-    },
-    Buffer.from(process.env.OTP_API_SECRET, "base64"),
-    { algorithm: "HS256" }
-  );
-};
-
-/* ================== CONFIG ================== */
 const OTP_URL = process.env.OTP_API_BASE_URL;
 const OTP_EXPIRY_MS = 2 * 60 * 1000;
 
-/* ================== SEND OTP ================== */
+/* ================= SEND OTP ================= */
 exports.sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -30,12 +18,15 @@ exports.sendOtp = async (req, res) => {
 
     await OtpSession.deleteMany({ phone });
 
+    const lucentJwt = generateLucentJwt();
+
     await axios.post(
       OTP_URL,
       { username: `+91${phone}`, type: "phone" },
       {
         headers: {
-          Authorization: `Bearer ${generateLucentJwt()}`,
+          Authorization: `key=${process.env.OTP_API_KEY}`,
+          "X-Auth-Token": lucentJwt,
           shop_name: process.env.OTP_SHOP_NAME,
           action: "sendOTP",
           "Content-Type": "application/json",
@@ -55,39 +46,7 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
-/* ================== RESEND OTP ================== */
-exports.resendOtp = async (req, res) => {
-  try {
-    const { phone } = req.body;
-
-    await OtpSession.deleteMany({ phone });
-
-    await axios.post(
-      OTP_URL,
-      { username: `+91${phone}`, type: "phone" },
-      {
-        headers: {
-          Authorization: `Bearer ${generateLucentJwt()}`,
-          shop_name: process.env.OTP_SHOP_NAME,
-          action: "sendOTP",
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    await OtpSession.create({
-      phone,
-      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
-    });
-
-    res.json({ success: true, expiresIn: 120 });
-  } catch (err) {
-    console.error("RESEND OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Resend failed" });
-  }
-};
-
-/* ================== VERIFY OTP ================== */
+/* ================= VERIFY OTP ================= */
 exports.verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -97,12 +56,15 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
 
+    const lucentJwt = generateLucentJwt();
+
     const response = await axios.post(
       OTP_URL,
       { username: `+91${phone}`, otp, type: "phone" },
       {
         headers: {
-          Authorization: `Bearer ${generateLucentJwt()}`,
+          Authorization: `key=${process.env.OTP_API_KEY}`,
+          "X-Auth-Token": lucentJwt,
           shop_name: process.env.OTP_SHOP_NAME,
           action: "verifyOTP",
           "Content-Type": "application/json",
@@ -119,28 +81,52 @@ exports.verifyOtp = async (req, res) => {
     let user = await User.findOne({ phone });
     if (!user) user = await User.create({ phone });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    const appToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
-    res.json({ success: true, token, user });
+    res.json({ success: true, token: appToken, user });
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Verify failed" });
+    res.status(500).json({ success: false, message: "OTP verify failed" });
   }
 };
 
-/* ================== DELETE ACCOUNT ================== */
+/* ================= DELETE ACCOUNT ================= */
+/*
+🔐 Requires JWT (Authorization: Bearer <appToken>)
+Play Store compliant:
+- Deletes user
+- Deletes OTP sessions
+- No silent data retention
+*/
 exports.deleteAccount = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false });
+    const userId = req.user._id;
 
-    await User.findByIdAndDelete(user._id);
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // 🧹 Cleanup
     await OtpSession.deleteMany({ phone: user.phone });
+    await User.findByIdAndDelete(userId);
 
-    res.json({ success: true });
+    return res.json({
+      success: true,
+      message: "Account deleted successfully",
+    });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("DELETE ACCOUNT ERROR:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Account deletion failed",
+    });
   }
 };
