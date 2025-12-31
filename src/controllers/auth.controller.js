@@ -2,18 +2,7 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OtpSession = require("../models/OtpSession");
-/* ================== LUCENT JWT (CRITICAL FIX) ================== */
-const generateLucentJwt = () => {
-  return jwt.sign(
-    {
-      iss: process.env.OTP_API_KEY,
-      exp: Math.floor(Date.now() / 1000) + 10 * 60, // 10 minutes
-    },
-    Buffer.from(process.env.OTP_API_SECRET, "base64"),
-    { algorithm: "HS256" }
-  );
-};
-
+const generateLucentJwt = require("../utils/lucentjwt");
 /* ================== CONFIG ================== */
 const OTP_URL = process.env.OTP_API_BASE_URL;
 const OTP_EXPIRY_MS = 2 * 60 * 1000;
