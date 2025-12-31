@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../middlewares/auth.middleware");
+
+const protect = require("../middlewares/auth.middleware"); // ✅ FUNCTION
 
 const {
   getCart,
@@ -8,8 +9,13 @@ const {
   clearCart,
 } = require("../controllers/cart.controller");
 
-router.get("/", auth, getCart);
-router.post("/sync", auth, syncCart);
-router.delete("/clear", auth, clearCart);
+/* GET CART */
+router.get("/", protect, getCart);
+
+/* SYNC CART */
+router.post("/sync", protect, syncCart);
+
+/* CLEAR CART */
+router.delete("/clear", protect, clearCart);
 
 module.exports = router;

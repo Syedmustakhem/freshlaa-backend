@@ -7,7 +7,7 @@ const protect = async (req, res, next) => {
 
     if (
       req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
+      req.headers.authorization.startsWith("Bearer ")
     ) {
       token = req.headers.authorization.split(" ")[1];
     }
@@ -29,7 +29,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    req.user = { id: user._id, phone: user.phone };
+    req.user = user; // ✅ full user (important)
     next();
   } catch (err) {
     return res.status(401).json({
@@ -39,4 +39,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+module.exports = protect; // ✅ EXPORT FUNCTION (KEY FIX)
