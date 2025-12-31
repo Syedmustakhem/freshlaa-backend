@@ -8,7 +8,7 @@ const {
   deleteAccount,
 } = require("../controllers/auth.controller");
 
-const { protect } = require("../middlewares/auth.middleware");
+const protect = require("../middlewares/auth.middleware"); // ✅ FIX
 
 router.post("/send-otp", sendOtp);
 router.post("/resend-otp", resendOtp);

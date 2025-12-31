@@ -29,7 +29,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    req.user = user; // ✅ full user (important)
+    req.user = user; // full user
     next();
   } catch (err) {
     return res.status(401).json({
@@ -39,4 +39,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = protect; // ✅ EXPORT FUNCTION (KEY FIX)
+module.exports = protect; // ✅ FUNCTION EXPORT

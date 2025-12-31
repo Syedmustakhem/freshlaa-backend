@@ -7,7 +7,7 @@ const OtpSession = require("../models/OtpSession");
 const OTP_URL = process.env.OTP_API_BASE_URL;
 
 const OTP_HEADERS = {
-  Authorization: process.env.OTP_API_TOKEN, // ❗ NO Bearer
+  Authorization: process.env.OTP_API_TOKEN, // NO "Bearer"
   shop_name: process.env.OTP_SHOP_NAME,
   "Content-Type": "application/json",
 };
@@ -75,6 +75,7 @@ const verifyOtp = async (req, res) => {
 
     const session = await OtpSession.findOne({ phone });
     if (!session || session.expiresAt < new Date()) {
+      await OtpSession.deleteMany({ phone });
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
 
@@ -107,21 +108,17 @@ const verifyOtp = async (req, res) => {
 /* DELETE ACCOUNT */
 const deleteAccount = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const user = await User.findById(userId);
+    const user = req.user;
 
-    if (!user) return res.status(404).json({ success: false });
-
-    await User.findByIdAndDelete(userId);
+    await User.findByIdAndDelete(user._id);
     await OtpSession.deleteMany({ phone: user.phone });
 
-    res.json({ success: true });
+    res.json({ success: true, message: "Account deleted" });
   } catch (err) {
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Delete failed" });
   }
 };
 
-/* ✅ EXPORTS (THIS WAS THE BUG) */
 module.exports = {
   sendOtp,
   resendOtp,
