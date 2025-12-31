@@ -1,19 +1,25 @@
 const express = require("express");
 const router = express.Router();
 
+const protect = require("../middlewares/auth.middleware");
+
 const {
   getAddresses,
-  addAddress,
+  createAddress,
   updateAddress,
   deleteAddress,
 } = require("../controllers/address.controller");
 
-const { protect } = require("../middlewares/auth.middleware");
-
-/* ROUTES */
+/* GET ALL */
 router.get("/", protect, getAddresses);
-router.post("/", protect, addAddress);
+
+/* CREATE */
+router.post("/", protect, createAddress);
+
+/* UPDATE */
 router.put("/:id", protect, updateAddress);
+
+/* DELETE */
 router.delete("/:id", protect, deleteAddress);
 
 module.exports = router;
