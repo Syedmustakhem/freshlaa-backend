@@ -2,7 +2,7 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OtpSession = require("../models/OtpSession");
-
+const generateLucentJwt = require("../utils/lucentjwt");
 /* ================== LUCENT JWT (CRITICAL FIX) ================== */
 const generateLucentJwt = () => {
   return jwt.sign(
@@ -56,18 +56,25 @@ exports.sendOtp = async (req, res) => {
 };
 
 /* ================== RESEND OTP ================== */
-exports.resendOtp = async (req, res) => {
+exports.sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
 
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({ success: false, message: "Invalid phone" });
+    }
+
     await OtpSession.deleteMany({ phone });
+
+    const lucentJwt = generateLucentJwt();
 
     await axios.post(
       OTP_URL,
       { username: `+91${phone}`, type: "phone" },
       {
         headers: {
-          Authorization: `Bearer ${generateLucentJwt()}`,
+          Authorization: `key=${process.env.OTP_API_KEY}`, // ✅ REQUIRED
+          "X-Auth-Token": lucentJwt,                         // ✅ REQUIRED
           shop_name: process.env.OTP_SHOP_NAME,
           action: "sendOTP",
           "Content-Type": "application/json",
@@ -82,8 +89,8 @@ exports.resendOtp = async (req, res) => {
 
     res.json({ success: true, expiresIn: 120 });
   } catch (err) {
-    console.error("RESEND OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Resend failed" });
+    console.error("SEND OTP ERROR:", err.response?.data || err.message);
+    res.status(500).json({ success: false, message: "OTP send failed" });
   }
 };
 
@@ -97,12 +104,15 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
 
+    const lucentJwt = generateLucentJwt();
+
     const response = await axios.post(
       OTP_URL,
       { username: `+91${phone}`, otp, type: "phone" },
       {
         headers: {
-          Authorization: `Bearer ${generateLucentJwt()}`,
+          Authorization: `key=${process.env.OTP_API_KEY}`, // ✅
+          "X-Auth-Token": lucentJwt,                         // ✅
           shop_name: process.env.OTP_SHOP_NAME,
           action: "verifyOTP",
           "Content-Type": "application/json",
@@ -119,11 +129,13 @@ exports.verifyOtp = async (req, res) => {
     let user = await User.findOne({ phone });
     if (!user) user = await User.create({ phone });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    const appToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
-    res.json({ success: true, token, user });
+    res.json({ success: true, token: appToken, user });
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err.response?.data || err.message);
     res.status(500).json({ success: false, message: "Verify failed" });
@@ -142,5 +154,50 @@ exports.deleteAccount = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
+  }
+}; exports.updateCustomerDetails = async (req, res) => {
+  try {
+    const { phone, email, name } = req.body;
+
+    if (!phone || !email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing customer details",
+      });
+    }
+
+    const lucentJwt = generateLucentJwt();
+
+    const response = await axios.post(
+      process.env.OTP_API_BASE_URL,
+      {
+        username: `+91${phone}`,
+        phone,
+        email,
+        name,
+        type: "phone",
+      },
+      {
+        headers: {
+          Authorization: `key=${process.env.OTP_API_KEY}`,
+          "X-Auth-Token": lucentJwt,
+          shop_name: process.env.OTP_SHOP_NAME,
+          action: "updateCustomer",
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return res.json({
+      success: true,
+      redirect_url: response.data.redirect_url,
+    });
+
+  } catch (err) {
+    console.error("UPDATE CUSTOMER ERROR:", err.response?.data || err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Update customer failed",
+    });
   }
 };
