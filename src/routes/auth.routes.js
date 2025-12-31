@@ -6,6 +6,7 @@ const {
   resendOtp,
   verifyOtp,
   deleteAccount,
+  updateCustomerDetails,
 } = require("../controllers/auth.controller");
 
 const protect = require("../middlewares/auth.middleware"); // ✅ FIX
