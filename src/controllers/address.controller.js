@@ -65,3 +65,30 @@ exports.deleteAddress = async (req, res) => {
     });
   }
 };
+/* ✅ UPDATE ADDRESS */
+exports.updateAddress = async (req, res) => {
+  try {
+    const address = await Address.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      req.body,
+      { new: true }
+    );
+
+    if (!address) {
+      return res.status(404).json({
+        success: false,
+        message: "Address not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      address,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update address",
+    });
+  }
+};
