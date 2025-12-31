@@ -2,7 +2,6 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OtpSession = require("../models/OtpSession");
-const generateLucentJwt = require("../utils/lucentjwt");
 /* ================== LUCENT JWT (CRITICAL FIX) ================== */
 const generateLucentJwt = () => {
   return jwt.sign(
