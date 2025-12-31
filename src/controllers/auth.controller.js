@@ -3,30 +3,23 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OtpSession = require("../models/OtpSession");
 
-/* ================= CONFIG ================= */
-
-const OTP_URL = process.env.OTP_API_BASE_URL;
-const OTP_EXPIRY_MS = 2 * 60 * 1000;
-
-/* ✅ CORRECT JWT GENERATOR (FIX FROM LUCENT) */
+/* ================== LUCENT JWT (CRITICAL FIX) ================== */
 const generateLucentJwt = () => {
   return jwt.sign(
     {
       iss: process.env.OTP_API_KEY,
-      exp: Math.floor(Date.now() / 1000) + 10 * 60,
+      exp: Math.floor(Date.now() / 1000) + 10 * 60, // 10 minutes
     },
     Buffer.from(process.env.OTP_API_SECRET, "base64"),
     { algorithm: "HS256" }
   );
 };
 
-const getOtpHeaders = () => ({
-  Authorization: `Bearer ${generateLucentJwt()}`,
-  shop_name: process.env.OTP_SHOP_NAME,
-  "Content-Type": "application/json",
-});
+/* ================== CONFIG ================== */
+const OTP_URL = process.env.OTP_API_BASE_URL;
+const OTP_EXPIRY_MS = 2 * 60 * 1000;
 
-/* ================= SEND OTP ================= */
+/* ================== SEND OTP ================== */
 exports.sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -40,7 +33,14 @@ exports.sendOtp = async (req, res) => {
     await axios.post(
       OTP_URL,
       { username: `+91${phone}`, type: "phone" },
-      { headers: { ...getOtpHeaders(), action: "sendOTP" } }
+      {
+        headers: {
+          Authorization: `Bearer ${generateLucentJwt()}`,
+          shop_name: process.env.OTP_SHOP_NAME,
+          action: "sendOTP",
+          "Content-Type": "application/json",
+        },
+      }
     );
 
     await OtpSession.create({
@@ -55,7 +55,7 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
-/* ================= RESEND OTP ================= */
+/* ================== RESEND OTP ================== */
 exports.resendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -65,7 +65,14 @@ exports.resendOtp = async (req, res) => {
     await axios.post(
       OTP_URL,
       { username: `+91${phone}`, type: "phone" },
-      { headers: { ...getOtpHeaders(), action: "sendOTP" } }
+      {
+        headers: {
+          Authorization: `Bearer ${generateLucentJwt()}`,
+          shop_name: process.env.OTP_SHOP_NAME,
+          action: "sendOTP",
+          "Content-Type": "application/json",
+        },
+      }
     );
 
     await OtpSession.create({
@@ -80,7 +87,7 @@ exports.resendOtp = async (req, res) => {
   }
 };
 
-/* ================= VERIFY OTP ================= */
+/* ================== VERIFY OTP ================== */
 exports.verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -93,7 +100,14 @@ exports.verifyOtp = async (req, res) => {
     const response = await axios.post(
       OTP_URL,
       { username: `+91${phone}`, otp, type: "phone" },
-      { headers: { ...getOtpHeaders(), action: "verifyOTP" } }
+      {
+        headers: {
+          Authorization: `Bearer ${generateLucentJwt()}`,
+          shop_name: process.env.OTP_SHOP_NAME,
+          action: "verifyOTP",
+          "Content-Type": "application/json",
+        },
+      }
     );
 
     if (response.data.status !== 200) {
@@ -105,11 +119,9 @@ exports.verifyOtp = async (req, res) => {
     let user = await User.findOne({ phone });
     if (!user) user = await User.create({ phone });
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "30d" }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
 
     res.json({ success: true, token, user });
   } catch (err) {
@@ -118,18 +130,17 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-/* ================= DELETE ACCOUNT ================= */
+/* ================== DELETE ACCOUNT ================== */
 exports.deleteAccount = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const user = await User.findById(userId);
+    const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false });
 
-    await User.findByIdAndDelete(userId);
+    await User.findByIdAndDelete(user._id);
     await OtpSession.deleteMany({ phone: user.phone });
 
     res.json({ success: true });
-  } catch {
+  } catch (err) {
     res.status(500).json({ success: false });
   }
 };
