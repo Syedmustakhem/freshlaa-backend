@@ -1,5 +1,5 @@
-const BASE_URL = "http://freshlaa-backend.onrender.com/api";
-// example: http://192.168.1.7:5000/api
+const BASE_URL = "https://freshlaa-backend.onrender.com/api";
+
 
 export const API = {
   auth: `${BASE_URL}/auth`,
