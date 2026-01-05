@@ -2,25 +2,13 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OtpSession = require("../models/OtpSession");
+const generateLucentJwt = require("../utils/lucentjwt");
 
-/* ================= LUCENT JWT ================= */
-const generateLucentJwt = () => {
-  return jwt.sign(
-    {
-      iss: process.env.OTP_API_KEY,
-      exp: Math.floor(Date.now() / 1000) + 10 * 60, // 10 mins
-    },
-    Buffer.from(process.env.OTP_API_SECRET, "base64"),
-    { algorithm: "HS256" }
-  );
-};
-
-/* ================= CONFIG ================= */
 const OTP_URL = process.env.OTP_API_BASE_URL;
 const OTP_EXPIRY_MS = 2 * 60 * 1000;
 
 /* ================= SEND OTP ================= */
-exports.sendOtp = async (req, res) => {
+const sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -33,15 +21,12 @@ exports.sendOtp = async (req, res) => {
     const lucentJwt = generateLucentJwt();
 
     await axios.post(
-      process.env.OTP_API_BASE_URL,
-      {
-        username: `+91${phone}`,
-        type: "phone",
-      },
+      OTP_URL,
+      { username: `+91${phone}`, type: "phone" },
       {
         headers: {
           Authorization: process.env.OTP_API_KEY, // ✅ API KEY ONLY
-          "X-Auth-Token": lucentJwt,               // ✅ JWT HERE
+          "X-Auth-Token": lucentJwt,               // ✅ JWT
           shop_name: process.env.OTP_SHOP_NAME,
           action: "sendOTP",
           "Content-Type": "application/json",
@@ -51,7 +36,7 @@ exports.sendOtp = async (req, res) => {
 
     await OtpSession.create({
       phone,
-      expiresAt: new Date(Date.now() + 2 * 60 * 1000),
+      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
     });
 
     res.json({ success: true, expiresIn: 120 });
@@ -68,13 +53,15 @@ const resendOtp = async (req, res) => {
 
     await OtpSession.deleteMany({ phone });
 
+    const lucentJwt = generateLucentJwt();
+
     await axios.post(
       OTP_URL,
       { username: `+91${phone}`, type: "phone" },
       {
         headers: {
-          Authorization: `key=${process.env.OTP_API_KEY}`,
-          "X-Auth-Token": generateLucentJwt(),
+          Authorization: process.env.OTP_API_KEY,
+          "X-Auth-Token": lucentJwt,
           shop_name: process.env.OTP_SHOP_NAME,
           action: "sendOTP",
           "Content-Type": "application/json",
@@ -95,7 +82,7 @@ const resendOtp = async (req, res) => {
 };
 
 /* ================= VERIFY OTP ================= */
-exports.verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
 
@@ -107,16 +94,12 @@ exports.verifyOtp = async (req, res) => {
     const lucentJwt = generateLucentJwt();
 
     const response = await axios.post(
-      process.env.OTP_API_BASE_URL,
-      {
-        username: `+91${phone}`,
-        otp,
-        type: "phone",
-      },
+      OTP_URL,
+      { username: `+91${phone}`, otp, type: "phone" },
       {
         headers: {
-          Authorization: process.env.OTP_API_KEY, // ✅ API KEY
-          "X-Auth-Token": lucentJwt,               // ✅ JWT
+          Authorization: process.env.OTP_API_KEY,
+          "X-Auth-Token": lucentJwt,
           shop_name: process.env.OTP_SHOP_NAME,
           action: "verifyOTP",
           "Content-Type": "application/json",
@@ -142,52 +125,29 @@ exports.verifyOtp = async (req, res) => {
     res.json({ success: true, token: appToken, user });
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "OTP verify failed" });
-  }
-};
-
-/* ================= UPDATE CUSTOMER ================= */
-const updateCustomerDetails = async (req, res) => {
-  try {
-    const { phone, email, name } = req.body;
-
-    const response = await axios.post(
-      OTP_URL,
-      { username: `+91${phone}`, phone, email, name, type: "phone" },
-      {
-        headers: {
-          Authorization: `key=${process.env.OTP_API_KEY}`,
-          "X-Auth-Token": generateLucentJwt(),
-          shop_name: process.env.OTP_SHOP_NAME,
-          action: "updateCustomer",
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    res.json({ success: true, redirect_url: response.data.redirect_url });
-  } catch (err) {
-    console.error("UPDATE CUSTOMER ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Verify failed" });
   }
 };
 
 /* ================= DELETE ACCOUNT ================= */
 const deleteAccount = async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.user.id);
-    await OtpSession.deleteMany({ phone: req.user.phone });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false });
+
+    await User.findByIdAndDelete(user._id);
+    await OtpSession.deleteMany({ phone: user.phone });
+
     res.json({ success: true });
-  } catch {
+  } catch (err) {
     res.status(500).json({ success: false });
   }
 };
 
-/* ================= EXPORTS ================= */
+/* ================= EXPORTS (CRITICAL) ================= */
 module.exports = {
   sendOtp,
   resendOtp,
   verifyOtp,
-  updateCustomerDetails,
   deleteAccount,
 };

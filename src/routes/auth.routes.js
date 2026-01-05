@@ -6,15 +6,13 @@ const {
   resendOtp,
   verifyOtp,
   deleteAccount,
-  updateCustomerDetails,
 } = require("../controllers/auth.controller");
 
-const protect = require("../middlewares/auth.middleware"); // ✅ FIX
+const protect = require("../middlewares/auth.middleware");
 
 router.post("/send-otp", sendOtp);
 router.post("/resend-otp", resendOtp);
 router.post("/verify-otp", verifyOtp);
 router.delete("/delete-account", protect, deleteAccount);
-router.post("/update-customer", updateCustomerDetails);
 
 module.exports = router;
