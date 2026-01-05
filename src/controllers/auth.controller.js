@@ -24,13 +24,14 @@ const sendOtp = async (req, res) => {
       OTP_URL,
       { username: `+91${phone}`, type: "phone" },
       {
-        headers: {
-          Authorization: process.env.OTP_API_KEY, // ✅ API KEY ONLY
-          "X-Auth-Token": lucentJwt,               // ✅ JWT
-          shop_name: process.env.OTP_SHOP_NAME,
-          action: "sendOTP",
-          "Content-Type": "application/json",
-        },
+      headers: {
+  Authorization: `key=${process.env.OTP_API_KEY}`,
+  "X-Auth-Token": generateLucentJwt(),
+  shop_name: process.env.OTP_SHOP_NAME,
+  action: "sendOTP",
+  "Content-Type": "application/json",
+}
+
       }
     );
 
