@@ -45,7 +45,24 @@ const sendOtp = async (req, res) => {
     console.error("SEND OTP ERROR:", err.response?.data || err.message);
     res.status(500).json({ success: false, message: "OTP send failed" });
   }
+  const lucentResponse = response.data;
+
+// CASE 1: redirect_url exists → OK
+if (lucentResponse.redirect_url) {
+  return res.json({
+    success: true,
+    redirect_url: lucentResponse.redirect_url,
+  });
+}
+
+// CASE 2: redirect_url missing → CALL updateCustomerDetails
+return res.status(202).json({
+  success: false,
+  requires_profile: true,
+  message: "Customer details required",
+});
 };
+
 
 /* ================= RESEND OTP ================= */
 const resendOtp = async (req, res) => {
