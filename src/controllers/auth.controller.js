@@ -20,7 +20,7 @@ const OTP_URL = process.env.OTP_API_BASE_URL;
 const OTP_EXPIRY_MS = 2 * 60 * 1000;
 
 /* ================= SEND OTP ================= */
-const sendOtp = async (req, res) => {
+exports.sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -30,13 +30,18 @@ const sendOtp = async (req, res) => {
 
     await OtpSession.deleteMany({ phone });
 
+    const lucentJwt = generateLucentJwt();
+
     await axios.post(
-      OTP_URL,
-      { username: `+91${phone}`, type: "phone" },
+      process.env.OTP_API_BASE_URL,
+      {
+        username: `+91${phone}`,
+        type: "phone",
+      },
       {
         headers: {
-          Authorization: `key=${process.env.OTP_API_KEY}`,
-          "X-Auth-Token": generateLucentJwt(),
+          Authorization: process.env.OTP_API_KEY, // ✅ API KEY ONLY
+          "X-Auth-Token": lucentJwt,               // ✅ JWT HERE
           shop_name: process.env.OTP_SHOP_NAME,
           action: "sendOTP",
           "Content-Type": "application/json",
@@ -46,7 +51,7 @@ const sendOtp = async (req, res) => {
 
     await OtpSession.create({
       phone,
-      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+      expiresAt: new Date(Date.now() + 2 * 60 * 1000),
     });
 
     res.json({ success: true, expiresIn: 120 });
@@ -90,7 +95,7 @@ const resendOtp = async (req, res) => {
 };
 
 /* ================= VERIFY OTP ================= */
-const verifyOtp = async (req, res) => {
+exports.verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
 
@@ -99,13 +104,19 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
 
+    const lucentJwt = generateLucentJwt();
+
     const response = await axios.post(
-      OTP_URL,
-      { username: `+91${phone}`, otp, type: "phone" },
+      process.env.OTP_API_BASE_URL,
+      {
+        username: `+91${phone}`,
+        otp,
+        type: "phone",
+      },
       {
         headers: {
-          Authorization: `key=${process.env.OTP_API_KEY}`,
-          "X-Auth-Token": generateLucentJwt(),
+          Authorization: process.env.OTP_API_KEY, // ✅ API KEY
+          "X-Auth-Token": lucentJwt,               // ✅ JWT
           shop_name: process.env.OTP_SHOP_NAME,
           action: "verifyOTP",
           "Content-Type": "application/json",
@@ -131,7 +142,7 @@ const verifyOtp = async (req, res) => {
     res.json({ success: true, token: appToken, user });
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Verify failed" });
+    res.status(500).json({ success: false, message: "OTP verify failed" });
   }
 };
 
