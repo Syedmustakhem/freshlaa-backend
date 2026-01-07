@@ -25,8 +25,8 @@ const sendOtp = async (req, res) => {
       { username: `+91${phone}`, type: "phone" },
       {
       headers: {
-  Authorization: `key=${process.env.OTP_API_KEY}`,
-  "X-Auth-Token": generateLucentJwt(),
+  Authorization: `Bearer ${lucentJwt}`,
+  // "X-Auth-Token": generateLucentJwt(),
   shop_name: process.env.OTP_SHOP_NAME,
   action: "sendOTP",
   "Content-Type": "application/json",
@@ -78,8 +78,8 @@ const resendOtp = async (req, res) => {
       { username: `+91${phone}`, type: "phone" },
       {
         headers: {
-          Authorization: process.env.OTP_API_KEY,
-          "X-Auth-Token": lucentJwt,
+          Authorization: `Bearer ${lucentJwt}`,
+          // "X-Auth-Token": lucentJwt,
           shop_name: process.env.OTP_SHOP_NAME,
           action: "sendOTP",
           "Content-Type": "application/json",
@@ -116,8 +116,8 @@ const verifyOtp = async (req, res) => {
       { username: `+91${phone}`, otp, type: "phone" },
       {
         headers: {
-          Authorization: process.env.OTP_API_KEY,
-          "X-Auth-Token": lucentJwt,
+        Authorization: `Bearer ${lucentJwt}`,
+          // "X-Auth-Token": lucentJwt,
           shop_name: process.env.OTP_SHOP_NAME,
           action: "verifyOTP",
           "Content-Type": "application/json",
