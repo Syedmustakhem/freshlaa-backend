@@ -7,7 +7,7 @@ const generateLucentJwt = () => {
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 10 * 60, // 10 minutes
     },
-    Buffer.from(process.env.OTP_API_SECRET, "base64"),
+    process.env.OTP_API_SECRET, // ✅ NO Buffer, NO base64
     {
       algorithm: "HS256",
     }
