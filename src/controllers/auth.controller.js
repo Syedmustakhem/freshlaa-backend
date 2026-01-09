@@ -19,20 +19,22 @@ const sendOtp = async (req, res) => {
 
     const lucentJwt = generateLucentJwt();
 
-    const response = await axios.post(
-      OTP_URL,
-      {
-        username: `+91${phone}`
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${lucentJwt}`,
-          shop_name: process.env.OTP_SHOP_NAME,
-          action: "resendOTP",
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response =await axios.post(
+  OTP_URL,
+  {
+    username: `+91${phone}`
+    // ✅ DO NOT send "type" for mobile OTP
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${lucentJwt}`,
+      shop_name: process.env.OTP_SHOP_NAME,
+      action: "resendOTP",
+      "Content-Type": "application/json",
+    },
+  }
+);
+
 
     if (response.data?.status !== 200) {
       return res.status(400).json({
