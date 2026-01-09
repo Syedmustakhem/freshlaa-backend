@@ -54,9 +54,20 @@ const sendOtp = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("SEND OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "OTP send failed" });
-  }
+  const status = err.response?.status || 500;
+  const data = err.response?.data || null;
+
+  console.error("SEND OTP ERROR STATUS:", status);
+  console.error("SEND OTP ERROR DATA:", data);
+  console.error("SEND OTP ERROR MESSAGE:", err.message);
+
+  return res.status(status).json({
+    success: false,
+    lucent_error: data,
+    message: "OTP send failed",
+  });
+}
+
 };
 
 /* ================= VERIFY OTP (UPDATE CUSTOMER) ================= */
