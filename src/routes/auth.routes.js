@@ -3,16 +3,25 @@ const router = express.Router();
 
 const {
   sendOtp,
-  resendOtp,
   verifyOtp,
   deleteAccount,
 } = require("../controllers/auth.controller");
 
 const protect = require("../middlewares/auth.middleware");
 
+/**
+ * SEND / RESEND OTP
+ */
 router.post("/send-otp", sendOtp);
-router.post("/resend-otp", resendOtp);
+
+/**
+ * VERIFY OTP (Update customer details)
+ */
 router.post("/verify-otp", verifyOtp);
+
+/**
+ * DELETE ACCOUNT
+ */
 router.delete("/delete-account", protect, deleteAccount);
 
 module.exports = router;
