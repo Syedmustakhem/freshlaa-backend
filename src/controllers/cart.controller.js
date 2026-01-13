@@ -4,19 +4,23 @@ const User = require("../models/User");
 /* GET CART */
 const getCart = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate("cart.productId");
+    const user = await User.findById(req.user.id)
+      .populate({
+        path: "cart.productId",
+        // dynamic ref handled in User model later
+      })
+      .populate("cart.hotelId");
+
     res.json(user.cart);
   } catch (err) {
+    console.error("GET CART ERROR:", err);
     res.status(500).json({ message: "Failed to fetch cart" });
   }
 };
 
-/* SYNC CART */
+/* SYNC CART (PRODUCT + HOTEL) */
 const syncCart = async (req, res) => {
   try {
-    console.log("REQ USER 👉", req.user);
-    console.log("REQ BODY 👉", req.body);
-
     const { cart } = req.body;
 
     if (!Array.isArray(cart)) {
@@ -28,28 +32,54 @@ const syncCart = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ VALIDATE & CAST ObjectId
     const formattedCart = cart.map((item) => {
       if (!mongoose.Types.ObjectId.isValid(item.productId)) {
         throw new Error(`Invalid productId: ${item.productId}`);
       }
 
+      if (!["Product", "HotelMenuItem"].includes(item.itemModel)) {
+        throw new Error("Invalid itemModel");
+      }
+
+      let finalPrice = Number(item.finalPrice) || 0;
+
+      // Safety calc for hotel items
+      if (item.itemModel === "HotelMenuItem") {
+        finalPrice =
+          Number(item.basePrice || 0) +
+          Number(item.selectedVariant?.price || 0) +
+          (item.selectedAddons || []).reduce(
+            (sum, a) => sum + Number(a.price || 0),
+            0
+          );
+      }
+
       return {
         productId: new mongoose.Types.ObjectId(item.productId),
+        itemModel: item.itemModel,
         qty: Number(item.qty) || 1,
+
+        hotelId:
+          item.itemModel === "HotelMenuItem"
+            ? new mongoose.Types.ObjectId(item.hotelId)
+            : null,
+
+        selectedVariant: item.selectedVariant || null,
+        selectedAddons: item.selectedAddons || [],
+        finalPrice,
       };
     });
 
     user.cart = formattedCart;
     await user.save();
 
-    res.json({ message: "Cart synced successfully", cart: user.cart });
+    res.json({
+      message: "Cart synced successfully",
+      cart: user.cart,
+    });
   } catch (err) {
     console.error("🔥 CART SYNC ERROR:", err.message);
-
-    res.status(400).json({
-      message: err.message || "Cart sync failed",
-    });
+    res.status(400).json({ message: err.message });
   }
 };
 

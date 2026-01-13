@@ -26,6 +26,7 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/hotel/menu", hotelMenuRoutes);
 
 app.use("/api/payment-methods", paymentMethodRoutes); // ✅ DB
 app.use("/api/razorpay", razorpayRoutes);             // ✅ Transactions

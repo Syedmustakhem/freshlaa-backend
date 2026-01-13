@@ -27,19 +27,47 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    /* 🛒 CART */
+    /* 🛒 CART (PRODUCT + HOTEL MENU) */
     cart: {
       type: [
         {
           productId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Product",
             required: true,
+            refPath: "cart.itemModel",
           },
+
+          itemModel: {
+            type: String,
+            required: true,
+            enum: ["Product", "HotelMenuItem"],
+          },
+
           qty: {
             type: Number,
             default: 1,
           },
+
+          hotelId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Restaurant",
+            default: null,
+          },
+          selectedVariant: {
+  type: Object,
+  default: null,
+},
+
+selectedAddons: {
+  type: Array,
+  default: [],
+},
+
+finalPrice: {
+  type: Number,
+  required: true,
+},
+
         },
       ],
       default: [],
@@ -57,9 +85,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("User", userSchema);
