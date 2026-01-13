@@ -101,10 +101,10 @@ exports.createManualProduct = async (req, res) => {
       data.variants[0].isDefault = true;
     }
 
-    /* 🔴 DETECT UNIT TYPE (weight OR piece) */
+    /* 🔴 DETECT UNIT TYPE (weight / piece / litre / price) */
     const unitType = data.variants[0].unitType;
 
-    if (!["weight", "piece"].includes(unitType)) {
+    if (!["weight", "piece", "litre", "price"].includes(unitType)) {
       return res.status(400).json({
         message: "Invalid unitType in variants",
       });
@@ -135,4 +135,3 @@ exports.createManualProduct = async (req, res) => {
     });
   }
 };
-
