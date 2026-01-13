@@ -1,13 +1,13 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
-  label: String,       // Half / Full
+  label: String,        // Half / Full
   price: Number,
 });
 
 const addonSchema = new mongoose.Schema({
-  name: String,        // Extra egg
-  price: Number,       // 20
+  name: String,         // Extra egg
+  price: Number,        // 20
   isAvailable: { type: Boolean, default: true },
 });
 
@@ -33,9 +33,8 @@ const hotelMenuItemSchema = new mongoose.Schema(
     isAvailable: { type: Boolean, default: true },
 
     outOfStockUntil: Date, // ⏱ auto restore
-
   },
   { timestamps: true }
 );
 
-export default mongoose.model("HotelMenuItem", hotelMenuItemSchema);
+module.exports = mongoose.model("HotelMenuItem", hotelMenuItemSchema);

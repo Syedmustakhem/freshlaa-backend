@@ -8,7 +8,7 @@ const addressRoutes = require("./src/routes/address.routes");
 const cartRoutes = require("./src/routes/cart.routes");
 const userRoutes = require("./src/routes/user.routes");
 const notificationRoutes = require("./src/routes/notification.routes");
-
+const hotelMenuRoutes = require("./src/routes/hotelMenu.routes");
 const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
 const razorpayRoutes = require("./src/routes/razorpay.routes");
 
@@ -27,7 +27,6 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/hotel/menu", hotelMenuRoutes);
-
 app.use("/api/payment-methods", paymentMethodRoutes); // ✅ DB
 app.use("/api/razorpay", razorpayRoutes);             // ✅ Transactions
 

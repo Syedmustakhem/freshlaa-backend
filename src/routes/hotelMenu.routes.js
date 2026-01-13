@@ -1,17 +1,7 @@
-import express from "express";
-import HotelMenuItem from "../models/HotelMenuItem.js";
+const express = require("express");
+const HotelMenuItem = require("../models/HotelMenuItem");
 
 const router = express.Router();
-
-/* ➕ ADD HOTEL MENU ITEM */
-router.post("/add", async (req, res) => {
-  try {
-    const item = await HotelMenuItem.create(req.body);
-    res.status(201).json({ success: true, data: item });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
 
 /* 🍽️ GET HOTEL MENU */
 router.get("/", async (req, res) => {
@@ -35,4 +25,14 @@ router.get("/", async (req, res) => {
   }
 });
 
-export default router;
+/* ➕ ADD HOTEL MENU ITEM */
+router.post("/", async (req, res) => {
+  try {
+    const item = await HotelMenuItem.create(req.body);
+    res.status(201).json({ success: true, data: item });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+module.exports = router;
