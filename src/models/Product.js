@@ -1,40 +1,44 @@
 const mongoose = require("mongoose");
 
-const variantSchema = new mongoose.Schema(
-  {
-    label: {
-      type: String, // "25 g", "100 g", "1 piece", "2 pieces"
-      required: true,
-    },
-
-    price: {
-      type: Number,
-      required: true,
-    },
-
-    mrp: {
-      type: Number,
-      required: true,
-    },
-
-    unitType: {
-      type: String,
-      enum: ["weight", "piece","litre", "price"],
-      required: true, // helps frontend logic
-    },
-
-    value: {
-      type: Number,
-      required: true, // 25, 100, 1, 2
-    },
-
-    isDefault: {
-      type: Boolean,
-      default: false,
-    },
+const variantSchema = new mongoose.Schema({
+  label: {
+    type: String, // "250 g", "1 kg", "2 pieces"
+    required: true,
   },
-  { _id: false }
-);
+
+  price: {
+    type: Number,
+    required: true,
+  },
+
+  mrp: {
+    type: Number,
+    required: true,
+  },
+
+  unitType: {
+    type: String,
+    enum: ["weight", "piece", "litre", "price"],
+    required: true,
+  },
+
+  value: {
+    type: Number, // 250, 1000, 1, 2
+    required: true,
+  },
+
+  stock: {
+    type: Number,
+    min: 0,
+    required: true,
+    default: 0, // ✅ VARIANT STOCK
+  },
+
+  isDefault: {
+    type: Boolean,
+    default: false,
+  },
+});
 
 const productSchema = new mongoose.Schema(
   {
@@ -56,25 +60,25 @@ const productSchema = new mongoose.Schema(
       index: true,
     },
 
-   images: {
-  type: [String],
-  required: true,
-  validate: v => Array.isArray(v) && v.length > 0,
-},
+    images: {
+      type: [String],
+      required: true,
+      validate: v => Array.isArray(v) && v.length > 0,
+    },
 
     stock: {
       type: Number,
-      default: 100,
+      required: true,
+      min: 0,
+      default: 0, // ✅ PRODUCT MASTER STOCK
     },
 
-    /* 🔥 SELLING OPTIONS */
     variants: {
       type: [variantSchema],
       required: true,
-      validate: (v) => Array.isArray(v) && v.length > 0,
+      validate: v => Array.isArray(v) && v.length > 0,
     },
 
-    /* 🔥 FLAGS */
     isFeatured: {
       type: Boolean,
       default: false,
@@ -108,5 +112,3 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-module.exports = mongoose.model("Product", productSchema);
