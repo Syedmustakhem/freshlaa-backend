@@ -19,7 +19,7 @@ const variantSchema = new mongoose.Schema(
 
     unitType: {
       type: String,
-      enum: ["weight", "piece"],
+      enum: ["weight", "piece","litre", "price"],
       required: true, // helps frontend logic
     },
 
@@ -56,10 +56,11 @@ const productSchema = new mongoose.Schema(
       index: true,
     },
 
-    image: {
-      type: String,
-      required: true,
-    },
+   images: {
+  type: [String],
+  required: true,
+  validate: v => Array.isArray(v) && v.length > 0,
+},
 
     stock: {
       type: Number,
