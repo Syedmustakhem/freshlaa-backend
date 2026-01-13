@@ -84,13 +84,55 @@ exports.getOfferProducts = async (req, res) => {
   });
   res.json(products);
 };
-
-/* MANUAL PRODUCT (ADMIN) */
 exports.createManualProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const data = req.body;
+
+    /* 🔴 VALIDATE VARIANTS EXIST */
+    if (!Array.isArray(data.variants) || data.variants.length === 0) {
+      return res.status(400).json({
+        message: "Product must have at least one variant",
+      });
+    }
+
+    /* 🔴 ENSURE ONE DEFAULT VARIANT */
+    const hasDefault = data.variants.some(v => v.isDefault === true);
+    if (!hasDefault) {
+      data.variants[0].isDefault = true;
+    }
+
+    /* 🔴 DETECT UNIT TYPE (weight OR piece) */
+    const unitType = data.variants[0].unitType;
+
+    if (!["weight", "piece"].includes(unitType)) {
+      return res.status(400).json({
+        message: "Invalid unitType in variants",
+      });
+    }
+
+    /* 🔴 VALIDATE EACH VARIANT */
+    for (const v of data.variants) {
+      if (
+        !v.label ||
+        typeof v.value !== "number" ||
+        typeof v.price !== "number" ||
+        typeof v.mrp !== "number" ||
+        v.unitType !== unitType
+      ) {
+        return res.status(400).json({
+          message: "Invalid variant data",
+        });
+      }
+    }
+
+    const product = await Product.create(data);
+
     res.status(201).json(product);
-  } catch {
-    res.status(500).json({ message: "Create product failed" });
+  } catch (err) {
+    console.error("Create product error:", err);
+    res.status(500).json({
+      message: err.message || "Create product failed",
+    });
   }
 };
+

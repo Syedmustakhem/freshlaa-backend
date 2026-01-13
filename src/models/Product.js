@@ -1,5 +1,41 @@
 const mongoose = require("mongoose");
 
+const variantSchema = new mongoose.Schema(
+  {
+    label: {
+      type: String, // "25 g", "100 g", "1 piece", "2 pieces"
+      required: true,
+    },
+
+    price: {
+      type: Number,
+      required: true,
+    },
+
+    mrp: {
+      type: Number,
+      required: true,
+    },
+
+    unitType: {
+      type: String,
+      enum: ["weight", "piece"],
+      required: true, // helps frontend logic
+    },
+
+    value: {
+      type: Number,
+      required: true, // 25, 100, 1, 2
+    },
+
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -13,16 +49,6 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
-    price: {
-      type: Number,
-      required: true,
-    },
-
-    mrp: {
-      type: Number,
-      required: true,
-    },
-
     category: {
       type: String,
       required: true,
@@ -30,13 +56,8 @@ const productSchema = new mongoose.Schema(
       index: true,
     },
 
-    unit: {
-      type: String, // "1 kg", "500 ml"
-      required: true,
-    },
-
     image: {
-      type: String, // image URL
+      type: String,
       required: true,
     },
 
@@ -45,7 +66,14 @@ const productSchema = new mongoose.Schema(
       default: 100,
     },
 
-    /* 🔥 FLAGS (USED BY ROUTES) */
+    /* 🔥 SELLING OPTIONS */
+    variants: {
+      type: [variantSchema],
+      required: true,
+      validate: (v) => Array.isArray(v) && v.length > 0,
+    },
+
+    /* 🔥 FLAGS */
     isFeatured: {
       type: Boolean,
       default: false,
@@ -58,7 +86,7 @@ const productSchema = new mongoose.Schema(
 
     offerPercentage: {
       type: Number,
-      default: 0, // 10 = 10% OFF
+      default: 0,
     },
 
     isActive: {
@@ -66,7 +94,6 @@ const productSchema = new mongoose.Schema(
       default: true,
     },
 
-    /* 🔒 SOURCE CONTROL */
     source: {
       type: String,
       enum: ["manual"],
@@ -75,7 +102,7 @@ const productSchema = new mongoose.Schema(
 
     allowShopifySync: {
       type: Boolean,
-      default: false, // 🔴 PERMANENTLY DISABLED
+      default: false,
     },
   },
   { timestamps: true }
