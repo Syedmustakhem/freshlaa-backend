@@ -1,20 +1,15 @@
-import express from "express";
-import Restaurant from "../models/Restaurant.js";
-
+const express = require("express");
 const router = express.Router();
 
-/* GET STATUS */
-router.get("/status/:id", async (req, res) => {
-  const restaurant = await Restaurant.findById(req.params.id);
-  res.json({ isOpen: restaurant?.isOpen ?? true });
-});
+const {
+  addRestaurant,
+  getRestaurants,
+} = require("../controllers/restaurant.controller");
 
-/* UPDATE STATUS (ADMIN) */
-router.put("/status/:id", async (req, res) => {
-  await Restaurant.findByIdAndUpdate(req.params.id, {
-    isOpen: req.body.isOpen,
-  });
-  res.json({ success: true });
-});
+/* ➕ ADD RESTAURANT */
+router.post("/", addRestaurant);
 
-export default router;
+/* 📥 GET RESTAURANTS */
+router.get("/", getRestaurants);
+
+module.exports = router;

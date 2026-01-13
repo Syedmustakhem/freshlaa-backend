@@ -11,6 +11,8 @@ const notificationRoutes = require("./src/routes/notification.routes");
 const hotelMenuRoutes = require("./src/routes/hotelMenu.routes");
 const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
 const razorpayRoutes = require("./src/routes/razorpay.routes");
+const restaurantRoutes = require("./src/routes/restaurant.routes");
+
 
 const app = express();
 
@@ -29,6 +31,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/hotel/menu", hotelMenuRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes); // ✅ DB
 app.use("/api/razorpay", razorpayRoutes);             // ✅ Transactions
+app.use("/api/restaurants", restaurantRoutes);
 
 app.get("/", (req, res) => {
   res.send("Freshlaa Backend Running ✅");
