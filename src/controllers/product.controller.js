@@ -68,17 +68,26 @@ exports.searchProducts = async (req, res) => {
 /* ================= CATEGORY ================= */
 exports.getProductsByCategory = async (req, res) => {
   try {
-    const products = await Product.find({
-      category: req.params.category.toLowerCase(),
-      isActive: true,
-      stock: { $gt: 0 },
-    }).lean();
+    const category = req.params.category?.trim().toLowerCase();
 
-    res.json(products);
-  } catch {
-    res.status(500).json({ message: "Category fetch failed" });
+    const products = await Product.find({
+      category: category,
+      isActive: true,
+    });
+
+    return res.json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.error("getProductsByCategory error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch category products",
+    });
   }
 };
+
 
 /* ================= FEATURED ================= */
 exports.getFeaturedProducts = async (req, res) => {
