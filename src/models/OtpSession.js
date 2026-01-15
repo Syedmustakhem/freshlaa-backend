@@ -5,23 +5,20 @@ const otpSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
-      unique: true,   // ✅ IMPORTANT
+      unique: true,
       index: true,
     },
-
     otpHash: {
       type: String,
       required: true,
     },
-
     attempts: {
       type: Number,
       default: 0,
     },
-
     expiresAt: {
       type: Date,
-      required: true, // TTL auto-delete
+      required: true,
     },
   },
   { timestamps: true }
