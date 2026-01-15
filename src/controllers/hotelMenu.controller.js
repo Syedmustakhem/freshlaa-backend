@@ -1,4 +1,5 @@
 const HotelMenuItem = require("../models/HotelMenuItem");
+const Restaurant = require("../models/Restaurant");
 
 /* ➕ ADD HOTEL MENU ITEM */
 const addHotelMenuItem = async (req, res) => {
@@ -30,6 +31,26 @@ const getHotelMenu = async (req, res) => {
       });
     }
 
+    /* 🔥 STEP 1: CHECK RESTAURANT STATUS */
+    const restaurant = await Restaurant.findById(hotelId);
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    if (!restaurant.isOpen) {
+      return res.json({
+        success: true,
+        restaurantClosed: true,
+        message: "Restaurant is currently closed",
+        data: [],
+      });
+    }
+
+    /* 🔥 STEP 2: FETCH MENU ONLY IF OPEN */
     const items = await HotelMenuItem.find({
       hotelId,
       categoryKey,
@@ -42,6 +63,7 @@ const getHotelMenu = async (req, res) => {
 
     res.json({
       success: true,
+      restaurantClosed: false,
       data: items,
     });
   } catch (err) {
@@ -52,6 +74,7 @@ const getHotelMenu = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   addHotelMenuItem,

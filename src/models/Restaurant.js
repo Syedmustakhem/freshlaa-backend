@@ -5,7 +5,13 @@ const restaurantSchema = new mongoose.Schema(
     name: { type: String, required: true },
     image: String,
     address: String,
+
+    /* 🔥 OPEN / CLOSE */
     isOpen: { type: Boolean, default: true },
+
+    /* OPTIONAL (future use) */
+    opensAt: String,   // "09:00"
+    closesAt: String,  // "23:30"
   },
   { timestamps: true }
 );

@@ -10,6 +10,7 @@ const {
   getTrendingProducts,
   getOfferProducts,
   createManualProduct,
+  updateProduct,
 } = require("../controllers/product.controller");
 
 /* TEST */
@@ -28,6 +29,7 @@ router.get("/category/:category", getProductsByCategory);
 
 /* MANUAL PRODUCT (ADMIN) */
 router.post("/manual", createManualProduct);
+router.put("/:id", updateProduct);
 
 /* BASIC */
 router.get("/:id", getProductById);
