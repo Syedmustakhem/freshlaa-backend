@@ -12,7 +12,7 @@ const hashOtp = (otp) =>
   crypto.createHash("sha256").update(String(otp)).digest("hex");
 
 /* ---------- SEND / RESEND OTP ---------- */
-exports.sendOtp = async (req, res) => {
+const sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -26,7 +26,7 @@ exports.sendOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = hashOtp(otp);
 
-    // 🔥 overwrite previous OTP
+    // overwrite previous OTP
     await OtpSession.findOneAndUpdate(
       { phone },
       {
@@ -37,8 +37,9 @@ exports.sendOtp = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // 📩 SEND SMS
+    // API HOME SMS
     const smsUrl = `https://apihome.in/panel/api/bulksms/?key=${process.env.SMS_API_KEY}&mobile=${phone}&otp=${otp}`;
+
     const response = await axios.get(smsUrl);
 
     if (response.data?.status !== "Success") {
@@ -54,7 +55,7 @@ exports.sendOtp = async (req, res) => {
       expiresIn: 120,
     });
   } catch (err) {
-    console.error("SEND OTP ERROR:", err.message);
+    console.error("SEND OTP ERROR:", err);
     return res.status(500).json({
       success: false,
       message: "OTP send failed",
@@ -63,7 +64,7 @@ exports.sendOtp = async (req, res) => {
 };
 
 /* ---------- VERIFY OTP + LOGIN ---------- */
-exports.verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
 
@@ -109,7 +110,7 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    // ✅ OTP SUCCESS
+    // OTP SUCCESS
     await OtpSession.deleteOne({ phone });
 
     let user = await User.findOne({ phone });
@@ -132,14 +133,13 @@ exports.verifyOtp = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error("VERIFY OTP ERROR:", err.message);
+    console.error("VERIFY OTP ERROR:", err);
     return res.status(500).json({
       success: false,
       message: "OTP verification failed",
     });
   }
 };
-
 
 /* ================= EXPORTS ================= */
 module.exports = {
