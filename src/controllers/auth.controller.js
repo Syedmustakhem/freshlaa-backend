@@ -5,13 +5,13 @@ const jwt = require("jsonwebtoken");
 const OtpSession = require("../models/OtpSession");
 const User = require("../models/User");
 
-const OTP_EXPIRY_MS = 2 * 60 * 1000; // 2 min
+const OTP_EXPIRY_MS = 5 * 60 * 1000; // ✅ 5 minutes
 
 /* ---------- HELPERS ---------- */
 const hashOtp = (otp) =>
   crypto.createHash("sha256").update(String(otp)).digest("hex");
 
-/* ---------- SEND / RESEND OTP ---------- */
+/* ---------- SEND OTP ---------- */
 const sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -23,10 +23,18 @@ const sendOtp = async (req, res) => {
       });
     }
 
+    // 🔐 Prevent OTP overwrite while active
+    const existing = await OtpSession.findOne({ phone });
+    if (existing && existing.expiresAt > new Date()) {
+      return res.status(429).json({
+        success: false,
+        message: "OTP already sent. Please wait.",
+      });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = hashOtp(otp);
 
-    // overwrite previous OTP
     await OtpSession.findOneAndUpdate(
       { phone },
       {
@@ -37,9 +45,8 @@ const sendOtp = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // API HOME SMS
+    // 📩 API HOME SMS
     const smsUrl = `https://apihome.in/panel/api/bulksms/?key=${process.env.SMS_API_KEY}&mobile=${phone}&otp=${otp}`;
-
     const response = await axios.get(smsUrl);
 
     if (response.data?.status !== "Success") {
@@ -52,7 +59,7 @@ const sendOtp = async (req, res) => {
     return res.json({
       success: true,
       message: "OTP sent successfully",
-      expiresIn: 120,
+      expiresIn: OTP_EXPIRY_MS / 1000,
     });
   } catch (err) {
     console.error("SEND OTP ERROR:", err);
@@ -63,7 +70,7 @@ const sendOtp = async (req, res) => {
   }
 };
 
-/* ---------- VERIFY OTP + LOGIN ---------- */
+/* ---------- VERIFY OTP ---------- */
 const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -72,6 +79,14 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Phone and OTP are required",
+      });
+    }
+
+    // 🔒 OTP format check
+    if (!/^\d{6}$/.test(String(otp))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP format",
       });
     }
 
@@ -102,6 +117,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
+    // 🔑 OTP match
     if (session.otpHash !== hashOtp(otp)) {
       await session.save();
       return res.status(400).json({
@@ -110,7 +126,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // OTP SUCCESS
+    // ✅ OTP SUCCESS
     await OtpSession.deleteOne({ phone });
 
     let user = await User.findOne({ phone });
