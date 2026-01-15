@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       index: true,
+      trim: true,
     },
 
     /* 🔔 PUSH NOTIFICATIONS */
@@ -20,14 +21,17 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       default: "",
+      trim: true,
     },
 
     email: {
       type: String,
       default: "",
+      lowercase: true,
+      trim: true,
     },
 
-    /* 🛒 CART (PRODUCT + HOTEL MENU) */
+    /* 🛒 CART */
     cart: {
       type: [
         {
@@ -53,21 +57,21 @@ const userSchema = new mongoose.Schema(
             ref: "Restaurant",
             default: null,
           },
+
           selectedVariant: {
-  type: Object,
-  default: null,
-},
+            type: Object,
+            default: null,
+          },
 
-selectedAddons: {
-  type: Array,
-  default: [],
-},
+          selectedAddons: {
+            type: Array,
+            default: [],
+          },
 
-finalPrice: {
-  type: Number,
-  required: true,
-},
-
+          finalPrice: {
+            type: Number,
+            default: 0, // 🔥 SAFER
+          },
         },
       ],
       default: [],

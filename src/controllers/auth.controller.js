@@ -11,10 +11,14 @@ const OTP_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes
 const hashOtp = (otp) =>
   crypto.createHash("sha256").update(otp).digest("hex");
 
+const normalizePhone = (phone) =>
+  phone.replace(/^(\+91)/, "").trim();
+
 /* ================= SEND OTP ================= */
 const sendOtp = async (req, res) => {
   try {
-    const { phone } = req.body;
+    let { phone } = req.body;
+    phone = normalizePhone(phone);
 
     if (!/^[6-9]\d{9}$/.test(phone)) {
       return res.status(400).json({
@@ -26,7 +30,7 @@ const sendOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = hashOtp(otp);
 
-    // Remove old OTPs
+    // Remove previous OTP
     await OtpSession.deleteMany({ phone });
 
     // Send SMS
@@ -41,10 +45,9 @@ const sendOtp = async (req, res) => {
       });
     }
 
-    // Save OTP session (MATCHES YOUR SCHEMA)
+    // Save OTP (NO requestId)
     await OtpSession.create({
       phone,
-      requestId: response.data.requestId || `${phone}-${Date.now()}`,
       otpHash,
       attempts: 0,
       expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
@@ -67,7 +70,8 @@ const sendOtp = async (req, res) => {
 /* ================= VERIFY OTP + LOGIN ================= */
 const verifyOtp = async (req, res) => {
   try {
-    const { phone, otp } = req.body;
+    let { phone, otp } = req.body;
+    phone = normalizePhone(phone);
 
     if (!otp) {
       return res.status(400).json({
@@ -81,18 +85,18 @@ const verifyOtp = async (req, res) => {
     if (!session) {
       return res.status(400).json({
         success: false,
-        message: "OTP not found",
+        message: "OTP not found or expired",
       });
     }
 
     if (session.expiresAt < new Date()) {
+      await OtpSession.deleteMany({ phone });
       return res.status(400).json({
         success: false,
         message: "OTP expired",
       });
     }
 
-    // Increment attempts
     session.attempts += 1;
 
     if (session.attempts > 5) {
@@ -111,20 +115,14 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // OTP correct → cleanup
+    // ✅ OTP correct
     await OtpSession.deleteMany({ phone });
 
     // ================= USER AUTO CREATE =================
     let user = await User.findOne({ phone });
 
     if (!user) {
-      user = await User.create({
-        phone,
-        name: "",
-        email: "",
-        cart: [],
-        isBlocked: false,
-      });
+      user = await User.create({ phone });
     }
 
     user.lastLogin = new Date();
@@ -132,10 +130,7 @@ const verifyOtp = async (req, res) => {
 
     // ================= ISSUE JWT =================
     const token = jwt.sign(
-      {
-        id: user._id,
-        phone: user.phone,
-      },
+      { id: user._id, phone: user.phone },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );

@@ -5,13 +5,7 @@ const otpSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
-      index: true,
-    },
-
-    requestId: {
-      type: String,
-      required: true,
-      unique: true,
+      unique: true,   // ✅ IMPORTANT
       index: true,
     },
 
@@ -27,8 +21,7 @@ const otpSchema = new mongoose.Schema(
 
     expiresAt: {
       type: Date,
-      required: true,
-      index: { expires: 0 }, // 🔥 TTL auto-delete
+      required: true, // TTL auto-delete
     },
   },
   { timestamps: true }
