@@ -1,156 +1,120 @@
 const axios = require("axios");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const crypto = require("crypto");
 const OtpSession = require("../models/OtpSession");
-const generateLucentJwt = require("../utils/lucentjwt");
 
-const OTP_URL = process.env.OTP_API_BASE_URL;
+const OTP_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes
 
-/* ================= SEND / RESEND OTP ================= */
+const hashOtp = (otp) =>
+  crypto.createHash("sha256").update(otp).digest("hex");
+
+/* ================= SEND OTP ================= */
 const sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
 
     if (!/^[6-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ success: false, message: "Invalid phone number" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid phone number" });
     }
 
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = hashOtp(otp);
+
+    // Clear previous OTPs
     await OtpSession.deleteMany({ phone });
 
-    const lucentJwt = generateLucentJwt();
+    // Send SMS
+    const smsUrl = `https://apihome.in/panel/api/bulksms/?key=${process.env.SMS_API_KEY}&mobile=${phone}&otp=${otp}`;
+    const response = await axios.get(smsUrl);
 
-    const response =await axios.post(
-  OTP_URL,
-  {
-    username: `+91${phone}`
-    // ✅ DO NOT send "type" for mobile OTP
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${lucentJwt}`,
-      shop_name: process.env.OTP_SHOP_NAME,
-      action: "resendOTP",
-      "Content-Type": "application/json",
-    },
-  }
-);
-
-
-    if (response.data?.status !== 200) {
-      return res.status(400).json({
+    if (response.data?.status !== "Success") {
+      return res.status(500).json({
         success: false,
-        message: response.data?.message || "OTP send failed",
+        message: "SMS sending failed",
+        provider: response.data,
       });
     }
 
+    // Save OTP session (MATCHING SCHEMA)
     await OtpSession.create({
       phone,
-      otpId: response.data.data.otpId,
+      requestId: response.data.requestId || `${phone}-${Date.now()}`,
+      otpHash,
+      attempts: 0,
+      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
     });
 
     res.json({
       success: true,
-      otpId: response.data.data.otpId,
+      message: "OTP sent successfully",
+      expiresIn: 120,
     });
-
   } catch (err) {
-  const status = err.response?.status || 500;
-  const data = err.response?.data || null;
-
-  console.error("SEND OTP ERROR STATUS:", status);
-  console.error("SEND OTP ERROR DATA:", data);
-  console.error("SEND OTP ERROR MESSAGE:", err.message);
-
-  return res.status(status).json({
-    success: false,
-    lucent_error: data,
-    message: "OTP send failed",
-  });
-}
-
-};
-
-/* ================= VERIFY OTP (UPDATE CUSTOMER) ================= */
-const verifyOtp = async (req, res) => {
-  try {
-    const { phone, otpId, first_name, last_name, email } = req.body;
-
-    const session = await OtpSession.findOne({ phone, otpId });
-    if (!session) {
-      return res.status(400).json({ success: false, message: "OTP session not found" });
-    }
-
-    const lucentJwt = generateLucentJwt();
-
-    const response = await axios.post(
-      OTP_URL,
-      {
-        otp_id: otpId,
-        first_name,
-        last_name,
-        phone_no: `+91${phone}`,
-        email,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${lucentJwt}`,
-          shop_name: process.env.OTP_SHOP_NAME,
-          action: "updateEmail",
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (response.data?.status !== 200) {
-      return res.status(400).json({
-        success: false,
-        message: response.data?.message || "OTP verification failed",
-      });
-    }
-
-    await OtpSession.deleteMany({ phone });
-
-    let user = await User.findOne({ phone });
-    if (!user) {
-      user = await User.create({ phone, email });
-    }
-
-    const appToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "30d" }
-    );
-
-    res.json({
-      success: true,
-      token: appToken,
-      redirect_url: response.data.data.redirect_url,
-      user,
-    });
-
-  } catch (err) {
-    console.error("VERIFY OTP ERROR:", err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Verification failed" });
+    console.error("SEND OTP ERROR:", err.response?.data || err.message);
+    res.status(500).json({ success: false, message: "OTP send failed" });
   }
 };
 
-/* ================= DELETE ACCOUNT ================= */
-const deleteAccount = async (req, res) => {
+/* ================= VERIFY OTP ================= */
+const verifyOtp = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false });
+    const { phone, otp } = req.body;
 
-    await User.findByIdAndDelete(user._id);
-    await OtpSession.deleteMany({ phone: user.phone });
+    if (!otp) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP is required" });
+    }
 
-    res.json({ success: true });
+    const session = await OtpSession.findOne({ phone });
+
+    if (!session) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP not found" });
+    }
+
+    if (session.expiresAt < new Date()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP expired" });
+    }
+
+    // Increment attempts
+    session.attempts += 1;
+
+    if (session.attempts > 5) {
+      await OtpSession.deleteMany({ phone });
+      return res.status(429).json({
+        success: false,
+        message: "Too many wrong attempts",
+      });
+    }
+
+    if (session.otpHash !== hashOtp(otp)) {
+      await session.save();
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid OTP" });
+    }
+
+    // OTP correct
+    await OtpSession.deleteMany({ phone });
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
+    });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("VERIFY OTP ERROR:", err.message);
+    res
+      .status(500)
+      .json({ success: false, message: "OTP verification failed" });
   }
 };
 
 module.exports = {
   sendOtp,
   verifyOtp,
-  deleteAccount,
 };
