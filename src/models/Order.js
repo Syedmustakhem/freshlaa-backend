@@ -34,10 +34,17 @@ const orderSchema = new mongoose.Schema(
     },
 
     status: {
-      type: String,
-      enum: ["Placed", "Packed", "Out for Delivery", "Delivered"],
-      default: "Placed",
-    },
+  type: String,
+  enum: [
+    "Placed",
+    "Packed",
+    "Out for Delivery",
+    "Delivered",
+    "Cancelled", // ✅ ADD THIS
+  ],
+  default: "Placed",
+},
+
   },
   { timestamps: true }
 );
