@@ -14,14 +14,25 @@ const razorpayRoutes = require("./src/routes/razorpay.routes");
 const restaurantRoutes = require("./src/routes/restaurant.routes");
 const categoryRoutes = require("./src/routes/category.routes");
 
-
 const app = express();
 
-/* MIDDLEWARE */
-app.use(cors());
-app.use(express.json());
+/* ================= MIDDLEWARE ================= */
 
-/* ROUTES */
+// 🔥 Proper CORS (important for mobile apps)
+app.use(
+  cors({
+    origin: "*", // later restrict for admin panel
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// 🔥 Body size limit (prevents crash)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+/* ================= ROUTES ================= */
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
@@ -29,14 +40,38 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/hotel/menu", hotelMenuRoutes);
-app.use("/api/payment-methods", paymentMethodRoutes); // ✅ DB
-app.use("/api/razorpay", razorpayRoutes);             // ✅ Transactions
+
+// ✅ FIXED prefix consistency
+app.use("/api/hotel/menu", hotelMenuRoutes);
+
+app.use("/api/payment-methods", paymentMethodRoutes);
+app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/category", categoryRoutes);
 
+/* ================= HEALTH CHECK ================= */
 app.get("/", (req, res) => {
-  res.send("Freshlaa Backend Running ✅");
+  res.json({
+    success: true,
+    message: "Freshlaa Backend Running ✅",
+  });
+});
+
+/* ================= 404 HANDLER ================= */
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API route not found",
+  });
+});
+
+/* ================= GLOBAL ERROR HANDLER ================= */
+app.use((err, req, res, next) => {
+  console.error("🔥 SERVER ERROR:", err);
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+  });
 });
 
 module.exports = app;
