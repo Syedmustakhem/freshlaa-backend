@@ -1,5 +1,9 @@
+require("dotenv").config(); // ✅ MUST BE FIRST
+
 const express = require("express");
 const cors = require("cors");
+
+const app = express();
 
 const authRoutes = require("./src/routes/auth.routes");
 const productRoutes = require("./src/routes/product.routes");
@@ -14,20 +18,16 @@ const razorpayRoutes = require("./src/routes/razorpay.routes");
 const restaurantRoutes = require("./src/routes/restaurant.routes");
 const categoryRoutes = require("./src/routes/category.routes");
 
-const app = express();
-
 /* ================= MIDDLEWARE ================= */
 
-// 🔥 Proper CORS (important for mobile apps)
 app.use(
   cors({
-    origin: "*", // later restrict for admin panel
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// 🔥 Body size limit (prevents crash)
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -40,10 +40,7 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
-
-// ✅ FIXED prefix consistency
 app.use("/api/hotel/menu", hotelMenuRoutes);
-
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/restaurants", restaurantRoutes);
