@@ -2,36 +2,38 @@ const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
   label: {
-    type: String, // "250 g", "1 kg", "2 pieces"
+    type: String, // "500 ml", "1 kg", "6 pcs"
     required: true,
+    trim: true,
+  },
+
+  unit: {
+    type: String,
+    enum: ["kg", "g", "l", "ml", "pcs"],
+    required: true,
+  },
+
+  value: {
+    type: Number,
+    required: true,
+    min: 0.001,
   },
 
   price: {
     type: Number,
     required: true,
+    min: 0,
   },
 
   mrp: {
     type: Number,
-    required: true,
-  },
-
-  unitType: {
-    type: String,
-    enum: ["weight", "piece", "litre", "price"],
-    required: true,
-  },
-
-  value: {
-    type: Number, // 250, 1000, 1, 2
-    required: true,
+    min: 0,
   },
 
   stock: {
     type: Number,
     min: 0,
-    required: true,
-    default: 0, // ✅ VARIANT STOCK
+    default: 0,
   },
 
   isDefault: {
@@ -39,6 +41,7 @@ const variantSchema = new mongoose.Schema({
     default: false,
   },
 });
+
 
 const productSchema = new mongoose.Schema(
   {
