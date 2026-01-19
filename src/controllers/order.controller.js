@@ -5,25 +5,46 @@ exports.createOrder = async (req, res) => {
   try {
     const { items, address, paymentMethod, total } = req.body;
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ success: false, message: "No items in order" });
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No items in order",
+      });
     }
 
-    if (!address) {
-      return res.status(400).json({ success: false, message: "Address missing" });
+    if (!address || typeof address !== "object") {
+      return res.status(400).json({
+        success: false,
+        message: "Address missing",
+      });
     }
 
-    if (!total) {
-      return res.status(400).json({ success: false, message: "Total missing" });
+    if (!total || total <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid total",
+      });
     }
+
+    /* 🔥 NORMALIZE ITEMS (THIS FIXES COD) */
+    const normalizedItems = items.map((item) => ({
+      productId: item.productId || item._id || "",
+      name:
+        item.name ||
+        item.title ||
+        item.selectedVariant?.label ||
+        "Item",
+      price: Number(item.price || item.finalPrice || 0),
+      qty: Number(item.qty || 1),
+    }));
 
     const order = await Order.create({
       user: req.user._id,
-      items,
+      items: normalizedItems,
       address,
       paymentMethod: paymentMethod || "COD",
       total,
-      status: "Placed", // 🔥 IMPORTANT
+      status: "Placed",
     });
 
     res.status(201).json({
@@ -31,12 +52,14 @@ exports.createOrder = async (req, res) => {
       order,
     });
   } catch (error) {
+    console.error("Create order error:", error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to place order",
     });
   }
 };
+
 
 /* ================= GET MY ORDERS ================= */
 exports.getMyOrders = async (req, res) => {
