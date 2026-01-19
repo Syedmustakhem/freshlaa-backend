@@ -1,5 +1,40 @@
 const Product = require("../models/Product");
 
+/* ================= VARIANT NORMALIZER ================= */
+const normalizeVariants = (variants) => {
+  const allowedUnits = ["kg", "g", "l", "ml", "pcs"];
+
+  return variants.map((v, i) => {
+    if (!allowedUnits.includes(v.unit)) {
+      throw new Error(`Invalid unit in variant ${i + 1}`);
+    }
+
+    const value = Number(v.value);
+    const price = Number(v.price);
+    const mrp = Number(v.mrp || price);
+    const stock = Number(v.stock || 0);
+
+    if (
+      isNaN(value) || value <= 0 ||
+      isNaN(price) || price < 0 ||
+      isNaN(mrp) || mrp < 0 ||
+      isNaN(stock) || stock < 0
+    ) {
+      throw new Error(`Invalid numeric values in variant ${i + 1}`);
+    }
+
+    return {
+      label: v.label.trim(),
+      unit: v.unit,
+      value,
+      price,
+      mrp,
+      stock,
+      isDefault: Boolean(v.isDefault),
+    };
+  });
+};
+
 /* ================= GET ALL PRODUCTS ================= */
 exports.getAllProducts = async (req, res) => {
   try {
@@ -24,9 +59,19 @@ exports.getAllProducts = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
-    res.json(products);
+    products.forEach(p => {
+      p.variants = p.variants.filter(v => v.stock > 0);
+    });
+
+    res.json({
+      success: true,
+      data: products,
+    });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch products" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch products",
+    });
   }
 };
 
@@ -36,15 +81,23 @@ exports.getProductById = async (req, res) => {
     const product = await Product.findById(req.params.id).lean();
 
     if (!product || !product.isActive) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    // 🔥 show only available variants
     product.variants = product.variants.filter(v => v.stock > 0);
 
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching product" });
+    res.json({
+      success: true,
+      data: product,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching product",
+    });
   }
 };
 
@@ -59,35 +112,49 @@ exports.searchProducts = async (req, res) => {
       stock: { $gt: 0 },
     }).lean();
 
-    res.json(products);
+    products.forEach(p => {
+      p.variants = p.variants.filter(v => v.stock > 0);
+    });
+
+    res.json({
+      success: true,
+      data: products,
+    });
   } catch {
-    res.status(500).json({ message: "Search failed" });
+    res.status(500).json({
+      success: false,
+      message: "Search failed",
+    });
   }
 };
 
-/* ================= CATEGORY ================= */
+/* ================= CATEGORY PRODUCTS ================= */
 exports.getProductsByCategory = async (req, res) => {
   try {
     const category = req.params.category?.trim().toLowerCase();
 
     const products = await Product.find({
-      category: category,
+      category,
       isActive: true,
+      stock: { $gt: 0 },
+    }).lean();
+
+    products.forEach(p => {
+      p.variants = p.variants.filter(v => v.stock > 0);
     });
 
-    return res.json({
+    res.json({
       success: true,
-      products,
+      data: products,
     });
   } catch (error) {
     console.error("getProductsByCategory error:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Failed to fetch category products",
     });
   }
 };
-
 
 /* ================= FEATURED ================= */
 exports.getFeaturedProducts = async (req, res) => {
@@ -97,7 +164,14 @@ exports.getFeaturedProducts = async (req, res) => {
     stock: { $gt: 0 },
   }).lean();
 
-  res.json(products);
+  products.forEach(p => {
+    p.variants = p.variants.filter(v => v.stock > 0);
+  });
+
+  res.json({
+    success: true,
+    data: products,
+  });
 };
 
 /* ================= TRENDING ================= */
@@ -108,7 +182,14 @@ exports.getTrendingProducts = async (req, res) => {
     stock: { $gt: 0 },
   }).lean();
 
-  res.json(products);
+  products.forEach(p => {
+    p.variants = p.variants.filter(v => v.stock > 0);
+  });
+
+  res.json({
+    success: true,
+    data: products,
+  });
 };
 
 /* ================= OFFERS ================= */
@@ -119,8 +200,53 @@ exports.getOfferProducts = async (req, res) => {
     stock: { $gt: 0 },
   }).lean();
 
-  res.json(products);
+  products.forEach(p => {
+    p.variants = p.variants.filter(v => v.stock > 0);
+  });
+
+  res.json({
+    success: true,
+    data: products,
+  });
 };
+
+/* ================= CREATE PRODUCT ================= */
+exports.createManualProduct = async (req, res) => {
+  try {
+    const data = req.body;
+
+    if (!Array.isArray(data.variants) || data.variants.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Product must have at least one variant",
+      });
+    }
+
+    const variants = normalizeVariants(data.variants);
+
+    if (!variants.some(v => v.isDefault)) {
+      variants[0].isDefault = true;
+    }
+
+    data.variants = variants;
+    data.stock = variants.reduce((sum, v) => sum + v.stock, 0);
+    data.category = data.category.toLowerCase();
+
+    const product = await Product.create(data);
+
+    res.status(201).json({
+      success: true,
+      data: product,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message || "Create product failed",
+    });
+  }
+};
+
+/* ================= UPDATE PRODUCT ================= */
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -128,10 +254,12 @@ exports.updateProduct = async (req, res) => {
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    /* ---------------- BASIC FIELDS ---------------- */
     if (data.name !== undefined) product.name = data.name;
     if (data.description !== undefined) product.description = data.description;
     if (data.category !== undefined)
@@ -141,7 +269,6 @@ exports.updateProduct = async (req, res) => {
       product.images = data.images;
     }
 
-    /* ---------------- FLAGS ---------------- */
     if (typeof data.isFeatured === "boolean")
       product.isFeatured = data.isFeatured;
 
@@ -154,82 +281,28 @@ exports.updateProduct = async (req, res) => {
     if (typeof data.offerPercentage === "number")
       product.offerPercentage = data.offerPercentage;
 
-    /* ---------------- VARIANTS ---------------- */
     if (Array.isArray(data.variants) && data.variants.length > 0) {
-      // validate variant stock
-      for (const v of data.variants) {
-        if (typeof v.stock !== "number" || v.stock < 0) {
-          return res.status(400).json({
-            message: "Each variant must have valid stock",
-          });
-        }
+      const variants = normalizeVariants(data.variants);
+
+      if (!variants.some(v => v.isDefault)) {
+        variants[0].isDefault = true;
       }
 
-      // ensure default variant
-      if (!data.variants.some(v => v.isDefault)) {
-        data.variants[0].isDefault = true;
-      }
-
-      product.variants = data.variants;
-
-      // 🔥 auto-calc product stock
-      product.stock = data.variants.reduce(
-        (sum, v) => sum + (v.stock || 0),
-        0
-      );
+      product.variants = variants;
+      product.stock = variants.reduce((sum, v) => sum + v.stock, 0);
     }
 
     await product.save();
 
     res.json({
-      message: "Product updated successfully",
-      product,
+      success: true,
+      data: product,
     });
   } catch (err) {
     console.error("Update product error:", err);
     res.status(500).json({
+      success: false,
       message: err.message || "Update failed",
-    });
-  }
-};
-
-/* ================= CREATE MANUAL PRODUCT ================= */
-exports.createManualProduct = async (req, res) => {
-  try {
-    const data = req.body;
-
-    if (!Array.isArray(data.variants) || data.variants.length === 0) {
-      return res.status(400).json({
-        message: "Product must have at least one variant",
-      });
-    }
-
-    // 🔥 Validate variant stock
-    for (const v of data.variants) {
-      if (typeof v.stock !== "number" || v.stock < 0) {
-        return res.status(400).json({
-          message: "Each variant must have valid stock",
-        });
-      }
-    }
-
-    // 🔥 Ensure one default variant
-    if (!data.variants.some(v => v.isDefault)) {
-      data.variants[0].isDefault = true;
-    }
-
-    // 🔥 Product stock = sum of variant stocks
-    data.stock = data.variants.reduce(
-      (sum, v) => sum + v.stock,
-      0
-    );
-
-    const product = await Product.create(data);
-
-    res.status(201).json(product);
-  } catch (err) {
-    res.status(500).json({
-      message: err.message || "Create product failed",
     });
   }
 };
