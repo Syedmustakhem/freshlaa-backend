@@ -67,7 +67,7 @@ app.use((err, req, res, next) => {
   console.error("🔥 SERVER ERROR:", err);
   res.status(500).json({
     success: false,
-    message: "Internal Server Error issue.",
+    message: "Internal Server  issue.",
   });
 });
 

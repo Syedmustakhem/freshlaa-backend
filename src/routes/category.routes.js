@@ -3,22 +3,28 @@ const router = express.Router();
 const Product = require("../models/Product");
 
 // GET all unique categories
-router.get("/categories", async (req, res) => {
+// GET products by category
+router.get("/category/:category", async (req, res) => {
   try {
-    const categories = await Product.distinct("category", {
+    const { category } = req.params;
+
+    const products = await Product.find({
+      category: category,
       isActive: true,
-    });
+    }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      categories,
+      products,
     });
   } catch (err) {
+    console.error("Category products error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch categories",
+      message: "Failed to fetch products by category",
     });
   }
 });
+
 
 module.exports = router;
