@@ -306,4 +306,3 @@ exports.updateProduct = async (req, res) => {
     });
   }
 };
-s
