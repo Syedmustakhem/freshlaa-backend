@@ -4,7 +4,7 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-
+const adminRoutes = require("./src/routes/admin.routes")
 const authRoutes = require("./src/routes/auth.routes");
 const productRoutes = require("./src/routes/product.routes");
 const orderRoutes = require("./src/routes/order.routes");
@@ -44,7 +44,7 @@ app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/category", categoryRoutes);
-app.use("/api/admin", require("./src/routes/admin.routes"));
+app.use("/api/admin", adminRoutes);
 
 /* ================= HEALTH CHECK ================= */
 app.get("/", (req, res) => {
