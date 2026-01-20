@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-
 const adminAuth = require("../middlewares/adminAuth");
 
 const {
@@ -16,26 +15,24 @@ const {
   updateProduct,
 } = require("../controllers/product.controller");
 
-/* ================= TEST ================= */
-router.get("/test", (req, res) => {
-  res.send("Product route working ✅");
-});
+/* ADMIN ROUTES — FIRST */
+router.get("/admin/all", adminAuth, getAllProductsAdmin);
 
-/* ================= PUBLIC ROUTES ================= */
+/* SPECIAL */
 router.get("/featured", getFeaturedProducts);
 router.get("/trending", getTrendingProducts);
 router.get("/offers", getOfferProducts);
 
+/* SEARCH & CATEGORY */
 router.get("/search", searchProducts);
 router.get("/category/:category", getProductsByCategory);
 
-/* ================= ADMIN ROUTES ================= */
-router.get("/admin/all", adminAuth, getAllProductsAdmin);
+/* PRODUCTS */
 router.post("/manual", adminAuth, createManualProduct);
 router.put("/:id", adminAuth, updateProduct);
 
-/* ================= BASIC ROUTES (LAST) ================= */
-router.get("/:id", getProductById);
+/* BASIC (LAST) */
 router.get("/", getAllProducts);
+router.get("/:id", getProductById);
 
 module.exports = router;
