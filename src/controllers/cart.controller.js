@@ -31,44 +31,48 @@ const syncCart = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+const formattedCart = cart
+  .map((item) => {
+    if (!item.productId || !mongoose.Types.ObjectId.isValid(item.productId)) {
+      console.warn("⚠️ Skipping invalid cart item:", item.productId);
+      return null;
+    }
 
-    const formattedCart = cart.map((item) => {
-      if (!mongoose.Types.ObjectId.isValid(item.productId)) {
-        throw new Error(`Invalid productId: ${item.productId}`);
-      }
+    if (!["Product", "HotelMenuItem"].includes(item.itemModel)) {
+      console.warn("⚠️ Skipping invalid itemModel:", item.itemModel);
+      return null;
+    }
 
-      if (!["Product", "HotelMenuItem"].includes(item.itemModel)) {
-        throw new Error("Invalid itemModel");
-      }
+    let finalPrice = Number(item.finalPrice) || 0;
 
-      let finalPrice = Number(item.finalPrice) || 0;
+    // Safety calc for hotel items
+    if (item.itemModel === "HotelMenuItem") {
+      finalPrice =
+        Number(item.basePrice || 0) +
+        Number(item.selectedVariant?.price || 0) +
+        (item.selectedAddons || []).reduce(
+          (sum, a) => sum + Number(a.price || 0),
+          0
+        );
+    }
 
-      // Safety calc for hotel items
-      if (item.itemModel === "HotelMenuItem") {
-        finalPrice =
-          Number(item.basePrice || 0) +
-          Number(item.selectedVariant?.price || 0) +
-          (item.selectedAddons || []).reduce(
-            (sum, a) => sum + Number(a.price || 0),
-            0
-          );
-      }
+    return {
+      productId: new mongoose.Types.ObjectId(item.productId),
+      itemModel: item.itemModel,
+      qty: Number(item.qty) || 1,
 
-      return {
-        productId: new mongoose.Types.ObjectId(item.productId),
-        itemModel: item.itemModel,
-        qty: Number(item.qty) || 1,
+      hotelId:
+        item.itemModel === "HotelMenuItem" && item.hotelId
+          ? new mongoose.Types.ObjectId(item.hotelId)
+          : null,
 
-        hotelId:
-          item.itemModel === "HotelMenuItem"
-            ? new mongoose.Types.ObjectId(item.hotelId)
-            : null,
+      selectedVariant: item.selectedVariant || null,
+      selectedAddons: item.selectedAddons || [],
+      finalPrice,
+    };
+  })
+  .filter(Boolean); // ✅ THIS LINE FIXES EVERYTHING
 
-        selectedVariant: item.selectedVariant || null,
-        selectedAddons: item.selectedAddons || [],
-        finalPrice,
-      };
-    });
 
     user.cart = formattedCart;
     await user.save();
