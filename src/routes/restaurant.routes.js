@@ -7,7 +7,7 @@ const {
   toggleRestaurantStatus,
 } = require("../controllers/restaurant.controller");
 
-const adminAuth = require("../middlewares/adminAuth.middleware");
+const adminAuth = require("../middlewares/adminAuth");
 
 // PUBLIC (APP + ADMIN)
 router.get("/", getRestaurants);
