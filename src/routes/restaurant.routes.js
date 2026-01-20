@@ -7,8 +7,13 @@ const {
   toggleRestaurantStatus,
 } = require("../controllers/restaurant.controller");
 
-router.post("/", addRestaurant);
+const adminAuth = require("../middlewares/adminAuth.middleware");
+
+// PUBLIC (APP + ADMIN)
 router.get("/", getRestaurants);
-router.patch("/:id/toggle", toggleRestaurantStatus);
+
+// ADMIN ONLY
+router.post("/", adminAuth, addRestaurant);
+router.patch("/:id/toggle", adminAuth, toggleRestaurantStatus);
 
 module.exports = router;
