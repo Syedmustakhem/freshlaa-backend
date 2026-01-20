@@ -27,16 +27,25 @@ exports.createOrder = async (req, res) => {
     }
 
     /* 🔥 NORMALIZE ITEMS (THIS FIXES COD) */
-    const normalizedItems = items.map((item) => ({
-      productId: item.productId || item._id || "",
-      name:
-        item.name ||
-        item.title ||
-        item.selectedVariant?.label ||
-        "Item",
-      price: Number(item.price || item.finalPrice || 0),
-      qty: Number(item.qty || 1),
-    }));
+    /* 🔥 NORMALIZE ITEMS (FIXES IMAGES + COD) */
+const normalizedItems = items.map((item) => ({
+  productId: item.productId || item._id || "",
+  name:
+    item.name ||
+    item.title ||
+    item.selectedVariant?.label ||
+    "Item",
+
+  image:
+    item.image ||                 // ✅ from cart
+    item.thumbnail ||             // fallback
+    item.images?.[0] ||            // fallback
+    "",
+
+  price: Number(item.price || item.finalPrice || 0),
+  qty: Number(item.qty || 1),
+}));
+
 
     const order = await Order.create({
       user: req.user._id,
