@@ -43,3 +43,23 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: "Profile update failed" });
   }
 };
+/* SAVE EXPO PUSH TOKEN */
+exports.savePushToken = async (req, res) => {
+  try {
+    const { expoPushToken } = req.body;
+
+    if (!expoPushToken) {
+      return res.json({ success: true });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      expoPushToken,
+      lastLogin: new Date(),
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Save push token error:", err);
+    res.status(500).json({ message: "Failed to save push token" });
+  }
+};
