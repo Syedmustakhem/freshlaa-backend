@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
-
+const sendPush = require("../utils/sendPush");
+const User = require("../models/User");
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
   try {
@@ -154,42 +155,34 @@ exports.cancelOrder = async (req, res) => {
 
 /* ================= ADMIN: UPDATE STATUS ================= */
 exports.updateOrderStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
+  const { orderId, status } = req.body;
 
-    const allowedStatus = [
-      "Placed",
-      "Packed",
-      "Out for Delivery",
-      "Delivered",
-      "Cancelled",
-    ];
+  const order = await Order.findById(orderId);
+  if (!order) return res.status(404).json({ message: "Order not found" });
 
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order status",
-      });
-    }
+  order.status = status;
+  await order.save();
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
+  const user = await User.findById(order.userId);
 
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
+  // 🔔 Status-based push
+  let title = "Order Update";
+  let body = "";
 
-    res.json({
-      success: true,
-      order,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  if (status === "placed") body = "🛒 Your order has been placed";
+  if (status === "packed") body = "📦 Your order is packed";
+  if (status === "out_for_delivery") body = "🚚 Your order is on the way";
+  if (status === "delivered") body = "✅ Order delivered successfully";
+
+  await sendPush({
+    expoPushToken: user.expoPushToken,
+    title,
+    body,
+    data: {
+      screen: "OrderDetails",
+orderId: order._id.toString(),
+    },
+  });
+
+  res.json({ success: true });
 };
