@@ -17,7 +17,6 @@ const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
 const razorpayRoutes = require("./src/routes/razorpay.routes");
 const restaurantRoutes = require("./src/routes/restaurant.routes");
 const categoryRoutes = require("./src/routes/category.routes");
-const adminRoutes = require("./src/routes/admin.routes")
 /* ================= MIDDLEWARE ================= */
 
 app.use(
