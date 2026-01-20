@@ -17,7 +17,7 @@ const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
 const razorpayRoutes = require("./src/routes/razorpay.routes");
 const restaurantRoutes = require("./src/routes/restaurant.routes");
 const categoryRoutes = require("./src/routes/category.routes");
-
+const adminRoutes = require("./src/routes/admin.routes")
 /* ================= MIDDLEWARE ================= */
 
 app.use(
@@ -45,6 +45,7 @@ app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/category", categoryRoutes);
+app.use("/api/admin", require("./src/routes/admin.routes"));
 
 /* ================= HEALTH CHECK ================= */
 app.get("/", (req, res) => {
