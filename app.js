@@ -4,7 +4,11 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-const adminRoutes = require("./src/routes/admin.routes")
+
+/* ================= ROUTE IMPORTS ================= */
+// ⚠️ Filenames MUST match exactly (Linux is case-sensitive)
+
+const adminRoutes = require("./src/routes/admin.routes");
 const authRoutes = require("./src/routes/auth.routes");
 const productRoutes = require("./src/routes/product.routes");
 const orderRoutes = require("./src/routes/order.routes");
@@ -17,6 +21,7 @@ const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
 const razorpayRoutes = require("./src/routes/razorpay.routes");
 const restaurantRoutes = require("./src/routes/restaurant.routes");
 const categoryRoutes = require("./src/routes/category.routes");
+
 /* ================= MIDDLEWARE ================= */
 
 app.use(
@@ -47,14 +52,16 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 
 /* ================= HEALTH CHECK ================= */
+
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "Freshlaa Backend Running ✅",
   });
 });
 
 /* ================= 404 HANDLER ================= */
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -63,11 +70,12 @@ app.use((req, res) => {
 });
 
 /* ================= GLOBAL ERROR HANDLER ================= */
+
 app.use((err, req, res, next) => {
   console.error("🔥 SERVER ERROR:", err);
   res.status(500).json({
     success: false,
-    message: "Internal Server  issue.",
+    message: "Internal server error",
   });
 });
 
