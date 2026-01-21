@@ -153,6 +153,29 @@ router.get("/users/:id/cart", adminAuth, async (req, res) => {
     });
   }
 });
+/**
+ * GET /api/admin/orders
+ * Get all orders (global)
+ */
+router.get("/orders", adminAuth, async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name phone")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: orders,
+    });
+  } catch (err) {
+    console.error("ADMIN GLOBAL ORDERS ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load orders",
+    });
+  }
+});
 
 router.get("/users", adminAuth, async (req, res) => {
   try {
