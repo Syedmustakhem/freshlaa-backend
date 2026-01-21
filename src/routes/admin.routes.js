@@ -65,7 +65,7 @@ router.patch("/users/:id/status", adminAuth, async (req, res) => {
       });
     }
 
-    user.isActive = !user.isActive;
+user.isBlocked = !user.isBlocked;
     await user.save();
 
     res.json({
@@ -108,7 +108,7 @@ router.get("/users/:id/addresses", adminAuth, async (req, res) => {
  */
 router.get("/users/:id/orders", adminAuth, async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.params.id })
+    const orders = await Order.find({ user: req.params.id })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -124,6 +124,7 @@ router.get("/users/:id/orders", adminAuth, async (req, res) => {
     });
   }
 });
+
 /**
  * GET /api/admin/users/:id/cart
  */
