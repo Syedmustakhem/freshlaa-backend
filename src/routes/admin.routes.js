@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { adminLogin } = require("../controllers/admin/Adminauth.controller");
 const { createInitialAdmin } = require("../controllers/admin/initAdmin.controller");
+const { getDashboardMetrics } = require("../controllers/admin/dashboard.controller");
 
 const adminAuth = require("../middlewares/adminAuth");
 const User = require("../models/User");
@@ -17,6 +18,7 @@ router.post("/init", createInitialAdmin);
 
 /* LOGIN */
 router.post("/login", adminLogin);
+router.get("/dashboard", adminAuth, getDashboardMetrics);
 
 /* ================= USERS (ADMIN PANEL) ================= */
 /**
