@@ -4,6 +4,7 @@ const router = express.Router();
 const { adminLogin } = require("../controllers/admin/Adminauth.controller");
 const { createInitialAdmin } = require("../controllers/admin/initAdmin.controller");
 const { getDashboardMetrics } = require("../controllers/admin/dashboard.controller");
+const { updateOrderStatus } = require("../controllers/order.controller");
 
 const adminAuth = require("../middlewares/adminAuth");
 const User = require("../models/User");
@@ -19,6 +20,11 @@ router.post("/init", createInitialAdmin);
 /* LOGIN */
 router.post("/login", adminLogin);
 router.get("/dashboard", adminAuth, getDashboardMetrics);
+/**
+ * PATCH /api/admin/orders/status
+ * Update order status + push notification
+ */
+router.patch("/orders/status", adminAuth, updateOrderStatus);
 
 /* ================= USERS (ADMIN PANEL) ================= */
 /**
@@ -68,13 +74,14 @@ router.patch("/users/:id/status", adminAuth, async (req, res) => {
 user.isBlocked = !user.isBlocked;
     await user.save();
 
-    res.json({
-      success: true,
-      message: `User ${user.isActive ? "unblocked" : "blocked"} successfully`,
-      data: {
-        isActive: user.isActive,
-      },
-    });
+  res.json({
+  success: true,
+  message: user.isBlocked ? "User blocked successfully" : "User unblocked successfully",
+  data: {
+    isBlocked: user.isBlocked,
+  },
+});
+
   } catch (err) {
     console.error("USER STATUS ERROR:", err);
     res.status(500).json({
