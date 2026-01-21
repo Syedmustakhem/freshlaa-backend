@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const protect = require("../middlewares/auth.middleware");
-//const admin = require("../middlewares/admin.middleware"); // if you have
+const admin = require("../middlewares/adminAuth"); // if you have
 
 const {
   createOrder,
@@ -20,6 +20,6 @@ router.get("/:id", protect, getOrderById);
 router.put("/:id/cancel", protect, cancelOrder);
 
 /* ✅ ADMIN */
-//router.put("/admin/:id/status", protect, admin, updateOrderStatus);
+router.put("/admin/:id/status", protect, admin, updateOrderStatus);
 
 module.exports = router;
