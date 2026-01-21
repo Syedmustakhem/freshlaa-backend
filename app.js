@@ -1,26 +1,28 @@
-require("dotenv").config(); // ✅ MUST BE FIRST
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
-/* ================= ROUTE IMPORTS ================= */
-// ⚠️ Filenames MUST match exactly (Linux is case-sensitive)
+/* ================= ROUTE IMPORTS (PM2 SAFE) ================= */
 
-const adminRoutes = require("./src/routes/admin.routes");
-const authRoutes = require("./src/routes/auth.routes");
-const productRoutes = require("./src/routes/product.routes");
-const orderRoutes = require("./src/routes/order.routes");
-const addressRoutes = require("./src/routes/address.routes");
-const cartRoutes = require("./src/routes/cart.routes");
-const userRoutes = require("./src/routes/user.routes");
-const notificationRoutes = require("./src/routes/notification.routes");
-const hotelMenuRoutes = require("./src/routes/hotelMenu.routes");
-const paymentMethodRoutes = require("./src/routes/paymentMethod.routes");
-const razorpayRoutes = require("./src/routes/razorpay.routes");
-const restaurantRoutes = require("./src/routes/restaurant.routes");
-const categoryRoutes = require("./src/routes/category.routes");
+const routesPath = path.join(__dirname, "src", "routes");
+
+const adminRoutes = require(path.join(routesPath, "admin.routes"));
+const authRoutes = require(path.join(routesPath, "auth.routes"));
+const productRoutes = require(path.join(routesPath, "product.routes"));
+const orderRoutes = require(path.join(routesPath, "order.routes"));
+const addressRoutes = require(path.join(routesPath, "address.routes"));
+const cartRoutes = require(path.join(routesPath, "cart.routes"));
+const userRoutes = require(path.join(routesPath, "user.routes"));
+const notificationRoutes = require(path.join(routesPath, "notification.routes"));
+const hotelMenuRoutes = require(path.join(routesPath, "hotelMenu.routes"));
+const paymentMethodRoutes = require(path.join(routesPath, "paymentMethod.routes"));
+const razorpayRoutes = require(path.join(routesPath, "razorpay.routes"));
+const restaurantRoutes = require(path.join(routesPath, "restaurant.routes"));
+const categoryRoutes = require(path.join(routesPath, "category.routes"));
 
 /* ================= MIDDLEWARE ================= */
 
@@ -51,16 +53,16 @@ app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 
-/* ================= HEALTH CHECK ================= */
+/* ================= HEALTH ================= */
 
 app.get("/", (req, res) => {
-  res.status(200).json({
+  res.json({
     success: true,
     message: "Freshlaa Backend Running ✅",
   });
 });
 
-/* ================= 404 HANDLER ================= */
+/* ================= 404 ================= */
 
 app.use((req, res) => {
   res.status(404).json({
@@ -69,7 +71,7 @@ app.use((req, res) => {
   });
 });
 
-/* ================= GLOBAL ERROR HANDLER ================= */
+/* ================= ERROR ================= */
 
 app.use((err, req, res, next) => {
   console.error("🔥 SERVER ERROR:", err);
