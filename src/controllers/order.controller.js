@@ -158,68 +158,73 @@ exports.updateOrderStatus = async (req, res) => {
     const { orderId, status } = req.body;
 
     if (!orderId || !status) {
-      return res.status(400).json({ message: "orderId and status required" });
+      return res.status(400).json({
+        success: false,
+        message: "orderId and status required",
+      });
     }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
     }
 
     // ✅ Update status
     order.status = status;
     await order.save();
 
-    // ✅ Correct user reference
-    const user = await User.findById(order.user);
-
-    // ✅ Push notification (only if token exists)
-    if (user?.expoPushToken) {
-      let title = "Order Update";
-      let body = "";
-
-      switch (status) {
-        case "Placed":
-          body = "🛒 Your order has been placed";
-          break;
-
-        case "Packed":
-          body = "📦 Your order is packed";
-          break;
-
-        case "OutForDelivery":
-          body = "🚚 Your order is on the way";
-          break;
-
-        case "Delivered":
-          body = "✅ Order delivered successfully";
-          break;
-
-        case "Cancelled":
-          body = "❌ Your order was cancelled";
-          break;
-
-        default:
-          body = `Order status updated to ${status}`;
-      }
-
-      await sendPush({
-        expoPushToken: user.expoPushToken,
-        title,
-        body,
-        data: {
-          type: "ORDER_STATUS",
-          orderId: order._id.toString(),
-          status,
-        },
-      });
-    }
-
+    // ✅ Respond immediately (IMPORTANT)
     res.json({
       success: true,
       message: "Order status updated",
       order,
     });
+
+    // 🔔 SEND PUSH IN BACKGROUND (NON-BLOCKING)
+    try {
+      const user = await User.findById(order.user);
+
+      if (user?.expoPushToken) {
+        let title = "Order Update";
+        let body = "";
+
+        switch (status) {
+          case "Placed":
+            body = "🛒 Your order has been placed";
+            break;
+          case "Packed":
+            body = "📦 Your order is packed";
+            break;
+          case "OutForDelivery":
+            body = "🚚 Your order is on the way";
+            break;
+          case "Delivered":
+            body = "✅ Order delivered successfully";
+            break;
+          case "Cancelled":
+            body = "❌ Your order was cancelled";
+            break;
+          default:
+            body = `Order status updated to ${status}`;
+        }
+
+        sendPush({
+          expoPushToken: user.expoPushToken,
+          title,
+          body,
+          data: {
+            type: "ORDER_STATUS",
+            orderId: order._id.toString(),
+            status,
+          },
+        });
+      }
+    } catch (pushErr) {
+      console.error("PUSH ERROR (IGNORED):", pushErr.message);
+    }
   } catch (error) {
     console.error("UPDATE ORDER STATUS ERROR:", error);
     res.status(500).json({
