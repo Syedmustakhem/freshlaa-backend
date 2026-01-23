@@ -39,12 +39,13 @@ const orderSchema = new mongoose.Schema(
   enum: [
     "Placed",
     "Packed",
-    "Out for Delivery",
+    "OutForDelivery",
     "Delivered",
-    "Cancelled", // ✅ ADD THIS
+    "Cancelled",
   ],
   default: "Placed",
 },
+
 
   },
   { timestamps: true }
