@@ -29,9 +29,15 @@ const bannerRoutes = require(path.join(routesPath, "banner.routes"));
 
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [
+      "https://admin.freshlaa.com",
+      "https://freshlaa-admin.onrender.com",
+      "https://www.freshlaa.com",
+      "http://localhost:3000",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
