@@ -19,6 +19,7 @@ const io = new Server(server, {
   cors: {
     origin: [
       "https://admin.freshlaa.com",
+      "https://freshlaa-admin.onrender.com",
       "https://www.freshlaa.com",
       "http://localhost:3000",
     ],
