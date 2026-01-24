@@ -56,6 +56,16 @@ const normalizedItems = items.map((item) => ({
       total,
       status: "Placed",
     });
+// 🔥 REALTIME: Notify admin about new order
+if (global.io) {
+  global.io.emit("new-order", {
+    _id: order._id,
+    total: order.total,
+    status: order.status,
+    createdAt: order.createdAt,
+    paymentMethod: order.paymentMethod,
+  });
+}
 
     res.status(201).json({
       success: true,
@@ -175,6 +185,13 @@ exports.updateOrderStatus = async (req, res) => {
     // ✅ Update status
     order.status = status;
     await order.save();
+// 🔥 REALTIME: Notify admin & app about status update
+if (global.io) {
+  global.io.emit("order-updated", {
+    orderId: order._id,
+    status: order.status,
+  });
+}
 
     // ✅ Respond immediately (IMPORTANT)
     res.json({
