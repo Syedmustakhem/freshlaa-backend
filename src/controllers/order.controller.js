@@ -1,52 +1,39 @@
+// TOP IMPORTS
 const Order = require("../models/Order");
-const sendPush = require("../utils/sendPush");
 const User = require("../models/User");
+const sendPush = require("../utils/sendPush");
+
+const AdminPush = require("../models/AdminPush");
+const webpush = require("web-push");
+
+// VAPID CONFIG (ONCE)
+webpush.setVapidDetails(
+  "mailto:support@freshlaa.com",
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
   try {
     const { items, address, paymentMethod, total } = req.body;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No items in order",
-      });
-    }
+    if (!Array.isArray(items) || !items.length)
+      return res.status(400).json({ success: false, message: "No items in order" });
 
-    if (!address || typeof address !== "object") {
-      return res.status(400).json({
-        success: false,
-        message: "Address missing",
-      });
-    }
+    if (!address || typeof address !== "object")
+      return res.status(400).json({ success: false, message: "Address missing" });
 
-    if (!total || total <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid total",
-      });
-    }
+    if (!total || total <= 0)
+      return res.status(400).json({ success: false, message: "Invalid total" });
 
-    /* 🔥 NORMALIZE ITEMS (THIS FIXES COD) */
-    /* 🔥 NORMALIZE ITEMS (FIXES IMAGES + COD) */
-const normalizedItems = items.map((item) => ({
-  productId: item.productId || item._id || "",
-  name:
-    item.name ||
-    item.title ||
-    item.selectedVariant?.label ||
-    "Item",
-
-  image:
-    item.image ||                 // ✅ from cart
-    item.thumbnail ||             // fallback
-    item.images?.[0] ||            // fallback
-    "",
-
-  price: Number(item.price || item.finalPrice || 0),
-  qty: Number(item.qty || 1),
-}));
-
+    const normalizedItems = items.map((item) => ({
+      productId: item.productId || item._id || "",
+      name: item.name || item.title || item.selectedVariant?.label || "Item",
+      image: item.image || item.thumbnail || item.images?.[0] || "",
+      price: Number(item.price || item.finalPrice || 0),
+      qty: Number(item.qty || 1),
+    }));
 
     const order = await Order.create({
       user: req.user._id,
@@ -56,37 +43,53 @@ const normalizedItems = items.map((item) => ({
       total,
       status: "Placed",
     });
-// 🔥 REALTIME: Notify admin about new order
-// 🔔 EMIT NEW ORDER TO ADMIN (REALTIME)
-try {
-  const user = await User.findById(req.user._id).select("name phone");
 
-  global.io.emit("new-order", {
-    orderId: order._id,
-    userName: user?.name || user?.phone || "New User",
-    total: order.total,
-    items: order.items.map(i => ({
-      name: i.name,
-      image: i.image,
-      qty: i.qty,
-    })),
-    createdAt: order.createdAt,
-  });
-} catch (err) {
-  console.error("SOCKET EMIT ERROR:", err.message);
-}
-
-
-    res.status(201).json({
-      success: true,
-      order,
+    // 🔔 SOCKET
+    global.io.emit("new-order", {
+      orderId: order._id,
+      total: order.total,
+      items: order.items,
+      createdAt: order.createdAt,
     });
+
+    // ⚡ RESPOND FAST
+    res.status(201).json({ success: true, order });
+
+    // 🔔 ADMIN BACKGROUND PUSH
+    try {
+      const subs = await AdminPush.find();
+
+      const payload = JSON.stringify({
+        title: "🛒 New Order",
+        body: `₹${order.total} order placed`,
+        image: order.items?.[0]?.image,
+      });
+
+      subs.forEach((s) => {
+        webpush.sendNotification(s.subscription, payload);
+      });
+    } catch (err) {
+      console.error("ADMIN PUSH ERROR:", err);
+    }
+
+    // 📲 USER PUSH (OPTIONAL BUT RECOMMENDED)
+    try {
+      const user = await User.findById(req.user._id);
+      if (user?.expoPushToken) {
+        sendPush({
+          expoPushToken: user.expoPushToken,
+          title: "Order Placed",
+          body: `Your order of ₹${order.total} has been placed`,
+          data: { orderId: order._id.toString() },
+        });
+      }
+    } catch (err) {
+      console.error("USER PUSH ERROR:", err.message);
+    }
+
   } catch (error) {
     console.error("Create order error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to place order",
-    });
+    res.status(500).json({ success: false, message: "Failed to place order" });
   }
 };
 
