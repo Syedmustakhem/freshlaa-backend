@@ -57,15 +57,25 @@ const normalizedItems = items.map((item) => ({
       status: "Placed",
     });
 // 🔥 REALTIME: Notify admin about new order
-if (global.io) {
+// 🔔 EMIT NEW ORDER TO ADMIN (REALTIME)
+try {
+  const user = await User.findById(req.user._id).select("name phone");
+
   global.io.emit("new-order", {
-    _id: order._id,
+    orderId: order._id,
+    userName: user?.name || user?.phone || "New User",
     total: order.total,
-    status: order.status,
+    items: order.items.map(i => ({
+      name: i.name,
+      image: i.image,
+      qty: i.qty,
+    })),
     createdAt: order.createdAt,
-    paymentMethod: order.paymentMethod,
   });
+} catch (err) {
+  console.error("SOCKET EMIT ERROR:", err.message);
 }
+
 
     res.status(201).json({
       success: true,
@@ -186,12 +196,11 @@ exports.updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save();
 // 🔥 REALTIME: Notify admin & app about status update
-if (global.io) {
-  global.io.emit("order-updated", {
-    orderId: order._id,
-    status: order.status,
-  });
-}
+global.io.emit("order-updated", {
+  orderId: order._id.toString(),
+  status,
+});
+
 
     // ✅ Respond immediately (IMPORTANT)
     res.json({
