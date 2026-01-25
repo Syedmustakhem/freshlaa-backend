@@ -4,13 +4,24 @@ const AdminPush = require("../models/AdminPush");
 
 router.post("/subscribe", async (req, res) => {
   try {
-    const sub = req.body;
+    const { endpoint, keys } = req.body;
 
-    if (!sub || !sub.endpoint) {
-      return res.status(400).json({ message: "Invalid subscription" });
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+      return res.status(400).json({ message: "Invalid subscription data" });
     }
 
-    await AdminPush.create({ subscription: sub });
+    await AdminPush.findOneAndUpdate(
+      { endpoint }, // prevent duplicates
+      {
+        endpoint,
+        subscription: {
+          endpoint,
+          keys,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
     res.json({ success: true });
   } catch (err) {
     console.error("ADMIN SUBSCRIBE ERROR:", err);
