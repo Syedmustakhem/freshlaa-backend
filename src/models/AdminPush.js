@@ -1,12 +1,11 @@
 const mongoose = require("mongoose");
 
-const adminPushSchema = new mongoose.Schema({
-  endpoint: String,
-  keys: {
-    p256dh: String,
-    auth: String,
+const adminPushSchema = new mongoose.Schema(
+  {
+    endpoint: { type: String, required: true },
+    subscription: { type: Object, required: true },
   },
-  createdAt: { type: Date, default: Date.now },
-});
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("AdminPush", adminPushSchema);

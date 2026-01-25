@@ -55,22 +55,41 @@ exports.createOrder = async (req, res) => {
     // ⚡ RESPOND FAST
     res.status(201).json({ success: true, order });
 
-    // 🔔 ADMIN BACKGROUND PUSH
+  // 🔔 ADMIN BACKGROUND PUSH (SAFE & CLEAN)
+try {
+  const subs = await AdminPush.find({
+    endpoint: { $exists: true, $ne: "" },
+  });
+
+  const payload = JSON.stringify({
+    title: "🛒 New Order",
+    body: `₹${order.total} order placed`,
+    image: order.items?.[0]?.image,
+  });
+
+  for (const s of subs) {
     try {
-      const subs = await AdminPush.find();
-
-      const payload = JSON.stringify({
-        title: "🛒 New Order",
-        body: `₹${order.total} order placed`,
-        image: order.items?.[0]?.image,
-      });
-
-      subs.forEach((s) => {
-        webpush.sendNotification(s.subscription, payload);
-      });
+      await webpush.sendNotification(
+        s.subscription,
+        payload
+      );
     } catch (err) {
-      console.error("ADMIN PUSH ERROR:", err);
+      console.error(
+        "❌ Admin push failed:",
+        err.message
+      );
+
+      // 🧹 AUTO-REMOVE DEAD SUBSCRIPTIONS
+      if (err.statusCode === 404 || err.statusCode === 410) {
+        await AdminPush.deleteOne({ _id: s._id });
+        console.log("🧹 Removed expired admin subscription");
+      }
     }
+  }
+} catch (err) {
+  console.error("ADMIN PUSH ERROR:", err.message);
+}
+
 
     // 📲 USER PUSH (OPTIONAL BUT RECOMMENDED)
     try {

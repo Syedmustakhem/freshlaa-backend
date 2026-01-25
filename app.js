@@ -24,9 +24,7 @@ const razorpayRoutes = require(path.join(routesPath, "razorpay.routes"));
 const restaurantRoutes = require(path.join(routesPath, "restaurant.routes"));
 const categoryRoutes = require(path.join(routesPath, "category.routes"));
 const bannerRoutes = require(path.join(routesPath, "banner.routes"));
-const adminPushRoutes = require(
-  path.join(routesPath, "admin.push.routes")
-);
+const adminPushRoutes = require(path.join(routesPath, "admin.push.routes"));
 
 /* ================= MIDDLEWARE ================= */
 
