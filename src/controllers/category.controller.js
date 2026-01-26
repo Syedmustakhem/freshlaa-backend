@@ -1,10 +1,19 @@
 const Category = require("../models/Category");
 
-exports.getCategories = async (req, res) => {
+/* 📥 GET ALL CATEGORIES (PUBLIC) */
+const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find({ active: true });
-    res.json(categories);
+    const categories = await Category.find().sort({ createdAt: 1 });
+    res.json({
+      success: true,
+      data: categories,
+    });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch categories" });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
+module.exports = { getCategories };
