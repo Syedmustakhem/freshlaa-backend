@@ -9,6 +9,7 @@ const categories = [
   { name: "Dosa & More", slug: "dosa-more" },
   { name: "Biryani", slug: "biryani" },
   { name: "Curries", slug: "curries" },
+  { name: "ఇంటి వంట (Home Food)", slug: "ఇంటి వంట (home food)" },
   { name: "Non-Veg", slug: "non-veg" },
   { name: "Fast Food", slug: "fast-food" },
   { name: "Pani Puri & More", slug: "pani-puri-more" },
