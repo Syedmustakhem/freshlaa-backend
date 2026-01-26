@@ -103,5 +103,25 @@ router.put(
     res.json({ success: true });
   }
 );
+// ================= ADMIN: GET ALL SECTIONS =================
+router.get(
+  "/admin/home-layout",
+  adminAuth,
+  async (req, res) => {
+    const sections = await HomeSection.find()
+      .sort({ order: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      sections: sections.map((s) => ({
+        id: s._id,
+        type: s.type,
+        isActive: s.isActive,
+        data: s.data || {},
+      })),
+    });
+  }
+);
 
 module.exports = router;
