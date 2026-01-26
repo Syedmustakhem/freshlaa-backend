@@ -6,12 +6,19 @@ const restaurantSchema = new mongoose.Schema(
     image: String,
     address: String,
 
+    /* 🔥 CATEGORY LINK (IMPORTANT) */
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+
     /* 🔥 OPEN / CLOSE */
     isOpen: { type: Boolean, default: true },
 
     /* OPTIONAL (future use) */
     opensAt: String,   // "09:00"
-    closesAt: String,  // "23:30"
+    closesAt: String, // "23:30"
   },
   { timestamps: true }
 );

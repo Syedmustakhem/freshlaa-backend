@@ -1,9 +1,25 @@
 const Restaurant = require("../models/Restaurant");
 
 /* ➕ ADD RESTAURANT */
+/* ➕ ADD RESTAURANT */
 const addRestaurant = async (req, res) => {
   try {
-    const restaurant = await Restaurant.create(req.body);
+    const { name, image, address, categoryId } = req.body;
+
+    if (!categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId is required",
+      });
+    }
+
+    const restaurant = await Restaurant.create({
+      name,
+      image,
+      address,
+      categoryId,
+    });
+
     res.status(201).json({
       success: true,
       data: restaurant,
@@ -16,10 +32,18 @@ const addRestaurant = async (req, res) => {
   }
 };
 
+
 /* 📥 GET ALL RESTAURANTS */
+/* 📥 GET RESTAURANTS (CATEGORY-WISE) */
 const getRestaurants = async (req, res) => {
   try {
-    const restaurants = await Restaurant.find().sort({ createdAt: -1 });
+    const { categoryId } = req.query;
+
+    const filter = categoryId ? { categoryId } : {};
+
+    const restaurants = await Restaurant.find(filter)
+      .sort({ createdAt: -1 });
+
     res.json({
       success: true,
       data: restaurants,
@@ -31,6 +55,7 @@ const getRestaurants = async (req, res) => {
     });
   }
 };
+
 
 /* 🔁 TOGGLE OPEN / CLOSE */
 const toggleRestaurantStatus = async (req, res) => {
@@ -58,10 +83,47 @@ const toggleRestaurantStatus = async (req, res) => {
     });
   }
 };
+/* 🔄 UPDATE RESTAURANT CATEGORY */
+const updateRestaurantCategory = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { categoryId } = req.body;
 
-/* ✅ EXPORTS (ONLY THIS WAY) */
+    if (!categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId is required",
+      });
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      { categoryId },
+      { new: true }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: restaurant,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   addRestaurant,
   getRestaurants,
   toggleRestaurantStatus,
+  updateRestaurantCategory,
 };
