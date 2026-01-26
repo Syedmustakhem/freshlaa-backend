@@ -1,15 +1,14 @@
 const Restaurant = require("../models/Restaurant");
 
 /* ➕ ADD RESTAURANT */
-/* ➕ ADD RESTAURANT */
 const addRestaurant = async (req, res) => {
   try {
     const { name, image, address, categoryId } = req.body;
 
-    if (!categoryId) {
+    if (!name || !categoryId) {
       return res.status(400).json({
         success: false,
-        message: "categoryId is required",
+        message: "Restaurant name and categoryId are required",
       });
     }
 
@@ -32,9 +31,7 @@ const addRestaurant = async (req, res) => {
   }
 };
 
-
-/* 📥 GET ALL RESTAURANTS */
-/* 📥 GET RESTAURANTS (CATEGORY-WISE) */
+/* 📥 GET RESTAURANTS (ALL or CATEGORY-WISE) */
 const getRestaurants = async (req, res) => {
   try {
     const { categoryId } = req.query;
@@ -42,6 +39,7 @@ const getRestaurants = async (req, res) => {
     const filter = categoryId ? { categoryId } : {};
 
     const restaurants = await Restaurant.find(filter)
+      .populate("categoryId", "name") // ✅ FIXED
       .sort({ createdAt: -1 });
 
     res.json({
@@ -55,7 +53,6 @@ const getRestaurants = async (req, res) => {
     });
   }
 };
-
 
 /* 🔁 TOGGLE OPEN / CLOSE */
 const toggleRestaurantStatus = async (req, res) => {
@@ -83,6 +80,7 @@ const toggleRestaurantStatus = async (req, res) => {
     });
   }
 };
+
 /* 🔄 UPDATE RESTAURANT CATEGORY */
 const updateRestaurantCategory = async (req, res) => {
   try {
@@ -100,7 +98,7 @@ const updateRestaurantCategory = async (req, res) => {
       restaurantId,
       { categoryId },
       { new: true }
-    );
+    ).populate("categoryId", "name");
 
     if (!restaurant) {
       return res.status(404).json({
