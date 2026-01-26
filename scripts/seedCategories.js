@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Category = require("../src/models/Category");
 
-mongoose.connect("mongodb+srv://syedmustakheem:mustakheem@cluster0.j7j3cge.mongodb.net/freshlaa");
+mongoose.connect("");
 
 const categories = [
   { name: "Fresh Fruits", slug: "fresh-fruits" },
