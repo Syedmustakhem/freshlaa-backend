@@ -58,7 +58,7 @@ app.use("/api/hotel/menu", hotelMenuRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/restaurants", restaurantRoutes);
-app.use("/api/category", categoryRoutes);
+app.use("/api/categories", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/admin/push", adminPushRoutes);
