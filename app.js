@@ -25,6 +25,9 @@ const restaurantRoutes = require(path.join(routesPath, "restaurant.routes"));
 const categoryRoutes = require(path.join(routesPath, "category.routes"));
 const bannerRoutes = require(path.join(routesPath, "banner.routes"));
 const adminPushRoutes = require(path.join(routesPath, "admin.push.routes"));
+const homeSectionRoutes = require(
+  path.join(routesPath, "homeSection.routes")
+);
 
 /* ================= MIDDLEWARE ================= */
 
@@ -62,6 +65,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/admin/push", adminPushRoutes);
+app.use("/api", homeSectionRoutes);
 
 /* ================= HEALTH ================= */
 
