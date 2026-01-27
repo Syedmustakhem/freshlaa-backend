@@ -31,7 +31,7 @@ mongoose.connect(process.env.MONGO_URI);
         type: "SPONSORED",
         order: 3,
         data: {
-          image: "https://cdn.freshlaa.com/sponsored.jpg",
+          image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769531510/sponsored_sirn1a.jpg",
         },
       },
 
