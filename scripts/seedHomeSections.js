@@ -2,6 +2,11 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const HomeSection = require("../src/models/HomeSection");
 
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI is missing in .env");
+  process.exit(1);
+}
+
 mongoose.connect(process.env.MONGO_URI);
 
 (async () => {
@@ -33,57 +38,25 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
-      // ✅ ZEPTO STYLE GLOBAL CATEGORIES
-      {
+      // 🟢 NEW: ZEPTO STYLE GLOBAL CATEGORIES (ICON GRID)
+     
+
+      // 🔵 ORIGINAL SECTIONS (UNCHANGED)
+      { type: "CATEGORIES", order: 4 },
+ {
         type: "ZEPTO_CATEGORIES",
-        order: 4,
+        order: 5,
         data: {
           title: "Explore Categories",
         },
       },
-
-      // ✅ SHOP BY CATEGORY (PRODUCT SECTIONS)
-      {
-        type: "CATEGORIES",
-        order: 5,
-        data: {
-          title: "Dry Fruits & Combos",
-          categorySlug: "dry-fruits",
-          layout: "GRID_3",
-        },
-      },
-      {
-        type: "CATEGORIES",
-        order: 6,
-        data: {
-          title: "Daily Needs",
-          categorySlug: "daily-needs",
-          layout: "GRID_3",
-        },
-      },
-      {
-        type: "CATEGORIES",
-        order: 7,
-        data: {
-          title: "Ready to Eat",
-          categorySlug: "ready-to-eat",
-          layout: "GRID_3",
-        },
-      },
-      {
-        type: "CATEGORIES",
-        order: 8,
-        data: {
-          title: "Trending Products",
-          categorySlug: "trending",
-          layout: "HORIZONTAL",
-        },
-      },
-
-      { type: "FOOTER", order: 99 },
+      { type: "DAILY_NEEDS", order: 6 },
+      { type: "ZOMATO", order: 7 },
+      { type: "TRENDING", order: 8 },
+      { type: "FOOTER", order: 9 },
     ]);
 
-    console.log("✅ HomeSection seeded (SERVER DRIVEN)");
+    console.log("✅ HomeSection seeded successfully (original + zepto added)");
     process.exit(0);
   } catch (err) {
     console.error("❌ Seeding failed:", err);
