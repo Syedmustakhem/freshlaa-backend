@@ -17,7 +17,5 @@ router.get("/", getRestaurants);
 router.post("/", adminAuth, addRestaurant);
 router.patch("/:id/toggle", adminAuth, toggleRestaurantStatus);
 
-// 🔥 UPDATE CATEGORY
-router.put("/:restaurantId/category", adminAuth, updateRestaurantCategory);
 
 module.exports = router;

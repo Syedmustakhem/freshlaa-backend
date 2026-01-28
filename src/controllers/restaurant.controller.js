@@ -3,12 +3,12 @@ const Restaurant = require("../models/Restaurant");
 /* ➕ ADD RESTAURANT */
 const addRestaurant = async (req, res) => {
   try {
-    const { name, image, address, categoryId } = req.body;
+    const { name, image, address, categorySlug } = req.body;
 
-    if (!name || !categoryId) {
+    if (!name || !categorySlug) {
       return res.status(400).json({
         success: false,
-        message: "Restaurant name and categoryId are required",
+        message: "name and categorySlug are required",
       });
     }
 
@@ -16,7 +16,7 @@ const addRestaurant = async (req, res) => {
       name,
       image,
       address,
-      categoryId,
+      categorySlug,
     });
 
     res.status(201).json({
@@ -31,16 +31,16 @@ const addRestaurant = async (req, res) => {
   }
 };
 
-/* 📥 GET RESTAURANTS (ALL or CATEGORY-WISE) */
+/* 📥 GET RESTAURANTS (SLUG BASED) */
 const getRestaurants = async (req, res) => {
   try {
-    const { categoryId } = req.query;
+    const { categorySlug } = req.query;
 
-    const filter = categoryId ? { categoryId } : {};
+    const filter = categorySlug ? { categorySlug } : {};
 
-    const restaurants = await Restaurant.find(filter)
-      .populate("categoryId", "name") // ✅ FIXED
-      .sort({ createdAt: -1 });
+    const restaurants = await Restaurant.find(filter).sort({
+      createdAt: -1,
+    });
 
     res.json({
       success: true,
@@ -81,47 +81,8 @@ const toggleRestaurantStatus = async (req, res) => {
   }
 };
 
-/* 🔄 UPDATE RESTAURANT CATEGORY */
-const updateRestaurantCategory = async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-    const { categoryId } = req.body;
-
-    if (!categoryId) {
-      return res.status(400).json({
-        success: false,
-        message: "categoryId is required",
-      });
-    }
-
-    const restaurant = await Restaurant.findByIdAndUpdate(
-      restaurantId,
-      { categoryId },
-      { new: true }
-    ).populate("categoryId", "name");
-
-    if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: "Restaurant not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: restaurant,
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
-
 module.exports = {
   addRestaurant,
   getRestaurants,
   toggleRestaurantStatus,
-  updateRestaurantCategory,
 };
