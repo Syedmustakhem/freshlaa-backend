@@ -5,7 +5,7 @@ const {
   addRestaurant,
   getRestaurants,
   toggleRestaurantStatus,
-  updateRestaurantCategory,
+  updateRestaurant,
 } = require("../controllers/restaurant.controller");
 
 const adminAuth = require("../middlewares/adminAuth");
@@ -16,6 +16,8 @@ router.get("/", getRestaurants);
 // ADMIN ONLY
 router.post("/", adminAuth, addRestaurant);
 router.patch("/:id/toggle", adminAuth, toggleRestaurantStatus);
+// ✏️ UPDATE RESTAURANT
+router.put("/:id", adminAuth, updateRestaurant);
 
 
 module.exports = router;

@@ -79,9 +79,46 @@ const toggleRestaurantStatus = async (req, res) => {
     });
   }
 };
+/* ✏️ UPDATE RESTAURANT */
+const updateRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, image, address, categorySlug, isOpen } = req.body;
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      id,
+      {
+        ...(name && { name }),
+        ...(image && { image }),
+        ...(address && { address }),
+        ...(categorySlug && { categorySlug }),
+        ...(typeof isOpen === "boolean" && { isOpen }),
+      },
+      { new: true }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: restaurant,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
 
 module.exports = {
   addRestaurant,
   getRestaurants,
+  updateRestaurant,
   toggleRestaurantStatus,
 };
