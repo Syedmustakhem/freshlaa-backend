@@ -254,6 +254,42 @@ exports.createManualProduct = async (req, res) => {
     });
   }
 };
+/* ================= ZEPTO: PRODUCTS BY SUB CATEGORY ================= */
+exports.getProductsBySubCategory = async (req, res) => {
+  try {
+    const { subCategory } = req.query;
+
+    if (!subCategory) {
+      return res.status(400).json({
+        success: false,
+        message: "subCategory is required",
+      });
+    }
+
+    const products = await Product.find({
+      subCategory: subCategory.toLowerCase(),
+      isActive: true,
+      stock: { $gt: 0 },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    products.forEach(p => {
+      p.variants = p.variants.filter(v => v.stock > 0);
+    });
+
+    res.json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    console.error("getProductsBySubCategory error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch sub-category products",
+    });
+  }
+};
 
 /* ================= UPDATE PRODUCT ================= */
 exports.updateProduct = async (req, res) => {

@@ -10,6 +10,7 @@ const {
   getProductsByCategory,
   getFeaturedProducts,
   getTrendingProducts,
+  getProductsBySubCategory,
   getOfferProducts,
   createManualProduct,
   updateProduct,
@@ -34,5 +35,6 @@ router.put("/:id", adminAuth, updateProduct);
 /* BASIC (LAST) */
 router.get("/", getAllProducts);
 router.get("/:id", getProductById);
+router.get("/by-sub-category", getProductsBySubCategory);
 
 module.exports = router;
