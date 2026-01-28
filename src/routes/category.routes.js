@@ -6,10 +6,10 @@ const {
   getSubCategories,
 } = require("../controllers/category.controller");
 
-// 🔥 Home + Zepto grid
+// 🔥 HOME + ZEPTO GRID
 router.get("/categories", getMainCategories);
 
-// 🔥 Category landing
+// 🔥 CATEGORY LANDING (INSIDE)
 router.get("/categories/:slug", getSubCategories);
 
 module.exports = router;
