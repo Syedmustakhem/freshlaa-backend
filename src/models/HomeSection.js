@@ -9,6 +9,7 @@ const HomeSectionSchema = new mongoose.Schema({
       "BANNERS",
       "SPONSORED",
       "CATEGORIES",
+      "ZEPTO_CATEGORIES",
       "DAILY_NEEDS",
       "ZOMATO",
       "TRENDING",

@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
 
-const { getCategories } = require("../controllers/category.controller");
+const {
+  getZeptoCategories
+} = require("../controllers/category.controller");
 
-// 🔓 PUBLIC (APP + ADMIN)
-router.get("/", getCategories);
+// 👇 ROOT PATH
+router.get("/", getZeptoCategories);
 
 module.exports = router;

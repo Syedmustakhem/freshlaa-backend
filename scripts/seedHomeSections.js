@@ -33,10 +33,18 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
+       {
+    type: "ZEPTO_CATEGORIES",
+    order: 4,
+    data: {
+      title: "Shop by Categories"
+    }
+  },
       // 🔥 SERVER-DRIVEN CATEGORY SECTIONS
       {
-        type: "CATEGORY",
-        order: 4,
+       type: "CATEGORIES",
+
+        order: 5,
         data: {
           title: "Dry Fruits & Combos",
           categorySlug: "dry-fruits",
@@ -44,8 +52,8 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
       {
-        type: "CATEGORY",
-        order: 5,
+      type: "CATEGORIES",
+        order: 6,
         data: {
           title: "Daily Needs",
           categorySlug: "daily-needs",
@@ -53,8 +61,8 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
       {
-        type: "CATEGORY",
-        order: 6,
+ type: "CATEGORIES",
+        order: 7,
         data: {
           title: "Ready to Eat",
           categorySlug: "ready-to-eat",
@@ -62,8 +70,8 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
       {
-        type: "CATEGORY",
-        order: 7,
+    type: "CATEGORIES",
+        order: 8,
         data: {
           title: "Trending Products",
           categorySlug: "trending",

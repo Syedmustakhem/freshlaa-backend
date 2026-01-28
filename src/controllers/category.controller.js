@@ -1,19 +1,40 @@
 const Category = require("../models/Category");
+const CategorySection = require("../models/CategorySection");
 
-/* 📥 GET ALL CATEGORIES (PUBLIC) */
-const getCategories = async (req, res) => {
+exports.getZeptoCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ createdAt: 1 });
-    res.json({
-      success: true,
-      data: categories,
-    });
+    const sections = await CategorySection
+      .find({ visible: true })
+      .sort({ order: 1 })
+      .lean();
+
+    const result = [];
+
+    for (const section of sections) {
+      const categories = await Category
+        .find({
+          sectionId: section._id,
+          visible: true
+        })
+        .sort({ order: 1 })
+        .lean();
+
+      result.push({
+        sectionTitle: section.title,
+        layout: "grid",
+        columns: section.columns || 3,
+        categories: categories.map(c => ({
+          id: c._id,
+          title: c.title || c.name,
+          slug: c.slug,
+          image: c.image
+        }))
+      });
+    }
+
+    res.json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 };
-
-module.exports = { getCategories };
