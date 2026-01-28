@@ -38,9 +38,8 @@ const getRestaurants = async (req, res) => {
 
     const filter = categorySlug ? { categorySlug } : {};
 
-    const restaurants = await Restaurant.find(filter).sort({
-      createdAt: -1,
-    });
+    const restaurants = await Restaurant.find(filter)
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
