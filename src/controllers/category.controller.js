@@ -1,40 +1,43 @@
 const Category = require("../models/Category");
-const CategorySection = require("../models/CategorySection");
 
-exports.getZeptoCategories = async (req, res) => {
+/**
+ * 1️⃣ GET MAIN CATEGORIES (HOME / ZEPTO GRID)
+ * GET /api/categories
+ */
+exports.getMainCategories = async (req, res) => {
   try {
-    const sections = await CategorySection
-      .find({ visible: true })
-      .sort({ order: 1 })
-      .lean();
+    const categories = await Category.find({
+      parentSlug: null,
+      isActive: true,
+    }).sort({ order: 1 });
 
-    const result = [];
-
-    for (const section of sections) {
-      const categories = await Category
-        .find({
-          sectionId: section._id,
-          visible: true
-        })
-        .sort({ order: 1 })
-        .lean();
-
-      result.push({
-        sectionTitle: section.title,
-        layout: "grid",
-        columns: section.columns || 3,
-        categories: categories.map(c => ({
-          id: c._id,
-          title: c.title || c.name,
-          slug: c.slug,
-          image: c.image
-        }))
-      });
-    }
-
-    res.json({ success: true, data: result });
+    res.json({
+      success: true,
+      data: categories,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+/**
+ * 2️⃣ GET SUB-CATEGORIES (CATEGORY LANDING)
+ * GET /api/categories/:slug
+ */
+exports.getSubCategories = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const categories = await Category.find({
+      parentSlug: slug,
+      isActive: true,
+    }).sort({ order: 1 });
+
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

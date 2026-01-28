@@ -2,10 +2,14 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  getZeptoCategories
+  getMainCategories,
+  getSubCategories,
 } = require("../controllers/category.controller");
 
-// 👇 ROOT PATH
-router.get("/", getZeptoCategories);
+// 🔥 Home + Zepto grid
+router.get("/categories", getMainCategories);
+
+// 🔥 Category landing
+router.get("/categories/:slug", getSubCategories);
 
 module.exports = router;
