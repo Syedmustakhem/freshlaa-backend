@@ -1,44 +1,57 @@
 const Category = require("../models/Category");
+const CategorySection = require("../models/CategorySection");
 
-/**
- * 1️⃣ GET MAIN CATEGORIES (HOME / ZEPTO GRID)
- * GET /api/categories
- */
-exports.getMainCategories = async (req, res) => {
+/* ================= ZEPTO MAIN CATEGORIES ================= */
+exports.getZeptoCategories = async (req, res) => {
   try {
-    const categories = await Category.find({
-      isActive: true,
+    const sections = await CategorySection.find({
       $or: [
-        { parentSlug: null },
-        { parentSlug: { $exists: false } }, // 🔥 THIS FIXES IT
+        { visible: true },
+        { visible: { $exists: false } }, // 👈 important
       ],
-    }).sort({ order: 1 });
+    })
+      .sort({ order: 1 })
+      .lean();
 
+    const sectionIds = sections.map((s) => s._id);
+
+    const categories = await Category.find({
+      sectionId: { $in: sectionIds },
+      $or: [
+        { visible: true },
+        { visible: { $exists: false } }, // 👈 important
+      ],
+    })
+      .sort({ order: 1 })
+      .lean();
+
+    const grouped = sections.map((section) => ({
+      _id: section._id,
+      title: section.title,
+      layout: section.layout || "grid",
+      columns: section.columns || 3,
+      categories: categories.filter(
+        (c) => String(c.sectionId) === String(section._id)
+      ),
+    }));
     res.json({
       success: true,
-      data: categories,
+      data: grouped,
     });
   } catch (err) {
-    console.error("getMainCategories error:", err);
+    console.error("Zepto categories error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch categories",
+      message: "Failed to load Zepto categories",
     });
   }
 };
-
-
-/**
- * 2️⃣ GET SUB-CATEGORIES (CATEGORY LANDING)
- * GET /api/categories/:slug
- */
-exports.getSubCategories = async (req, res) => {
+exports.getCategoriesBySection = async (req, res) => {
   try {
-    const { slug } = req.params;
+    const { sectionId } = req.params;
 
     const categories = await Category.find({
-      parentSlug: slug,
-      isActive: true,
+      sectionId,
     }).sort({ order: 1 });
 
     res.json({
@@ -46,6 +59,10 @@ exports.getSubCategories = async (req, res) => {
       data: categories,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
