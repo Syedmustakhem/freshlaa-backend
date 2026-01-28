@@ -3,6 +3,7 @@ const router = express.Router();
 
 const HomeSection = require("../models/HomeSection");
 const adminAuth = require("../middlewares/adminAuth");
+const Product = require("../models/Product");
 
 /* =====================================================
    PUBLIC API (USED BY MOBILE APP)
@@ -13,6 +14,20 @@ router.get("/home-layout", async (req, res) => {
     const sections = await HomeSection.find({ isActive: true })
       .sort({ order: 1 })
       .lean();
+
+    // 🔥 Enrich CATEGORY sections with products
+    for (const section of sections) {
+      if (section.type === "CATEGORY" && section.data?.categorySlug) {
+        const products = await Product.find({
+          categorySlug: section.data.categorySlug,
+          active: true,
+        })
+          .limit(6) // 👈 exactly your grid size
+          .select("name price mrp images");
+
+        section.data.products = products;
+      }
+    }
 
     return res.json({
       success: true,
@@ -30,6 +45,7 @@ router.get("/home-layout", async (req, res) => {
     });
   }
 });
+
 
 /* =====================================================
    ADMIN APIs (PROTECTED)

@@ -2,11 +2,6 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const HomeSection = require("../src/models/HomeSection");
 
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI is missing in .env");
-  process.exit(1);
-}
-
 mongoose.connect(process.env.MONGO_URI);
 
 (async () => {
@@ -19,30 +14,67 @@ mongoose.connect(process.env.MONGO_URI);
       {
         type: "BANNERS",
         order: 2,
-        data: { image: [
-           "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg",
-           "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449794/banner1_cszkju.jpg",
-           "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg",
-           "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449821/banner3_kwatkg.jpg",
-        ] },
+        data: {
+          image: [
+            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg",
+            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449794/banner1_cszkju.jpg",
+            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg",
+            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449821/banner3_kwatkg.jpg",
+          ],
+        },
       },
 
       {
         type: "SPONSORED",
         order: 3,
         data: {
-          image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769531510/sponsored_sirn1a.jpg",
+          image:
+            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769531510/sponsored_sirn1a.jpg",
         },
       },
 
-      { type: "CATEGORIES", order: 4 },
-      { type: "DAILY_NEEDS", order: 5 },
-      { type: "ZOMATO", order: 6 },
-      { type: "TRENDING", order: 7 },
+      // 🔥 SERVER-DRIVEN CATEGORY SECTIONS
+      {
+        type: "CATEGORY",
+        order: 4,
+        data: {
+          title: "Dry Fruits & Combos",
+          categorySlug: "dry-fruits",
+          layout: "GRID_3",
+        },
+      },
+      {
+        type: "CATEGORY",
+        order: 5,
+        data: {
+          title: "Daily Needs",
+          categorySlug: "daily-needs",
+          layout: "GRID_3",
+        },
+      },
+      {
+        type: "CATEGORY",
+        order: 6,
+        data: {
+          title: "Ready to Eat",
+          categorySlug: "ready-to-eat",
+          layout: "GRID_3",
+        },
+      },
+      {
+        type: "CATEGORY",
+        order: 7,
+        data: {
+          title: "Trending Products",
+          categorySlug: "trending",
+          layout: "HORIZONTAL",
+        },
+      },
+
       { type: "FOOTER", order: 8 },
     ]);
 
-    console.log("✅ HomeSection seeded successfully");
+    console.log("✅ HomeSection seeded (SERVER DRIVEN)");
     process.exit(0);
   } catch (err) {
     console.error("❌ Seeding failed:", err);
