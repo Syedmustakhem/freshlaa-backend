@@ -7,8 +7,11 @@ const Category = require("../models/Category");
 exports.getMainCategories = async (req, res) => {
   try {
     const categories = await Category.find({
-      parentSlug: null,
       isActive: true,
+      $or: [
+        { parentSlug: null },
+        { parentSlug: { $exists: false } }, // 🔥 THIS FIXES IT
+      ],
     }).sort({ order: 1 });
 
     res.json({
@@ -16,9 +19,14 @@ exports.getMainCategories = async (req, res) => {
       data: categories,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("getMainCategories error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch categories",
+    });
   }
 };
+
 
 /**
  * 2️⃣ GET SUB-CATEGORIES (CATEGORY LANDING)
