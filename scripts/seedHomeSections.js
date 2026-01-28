@@ -33,17 +33,18 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
-       {
-    type: "ZEPTO_CATEGORIES",
-    order: 4,
-    data: {
-      title: "Shop by Categories"
-    }
-  },
-      // 🔥 SERVER-DRIVEN CATEGORY SECTIONS
+      // ✅ ZEPTO STYLE GLOBAL CATEGORIES
       {
-       type: "CATEGORIES",
+        type: "ZEPTO_CATEGORIES",
+        order: 4,
+        data: {
+          title: "Explore Categories",
+        },
+      },
 
+      // ✅ SHOP BY CATEGORY (PRODUCT SECTIONS)
+      {
+        type: "CATEGORIES",
         order: 5,
         data: {
           title: "Dry Fruits & Combos",
@@ -52,7 +53,7 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
       {
-      type: "CATEGORIES",
+        type: "CATEGORIES",
         order: 6,
         data: {
           title: "Daily Needs",
@@ -61,7 +62,7 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
       {
- type: "CATEGORIES",
+        type: "CATEGORIES",
         order: 7,
         data: {
           title: "Ready to Eat",
@@ -70,7 +71,7 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
       {
-    type: "CATEGORIES",
+        type: "CATEGORIES",
         order: 8,
         data: {
           title: "Trending Products",
@@ -79,7 +80,7 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
-      { type: "FOOTER", order: 8 },
+      { type: "FOOTER", order: 99 },
     ]);
 
     console.log("✅ HomeSection seeded (SERVER DRIVEN)");
