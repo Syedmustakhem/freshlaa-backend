@@ -1,14 +1,13 @@
 const Category = require("../models/Category");
 const CategorySection = require("../models/CategorySection");
+const CategoryBanner = require("../models/CategoryBanner");
+const Product = require("../models/Product");
 
-/* ================= ZEPTO MAIN CATEGORIES ================= */
-exports.getZeptoCategories = async (req, res) => {
+/* ================= ZEPTO HOME ================= */
+const getZeptoCategories = async (req, res) => {
   try {
     const sections = await CategorySection.find({
-      $or: [
-        { visible: true },
-        { visible: { $exists: false } }, // 👈 important
-      ],
+      $or: [{ visible: true }, { visible: { $exists: false } }],
     })
       .sort({ order: 1 })
       .lean();
@@ -17,10 +16,7 @@ exports.getZeptoCategories = async (req, res) => {
 
     const categories = await Category.find({
       sectionId: { $in: sectionIds },
-      $or: [
-        { visible: true },
-        { visible: { $exists: false } }, // 👈 important
-      ],
+      $or: [{ visible: true }, { visible: { $exists: false } }],
     })
       .sort({ order: 1 })
       .lean();
@@ -34,19 +30,19 @@ exports.getZeptoCategories = async (req, res) => {
         (c) => String(c.sectionId) === String(section._id)
       ),
     }));
-    res.json({
-      success: true,
-      data: grouped,
-    });
+
+    res.json({ success: true, data: grouped });
   } catch (err) {
-    console.error("Zepto categories error:", err);
+    console.error(err);
     res.status(500).json({
       success: false,
       message: "Failed to load Zepto categories",
     });
   }
 };
-exports.getCategoriesBySection = async (req, res) => {
+
+/* ================= SECTION LIST ================= */
+const getCategoriesBySection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
@@ -54,15 +50,56 @@ exports.getCategoriesBySection = async (req, res) => {
       sectionId,
     }).sort({ order: 1 });
 
+    res.json({ success: true, data: categories });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+/* ================= CATEGORY LANDING ================= */
+const getCategoryLanding = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const category = await Category.findOne({
+      slug,
+      $or: [{ visible: true }, { visible: { $exists: false } }],
+    }).lean();
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    const banners = await CategoryBanner.find({
+      categorySlug: slug,
+      isActive: true,
+    }).sort({ order: 1 });
+
+    const products = await Product.find({
+      category: slug,
+      isActive: true,
+      stock: { $gt: 0 },
+    });
+
     res.json({
       success: true,
-      data: categories,
+      data: { category, banners, products },
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Failed to load category landing",
     });
   }
 };
 
+/* ✅ EXPORT EVERYTHING TOGETHER */
+module.exports = {
+  getZeptoCategories,
+  getCategoriesBySection,
+  getCategoryLanding,
+};
