@@ -6,10 +6,17 @@ const CategorySchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true },
     image: { type: String },
 
-    // 🔥 hierarchy
+    // 🔥 hierarchy (sub-categories)
     parentSlug: {
       type: String,
       default: null, // null = main category
+    },
+
+    // 🔝 link category to section
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CategorySection",
+      default: null,
     },
 
     order: { type: Number, default: 0 },
