@@ -2,25 +2,52 @@ const mongoose = require("mongoose");
 
 const CategorySchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    slug: { type: String, required: true, unique: true },
-    image: { type: String },
-
-    // 🔥 hierarchy (sub-categories)
-    parentSlug: {
+    title: {
       type: String,
-      default: null, // null = main category
+      required: true,
+      trim: true,
     },
 
-    // 🔝 link category to section
-    sectionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CategorySection",
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+
+    image: {
+      type: String,
       default: null,
     },
 
-    order: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true },
+    // 🔥 hierarchy (used for future nesting if needed)
+    parentSlug: {
+      type: String,
+      default: null, // null = top-level category
+      index: true,
+    },
+
+    // 🔝 link sub-category to section
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CategorySection",
+      required: true,              // IMPORTANT
+      index: true,
+    },
+
+    order: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );

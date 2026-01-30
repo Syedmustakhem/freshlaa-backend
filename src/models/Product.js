@@ -1,61 +1,37 @@
 const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
-  label: {
-    type: String, // "500 ml", "1 kg", "6 pcs"
-    required: true,
-    trim: true,
-  },
-
-  unit: {
-    type: String,
-    enum: ["kg", "g", "l", "ml", "pcs"],
-    required: true,
-  },
-
-  value: {
-    type: Number,
-    required: true,
-    min: 0.001,
-  },
-
-  price: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
-
-  mrp: {
-    type: Number,
-    min: 0,
-  },
-
-  stock: {
-    type: Number,
-    min: 0,
-    default: 0,
-  },
-
-  isDefault: {
-    type: Boolean,
-    default: false,
-  },
+  label: { type: String, required: true, trim: true },
+  unit: { type: String, enum: ["kg", "g", "l", "ml", "pcs"], required: true },
+  value: { type: Number, required: true, min: 0.001 },
+  price: { type: Number, required: true, min: 0 },
+  mrp: { type: Number, min: 0 },
+  stock: { type: Number, min: 0, default: 0 },
+  isDefault: { type: Boolean, default: false },
 });
-
 
 const productSchema = new mongoose.Schema(
   {
-    name: {
+    /* ================= CORE INFO ================= */
+    name: { type: String, required: true, trim: true },
+    description: { type: String, default: "" },
+
+    /* ================= NEW (IMPORTANT) ================= */
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CategorySection",
+      required: true,
+      index: true,
+    },
+
+    subCategory: {
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
 
-    description: {
-      type: String,
-      default: "",
-    },
-
+    /* ================= OLD CATEGORY (KEEP FOR BACKWARD COMPATIBILITY) ================= */
     category: {
       type: String,
       required: true,
@@ -63,17 +39,19 @@ const productSchema = new mongoose.Schema(
       index: true,
     },
 
+    /* ================= MEDIA ================= */
     images: {
       type: [String],
       required: true,
       validate: v => Array.isArray(v) && v.length > 0,
     },
 
+    /* ================= STOCK ================= */
     stock: {
       type: Number,
       required: true,
       min: 0,
-      default: 0, // ✅ PRODUCT MASTER STOCK
+      default: 0,
     },
 
     variants: {
@@ -82,26 +60,14 @@ const productSchema = new mongoose.Schema(
       validate: v => Array.isArray(v) && v.length > 0,
     },
 
-    isFeatured: {
-      type: Boolean,
-      default: false,
-    },
+    /* ================= FLAGS ================= */
+    isFeatured: { type: Boolean, default: false },
+    isTrending: { type: Boolean, default: false },
 
-    isTrending: {
-      type: Boolean,
-      default: false,
-    },
+    offerPercentage: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
 
-    offerPercentage: {
-      type: Number,
-      default: 0,
-    },
-
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-
+    /* ================= META ================= */
     source: {
       type: String,
       enum: ["manual"],
@@ -115,4 +81,5 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-module.exports = mongoose.model("Product", productSchema)
+
+module.exports = mongoose.model("Product", productSchema);

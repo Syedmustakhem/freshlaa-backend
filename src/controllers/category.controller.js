@@ -1,105 +1,95 @@
 const Category = require("../models/Category");
 const CategorySection = require("../models/CategorySection");
-const CategoryBanner = require("../models/CategoryBanner");
 const Product = require("../models/Product");
 
-/* ================= ZEPTO HOME ================= */
+/* ================= HOME SECTIONS (ZEPTO HOME) ================= */
 const getZeptoCategories = async (req, res) => {
   try {
     const sections = await CategorySection.find({
-      $or: [{ visible: true }, { visible: { $exists: false } }],
+      visible: true,
     })
       .sort({ order: 1 })
       .lean();
 
-    const sectionIds = sections.map((s) => s._id);
-
-    const categories = await Category.find({
-      sectionId: { $in: sectionIds },
-      $or: [{ visible: true }, { visible: { $exists: false } }],
-    })
-      .sort({ order: 1 })
-      .lean();
-
-    const grouped = sections.map((section) => ({
-      _id: section._id,
-      title: section.title,
-      layout: section.layout || "grid",
-      columns: section.columns || 3,
-      categories: categories.filter(
-        (c) => String(c.sectionId) === String(section._id)
-      ),
-    }));
-
-    res.json({ success: true, data: grouped });
+    // Home ONLY needs sections now
+    res.json({
+      success: true,
+      data: sections.map((s) => ({
+        _id: s._id,
+        title: s.title,
+        image: s.image,
+        layout: s.layout || "grid",
+        columns: s.columns || 3,
+      })),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({
       success: false,
-      message: "Failed to load Zepto categories",
+      message: "Failed to load home sections",
     });
   }
 };
 
-/* ================= SECTION LIST ================= */
+/* ================= SUB-CATEGORIES BY SECTION (LEFT RAIL) ================= */
 const getCategoriesBySection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
     const categories = await Category.find({
       sectionId,
-    }).sort({ order: 1 });
+      isActive: true,
+    })
+      .sort({ order: 1 })
+      .lean();
 
     res.json({ success: true, data: categories });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to load sub-categories",
+    });
   }
 };
 
-/* ================= CATEGORY LANDING ================= */
-const getCategoryLanding = async (req, res) => {
+/* ================= PRODUCTS BY SECTION + SUBCATEGORY ================= */
+const getProductsBySection = async (req, res) => {
   try {
-    const { slug } = req.params;
+    const { sectionId, subCategory } = req.query;
 
-    const category = await Category.findOne({
-      slug,
-      $or: [{ visible: true }, { visible: { $exists: false } }],
-    }).lean();
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+    if (!sectionId) {
+      return res.json({ success: true, data: [] });
     }
 
-    const banners = await CategoryBanner.find({
-      categorySlug: slug,
-      isActive: true,
-    }).sort({ order: 1 });
-
-    const products = await Product.find({
-      category: slug,
+    const query = {
+      sectionId,
       isActive: true,
       stock: { $gt: 0 },
-    });
+    };
 
-    res.json({
-      success: true,
-      data: { category, banners, products },
-    });
+    if (subCategory && subCategory !== "Top Picks") {
+      query.subCategory = subCategory;
+    }
+
+    const products = await Product.find(query).lean();
+
+    res.json({ success: true, data: products });
   } catch (err) {
     console.error(err);
     res.status(500).json({
       success: false,
-      message: "Failed to load category landing",
+      message: "Failed to load products",
     });
   }
 };
 
-/* ✅ EXPORT EVERYTHING TOGETHER */
+/* ❌ OLD CATEGORY LANDING (DEPRECATED) */
+/*
+const getCategoryLanding = async (req, res) => {};
+*/
+
 module.exports = {
   getZeptoCategories,
   getCategoriesBySection,
-  getCategoryLanding,
+  getProductsBySection,
 };

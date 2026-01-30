@@ -14,10 +14,14 @@ const {
   getOfferProducts,
   createManualProduct,
   updateProduct,
+  getProductsBySection,   // ✅ ADD THIS
 } = require("../controllers/product.controller");
+
 
 /* ADMIN ROUTES — FIRST */
 router.get("/admin/all", adminAuth, getAllProductsAdmin);
+/* ZEPTO: SECTION + SUBCATEGORY */
+router.get("/by-section", getProductsBySection);
 
 /* SPECIAL */
 router.get("/featured", getFeaturedProducts);

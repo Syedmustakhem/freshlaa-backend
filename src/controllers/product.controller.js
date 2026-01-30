@@ -224,6 +224,13 @@ exports.createManualProduct = async (req, res) => {
   try {
     const data = req.body;
 
+    if (!data.sectionId || !data.subCategory) {
+      return res.status(400).json({
+        success: false,
+        message: "sectionId and subCategory are required",
+      });
+    }
+
     if (!Array.isArray(data.variants) || data.variants.length === 0) {
       return res.status(400).json({
         success: false,
@@ -239,6 +246,8 @@ exports.createManualProduct = async (req, res) => {
 
     data.variants = variants;
     data.stock = variants.reduce((sum, v) => sum + v.stock, 0);
+
+    // keep old category for backward compatibility
     data.category = data.category.toLowerCase();
 
     const product = await Product.create(data);
@@ -254,20 +263,22 @@ exports.createManualProduct = async (req, res) => {
     });
   }
 };
+
 /* ================= ZEPTO: PRODUCTS BY SUB CATEGORY ================= */
 exports.getProductsBySubCategory = async (req, res) => {
   try {
-    const { subCategory } = req.query;
+    const { sectionId, subCategory } = req.query;
 
-    if (!subCategory) {
+    if (!sectionId || !subCategory) {
       return res.status(400).json({
         success: false,
-        message: "subCategory is required",
+        message: "sectionId and subCategory are required",
       });
     }
 
     const products = await Product.find({
-      subCategory: subCategory.toLowerCase(),
+      sectionId,
+      subCategory,
       isActive: true,
       stock: { $gt: 0 },
     })
@@ -278,10 +289,7 @@ exports.getProductsBySubCategory = async (req, res) => {
       p.variants = p.variants.filter(v => v.stock > 0);
     });
 
-    res.json({
-      success: true,
-      data: products,
-    });
+    res.json({ success: true, data: products });
   } catch (err) {
     console.error("getProductsBySubCategory error:", err);
     res.status(500).json({
@@ -290,6 +298,7 @@ exports.getProductsBySubCategory = async (req, res) => {
     });
   }
 };
+
 
 /* ================= UPDATE PRODUCT ================= */
 exports.updateProduct = async (req, res) => {
@@ -348,6 +357,46 @@ exports.updateProduct = async (req, res) => {
     res.status(500).json({
       success: false,
       message: err.message || "Update failed",
+    });
+  }
+};
+/* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
+exports.getProductsBySection = async (req, res) => {
+  try {
+    const { sectionId, subCategory } = req.query;
+
+    if (!sectionId) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const query = {
+      sectionId,
+      isActive: true,
+      stock: { $gt: 0 },
+    };
+
+    // sub-category filter (skip for Top Picks)
+    if (subCategory && subCategory !== "Top Picks") {
+      query.subCategory = subCategory;
+    }
+
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    products.forEach(p => {
+      p.variants = p.variants.filter(v => v.stock > 0);
+    });
+
+    res.json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    console.error("getProductsBySection error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch section products",
     });
   }
 };
