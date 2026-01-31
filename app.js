@@ -31,6 +31,10 @@ const homeSectionRoutes = require(
 const categoryBannerRoutes = require(
   path.join(routesPath, "categoryBanner.routes")
 );
+const offerRoutes = require(
+  path.join(routesPath, "offer.routes")
+);
+
 
 /* ================= MIDDLEWARE ================= */
 
@@ -70,6 +74,7 @@ app.use("/api/banners", bannerRoutes);
 app.use("/api/admin/push", adminPushRoutes);
 app.use("/api", homeSectionRoutes);
 app.use("/api", categoryBannerRoutes);
+app.use("/api", offerRoutes);
 
 /* ================= HEALTH ================= */
 

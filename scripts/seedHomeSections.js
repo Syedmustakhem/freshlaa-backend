@@ -25,14 +25,18 @@ mongoose.connect(process.env.MONGO_URI);
               screen: "SearchScreen",
             },
             rightCTA: {
-              visible: true,
-              title: "MAXXED OUT",
-              subtitle: "UP TO 85% OFF",
-              action: {
-                type: "navigate",
-                screen: "OffersScreen",
-              },
-            },
+  visible: true,
+  type: "image",                // 👈 NEW
+  image:
+    "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769854732/WhatsApp-Image-2026-01-31-at-3.45.04-PM_qejxje.webp",
+  title: "Pickles",
+  subtitle: "UP TO 85% OFF",
+  action: {
+    type: "navigate",
+    screen: "OffersScreen",
+  },
+}
+
           },
         },
       },
