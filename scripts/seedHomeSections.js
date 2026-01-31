@@ -28,9 +28,9 @@ mongoose.connect(process.env.MONGO_URI);
   visible: true,
   type: "image",                // 👈 NEW
   image:
-    "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769854732/WhatsApp-Image-2026-01-31-at-3.45.04-PM_qejxje.webp",
-  title: "Pickles",
-  subtitle: "UP TO 85% OFF",
+    "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769856678/WhatsApp_Image_2026-01-31_at_4.20.32_PM_luhj0j.jpg",
+  // title: "Pickles",
+  // subtitle: "UP TO 85% OFF",
   action: {
     type: "navigate",
     screen: "OffersScreen",

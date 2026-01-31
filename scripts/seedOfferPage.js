@@ -12,7 +12,7 @@ mongoose.connect(process.env.MONGO_URI);
       slug: "maxxed-out-sale",
       title: "MAXXED OUT SALE",
       banner:
-        "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449821/banner3_kwatkg.jpg",
+        "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769856315/ChatGPT_Image_Jan_31_2026_04_14_38_PM_deylrj.png",
 
       sections: [
         {
