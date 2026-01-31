@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const adminAuth = require("../middlewares/adminAuth");
 
+// ✅ IMPORT CONTROLLER PROPERLY
+const productController = require("../controllers/product.controller");
+
 const {
   getAllProducts,
   getAllProductsAdmin,
@@ -14,31 +17,33 @@ const {
   getOfferProducts,
   createManualProduct,
   updateProduct,
-  getProductsBySection,   // ✅ ADD THIS
-} = require("../controllers/product.controller");
+  getProductsBySection,
+  getProductsByCategorySlug, // ✅ ADD THIS
+} = productController;
 
-
-/* ADMIN ROUTES — FIRST */
+/* ================= ADMIN ROUTES (FIRST) ================= */
 router.get("/admin/all", adminAuth, getAllProductsAdmin);
-/* ZEPTO: SECTION + SUBCATEGORY */
-router.get("/by-section", getProductsBySection);
 
-/* SPECIAL */
+/* ================= ZEPTO ROUTES ================= */
+router.get("/by-section", getProductsBySection);
+router.get("/by-category-slug", getProductsByCategorySlug);
+
+/* ================= SPECIAL ================= */
 router.get("/featured", getFeaturedProducts);
 router.get("/trending", getTrendingProducts);
 router.get("/offers", getOfferProducts);
 
-/* SEARCH & CATEGORY */
+/* ================= SEARCH & CATEGORY ================= */
 router.get("/search", searchProducts);
 router.get("/category/:category", getProductsByCategory);
+router.get("/by-sub-category", getProductsBySubCategory);
 
-/* PRODUCTS */
+/* ================= PRODUCTS ================= */
 router.post("/manual", adminAuth, createManualProduct);
 router.put("/:id", adminAuth, updateProduct);
 
-/* BASIC (LAST) */
+/* ================= BASIC (LAST — VERY IMPORTANT) ================= */
 router.get("/", getAllProducts);
 router.get("/:id", getProductById);
-router.get("/by-sub-category", getProductsBySubCategory);
 
 module.exports = router;

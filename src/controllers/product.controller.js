@@ -361,6 +361,35 @@ exports.updateProduct = async (req, res) => {
     });
   }
 };
+// product.controller.js
+exports.getProductsByCategorySlug = async (req, res) => {
+  try {
+    const { slug } = req.query;
+
+    if (!slug) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const products = await Product.find({
+      category: slug,           // ✅ slug match
+      isActive: true,
+      stock: { $gt: 0 },
+    }).lean();
+
+    products.forEach(p => {
+      p.variants = p.variants?.filter(v => v.stock > 0);
+    });
+
+    res.json({ success: true, data: products });
+  } catch (err) {
+    console.error("by-category-slug error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load products",
+    });
+  }
+};
+
 /* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
 exports.getProductsBySection = async (req, res) => {
   try {
