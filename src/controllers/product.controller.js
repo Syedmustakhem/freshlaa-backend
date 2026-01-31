@@ -1,4 +1,6 @@
 const Product = require("../models/Product");
+const Product = require("../models/Product");
+const Category = require("../models/Category"); // ✅ ADD THIS
 
 /* ================= VARIANT NORMALIZER ================= */
 const normalizeVariants = (variants) => {
