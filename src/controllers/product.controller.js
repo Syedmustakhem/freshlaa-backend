@@ -369,18 +369,31 @@ exports.getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const query = {
+    // 1️⃣ Find categories under section
+    const categoryQuery = {
       sectionId,
       isActive: true,
-      stock: { $gt: 0 },
     };
 
-    // sub-category filter (skip for Top Picks)
     if (subCategory && subCategory !== "Top Picks") {
-      query.subCategory = subCategory;
+      categoryQuery.title = subCategory;
     }
 
-    const products = await Product.find(query)
+    const categories = await Category.find(categoryQuery).lean();
+
+    if (!categories.length) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 2️⃣ Extract slugs
+    const categorySlugs = categories.map(c => c.slug);
+
+    // 3️⃣ Find products by category slug
+    const products = await Product.find({
+      category: { $in: categorySlugs },
+      isActive: true,
+      stock: { $gt: 0 },
+    })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -388,10 +401,7 @@ exports.getProductsBySection = async (req, res) => {
       p.variants = p.variants.filter(v => v.stock > 0);
     });
 
-    res.json({
-      success: true,
-      data: products,
-    });
+    res.json({ success: true, data: products });
   } catch (err) {
     console.error("getProductsBySection error:", err);
     res.status(500).json({
