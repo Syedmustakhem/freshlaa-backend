@@ -14,7 +14,28 @@ mongoose.connect(process.env.MONGO_URI);
     await HomeSection.deleteMany();
 
     await HomeSection.insertMany([
-      { type: "HEADER", order: 1 },
+      {
+        type: "HEADER",
+        order: 1,
+        data: {
+          search: {
+            placeholder: 'Search "Milk"',
+            action: {
+              type: "navigate",
+              screen: "SearchScreen",
+            },
+            rightCTA: {
+              visible: true,
+              title: "MAXXED OUT",
+              subtitle: "UP TO 85% OFF",
+              action: {
+                type: "navigate",
+                screen: "OffersScreen",
+              },
+            },
+          },
+        },
+      },
 
       {
         type: "BANNERS",
@@ -38,25 +59,23 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
-      // 🟢 NEW: ZEPTO STYLE GLOBAL CATEGORIES (ICON GRID)
-     
-
-      // 🔵 ORIGINAL SECTIONS (UNCHANGED)
       { type: "CATEGORIES", order: 4 },
- {
+
+      {
         type: "ZEPTO_CATEGORIES",
         order: 5,
         data: {
           title: "Explore Categories",
         },
       },
+
       { type: "DAILY_NEEDS", order: 6 },
       { type: "ZOMATO", order: 7 },
       { type: "TRENDING", order: 8 },
       { type: "FOOTER", order: 9 },
     ]);
 
-    console.log("✅ HomeSection seeded successfully (original + zepto added)");
+    console.log("✅ HomeSection seeded successfully with HEADER search CTA");
     process.exit(0);
   } catch (err) {
     console.error("❌ Seeding failed:", err);
