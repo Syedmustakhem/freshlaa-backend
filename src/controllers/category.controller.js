@@ -62,6 +62,8 @@ const getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
+    console.log("SECTION ID:", sectionId);
+
     // 1️⃣ Find categories under this section
     const categoryQuery = {
       sectionId,
@@ -74,19 +76,25 @@ const getProductsBySection = async (req, res) => {
 
     const categories = await Category.find(categoryQuery).lean();
 
-    // 2️⃣ Extract category slugs
-    const categorySlugs = categories.map(c => c.slug);
-
-    if (categorySlugs.length === 0) {
+    // ✅ SAFETY CHECK
+    if (!categories.length) {
+      console.log("NO CATEGORIES FOUND FOR SECTION");
       return res.json({ success: true, data: [] });
     }
 
-    // 3️⃣ Find products by category slug
+    // 2️⃣ Extract slugs
+    const categorySlugs = categories.map(c => c.slug);
+
+    console.log("CATEGORY SLUGS:", categorySlugs);
+
+    // 3️⃣ Find products using category slug
     const products = await Product.find({
       category: { $in: categorySlugs },
       isActive: true,
       stock: { $gt: 0 },
     }).lean();
+
+    console.log("PRODUCT COUNT:", products.length);
 
     res.json({
       success: true,
