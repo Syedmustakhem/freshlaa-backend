@@ -53,6 +53,7 @@ const getCategoriesBySection = async (req, res) => {
 };
 
 /* ================= PRODUCTS BY SECTION + SUBCATEGORY ================= */
+/* ================= PRODUCTS BY SECTION + SUBCATEGORY ================= */
 const getProductsBySection = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;
@@ -61,27 +62,45 @@ const getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const query = {
+    // 1️⃣ Find categories under this section
+    const categoryQuery = {
       sectionId,
       isActive: true,
-      stock: { $gt: 0 },
     };
 
     if (subCategory && subCategory !== "Top Picks") {
-      query.subCategory = subCategory;
+      categoryQuery.title = subCategory;
     }
 
-    const products = await Product.find(query).lean();
+    const categories = await Category.find(categoryQuery).lean();
 
-    res.json({ success: true, data: products });
+    // 2️⃣ Extract category slugs
+    const categorySlugs = categories.map(c => c.slug);
+
+    if (categorySlugs.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 3️⃣ Find products by category slug
+    const products = await Product.find({
+      category: { $in: categorySlugs },
+      isActive: true,
+      stock: { $gt: 0 },
+    }).lean();
+
+    res.json({
+      success: true,
+      data: products,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("getProductsBySection error:", err);
     res.status(500).json({
       success: false,
       message: "Failed to load products",
     });
   }
 };
+
 
 /* ❌ OLD CATEGORY LANDING (DEPRECATED) */
 /*
