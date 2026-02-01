@@ -6,13 +6,15 @@ const getHotelMenu = async (req, res) => {
   try {
     const { hotelId, categoryKey } = req.query;
 
-    if (!hotelId || !categoryKey) {
+    /* 🔴 hotelId IS MANDATORY */
+    if (!hotelId) {
       return res.status(400).json({
         success: false,
-        message: "hotelId and categoryKey are required",
+        message: "hotelId is required",
       });
     }
 
+    /* 🔎 CHECK RESTAURANT */
     const restaurant = await Restaurant.findById(hotelId);
     if (!restaurant) {
       return res.status(404).json({
@@ -21,6 +23,7 @@ const getHotelMenu = async (req, res) => {
       });
     }
 
+    /* 🔒 RESTAURANT CLOSED */
     if (!restaurant.isOpen) {
       return res.json({
         success: true,
@@ -29,17 +32,27 @@ const getHotelMenu = async (req, res) => {
       });
     }
 
+    /* 🧠 BUILD FILTER */
     const now = new Date();
 
-    const items = await HotelMenuItem.find({
+    const filter = {
       hotelId,
-      categoryKey,
       isAvailable: true,
       $or: [
         { outOfStockUntil: null },
         { outOfStockUntil: { $lte: now } },
       ],
-    }).sort({ createdAt: -1 });
+    };
+
+    /* 🧩 OPTIONAL CATEGORY FILTER */
+    if (categoryKey) {
+      filter.categoryKey = categoryKey;
+    }
+
+    /* 🍽️ FETCH MENU */
+    const items = await HotelMenuItem.find(filter).sort({
+      createdAt: -1,
+    });
 
     res.json({
       success: true,
