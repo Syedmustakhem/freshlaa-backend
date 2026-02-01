@@ -48,7 +48,7 @@ const hotelMenuItemSchema = new mongoose.Schema(
     },
 
     /* STATUS */
-    // isAvailable: { type: Boolean, default: true },
+    isAvailable: { type: Boolean, default: true },
 
     outOfStockUntil: Date, // ⏱ auto restore
   },
