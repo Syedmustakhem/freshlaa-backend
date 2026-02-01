@@ -14,7 +14,7 @@ mongoose.connect(process.env.MONGO_URI);
     /* ================= SECTIONS ================= */
     const sections = await Section.insertMany([
       { title: "Chicken Biryani Masala", image: "https://cdn.app/sections/chicken-biryani-masala.png", order: 1, columns: 3 },
-      { title: "Basmati Rice", image: "https://cdn.app/sections/basmati-rice.png", order: 2, columns: 3 },
+      { title: "Basmati Rice", image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769966804/basmati_kwkkg5.jpg", order: 2, columns: 3 },
       { title: "Regular Rice", image: "https://cdn.app/sections/regular-rice.png", order: 3, columns: 3 },
       { title: "Atta, Dal & Sugar", image: "https://cdn.app/sections/atta-dal-sugar.png", order: 4, columns: 3 },
       { title: "Pappad & Pickles", image: "https://cdn.app/sections/pappad-pickles.png", order: 5, columns: 3 },
