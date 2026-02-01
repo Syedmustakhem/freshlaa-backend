@@ -1,19 +1,18 @@
 const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
-  label: String,        // Half / Full
+  label: String,
   price: Number,
 });
 
 const addonSchema = new mongoose.Schema({
-  name: String,         // Extra egg
+  name: String,
   price: Number,
   isAvailable: { type: Boolean, default: true },
 });
 
 const hotelMenuItemSchema = new mongoose.Schema(
   {
-    /* BASIC INFO */
     name: { type: String, required: true },
     description: String,
     image: String,
@@ -24,35 +23,31 @@ const hotelMenuItemSchema = new mongoose.Schema(
       required: true,
     },
 
-    categoryKey: { type: String, required: true }, // biryani, rolls
+    categoryKey: { type: String, required: true },
     basePrice: { type: Number, required: true },
 
     variants: [variantSchema],
     addons: [addonSchema],
 
-    /* 🔥 ITEM AVAILABILITY TIMING */
-    availableFrom: {
-      type: String, // "07:00"
-      default: null,
-    },
+    availableFrom: { type: String, default: null },
+    availableTo: { type: String, default: null },
 
-    availableTo: {
-      type: String, // "11:00"
-      default: null,
-    },
-
-    /* 🚚 ITEM DELIVERY TIME */
     deliveryTime: {
-      type: String, // "15–20 mins"
+      type: String,
       default: "20–30 mins",
     },
 
-    /* STATUS */
     isAvailable: { type: Boolean, default: true },
 
-    outOfStockUntil: Date, // ⏱ auto restore
+    outOfStockUntil: Date,
   },
   { timestamps: true }
 );
+
+hotelMenuItemSchema.index({
+  hotelId: 1,
+  categoryKey: 1,
+  isAvailable: 1,
+});
 
 module.exports = mongoose.model("HotelMenuItem", hotelMenuItemSchema);
