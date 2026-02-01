@@ -5,7 +5,7 @@ const CategorySectionSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
-      trim: true,                 // Section name (shown on top)
+      trim: true,
     },
 
     slug: {
@@ -13,11 +13,11 @@ const CategorySectionSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
-      index: true,                // used in APIs / URLs
+      index: true,
     },
 
     image: {
-      type: String,               // Section image / icon
+      type: String,
     },
 
     order: {
@@ -28,12 +28,12 @@ const CategorySectionSchema = new mongoose.Schema(
 
     layout: {
       type: String,
-      default: "grid",             // grid | list | carousel
+      default: "grid",
     },
 
     columns: {
       type: Number,
-      default: 3,                  // Zepto style grid
+      default: 3,
     },
 
     visible: {
@@ -44,5 +44,18 @@ const CategorySectionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+/* ✅ Auto-generate slug from title */
+CategorySectionSchema.pre("validate", function () {
+  if (!this.slug && this.title) {
+    this.slug = this.title
+      .toLowerCase()
+      .trim()
+      .replace(/&/g, "and")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+});
+
 
 module.exports = mongoose.model("CategorySection", CategorySectionSchema);

@@ -18,7 +18,7 @@ mongoose.connect(process.env.MONGO_URI);
       { title: "Regular Rice", image: "https://cdn.app/sections/regular-rice.png", order: 3, columns: 3 },
       { title: "Atta, Dal & Sugar", image: "https://cdn.app/sections/atta-dal-sugar.png", order: 4, columns: 3 },
       { title: "Pappad & Pickles", image: "https://cdn.app/sections/pappad-pickles.png", order: 5, columns: 3 },
-      { title: "Maggi & Noodles", image: "https://cdn.app/sections/maggi-noodles.png", order: 6, columns: 3 },
+      { title: "Maggi & Noodles", image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769963167/maggie_j6qf1g.jpg", order: 6, columns: 3 },
       { title: "Beans & Peas", image: "https://cdn.app/sections/beans-peas.png", order: 7, columns: 3 },
       { title: "Home Cleaning Products", image: "https://cdn.app/sections/home-cleaning.png", order: 8, columns: 3 },
       { title: "Bathing Soaps & Shampoo Products", image: "https://cdn.app/sections/bathing-soaps-shampoo.png", order: 9, columns: 3 },
