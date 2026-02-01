@@ -7,12 +7,13 @@ const variantSchema = new mongoose.Schema({
 
 const addonSchema = new mongoose.Schema({
   name: String,         // Extra egg
-  price: Number,        // 20
+  price: Number,
   isAvailable: { type: Boolean, default: true },
 });
 
 const hotelMenuItemSchema = new mongoose.Schema(
   {
+    /* BASIC INFO */
     name: { type: String, required: true },
     description: String,
     image: String,
@@ -24,12 +25,29 @@ const hotelMenuItemSchema = new mongoose.Schema(
     },
 
     categoryKey: { type: String, required: true }, // biryani, rolls
-
     basePrice: { type: Number, required: true },
 
     variants: [variantSchema],
     addons: [addonSchema],
 
+    /* 🔥 ITEM AVAILABILITY TIMING */
+    availableFrom: {
+      type: String, // "07:00"
+      default: null,
+    },
+
+    availableTo: {
+      type: String, // "11:00"
+      default: null,
+    },
+
+    /* 🚚 ITEM DELIVERY TIME */
+    deliveryTime: {
+      type: String, // "15–20 mins"
+      default: "20–30 mins",
+    },
+
+    /* STATUS */
     isAvailable: { type: Boolean, default: true },
 
     outOfStockUntil: Date, // ⏱ auto restore
