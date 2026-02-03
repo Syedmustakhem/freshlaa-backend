@@ -43,7 +43,10 @@ const getCategoriesBySection = async (req, res) => {
     const categories = await Category.find({
       sectionId,
       isActive: true,
-      parentSlug: null, // ✅ top-level categories only
+      $or: [
+        { parentSlug: null },
+        { parentSlug: { $exists: false } },
+      ],
     })
       .sort({ order: 1 })
       .lean();
