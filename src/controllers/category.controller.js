@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Category = require("../models/Category");
 const CategorySection = require("../models/CategorySection");
 const Product = require("../models/Product");
@@ -6,24 +7,23 @@ const Product = require("../models/Product");
 const getZeptoCategories = async (req, res) => {
   try {
     const sections = await CategorySection.find({
-      visible: true,
+      isActive: true, // ✅ use isActive
     })
       .sort({ order: 1 })
       .lean();
 
-    // Home ONLY needs sections now
     res.json({
       success: true,
       data: sections.map((s) => ({
         _id: s._id,
         title: s.title,
-        image: s.image,
+        image: s.image || null,
         layout: s.layout || "grid",
         columns: s.columns || 3,
       })),
     });
   } catch (err) {
-    console.error(err);
+    console.error("getZeptoCategories error:", err);
     res.status(500).json({
       success: false,
       message: "Failed to load home sections",
@@ -31,20 +31,26 @@ const getZeptoCategories = async (req, res) => {
   }
 };
 
-/* ================= SUB-CATEGORIES BY SECTION (LEFT RAIL) ================= */
+/* ================= SUB-CATEGORIES BY SECTION ================= */
 const getCategoriesBySection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(sectionId)) {
+      return res.json({ success: true, data: [] });
+    }
+
     const categories = await Category.find({
       sectionId,
       isActive: true,
+      parentSlug: null, // ✅ top-level categories only
     })
       .sort({ order: 1 })
       .lean();
 
     res.json({ success: true, data: categories });
   } catch (err) {
+    console.error("getCategoriesBySection error:", err);
     res.status(500).json({
       success: false,
       message: "Failed to load sub-categories",
@@ -52,49 +58,43 @@ const getCategoriesBySection = async (req, res) => {
   }
 };
 
-/* ================= PRODUCTS BY SECTION + SUBCATEGORY ================= */
-/* ================= PRODUCTS BY SECTION + SUBCATEGORY ================= */
+/* ================= PRODUCTS BY SECTION + CATEGORY ================= */
 const getProductsBySection = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;
 
-    if (!sectionId) {
+    if (!mongoose.Types.ObjectId.isValid(sectionId)) {
       return res.json({ success: true, data: [] });
     }
 
-    console.log("SECTION ID:", sectionId);
-
-    // 1️⃣ Find categories under this section
+    // 1️⃣ Find categories under section
     const categoryQuery = {
       sectionId,
       isActive: true,
     };
 
-    if (subCategory && subCategory !== "Top Picks") {
-      categoryQuery.title = subCategory;
+    // ✅ Use slug instead of title
+    if (subCategory && subCategory !== "top-picks") {
+      categoryQuery.slug = subCategory;
     }
 
     const categories = await Category.find(categoryQuery).lean();
 
-    // ✅ SAFETY CHECK
     if (!categories.length) {
-      console.log("NO CATEGORIES FOUND FOR SECTION");
       return res.json({ success: true, data: [] });
     }
 
-    // 2️⃣ Extract slugs
-    const categorySlugs = categories.map(c => c.slug);
+    // 2️⃣ Extract category slugs
+    const categorySlugs = categories.map((c) => c.slug);
 
-    console.log("CATEGORY SLUGS:", categorySlugs);
-
-    // 3️⃣ Find products using category slug
+    // 3️⃣ Find products
     const products = await Product.find({
-      category: { $in: categorySlugs },
+      category: { $in: categorySlugs }, // category stored as slug
       isActive: true,
       stock: { $gt: 0 },
-    }).lean();
-
-    console.log("PRODUCT COUNT:", products.length);
+    })
+      .sort({ order: 1 })
+      .lean();
 
     res.json({
       success: true,
@@ -108,12 +108,6 @@ const getProductsBySection = async (req, res) => {
     });
   }
 };
-
-
-/* ❌ OLD CATEGORY LANDING (DEPRECATED) */
-/*
-const getCategoryLanding = async (req, res) => {};
-*/
 
 module.exports = {
   getZeptoCategories,
