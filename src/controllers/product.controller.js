@@ -213,12 +213,23 @@ exports.getOfferProducts = async (req, res) => {
 // ADMIN – GET ALL PRODUCTS (NO LIMIT)
 exports.getAllProductsAdmin = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
-    res.json({ success: true, data: products });
+    const products = await Product.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: products,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to load products" });
+    console.error("getAllProductsAdmin error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load products",
+    });
   }
 };
+
 
 /* ================= CREATE PRODUCT ================= */
 exports.createManualProduct = async (req, res) => {
