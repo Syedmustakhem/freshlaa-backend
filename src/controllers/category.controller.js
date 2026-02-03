@@ -43,10 +43,6 @@ const getCategoriesBySection = async (req, res) => {
     const categories = await Category.find({
       sectionId,
       isActive: true,
-      $or: [
-        { parentSlug: null },
-        { parentSlug: { $exists: false } },
-      ],
     })
       .sort({ order: 1 })
       .lean();
@@ -60,6 +56,7 @@ const getCategoriesBySection = async (req, res) => {
     });
   }
 };
+
 
 /* ================= PRODUCTS BY SECTION + CATEGORY ================= */
 const getProductsBySection = async (req, res) => {
