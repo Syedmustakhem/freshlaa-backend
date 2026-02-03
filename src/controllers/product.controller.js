@@ -81,11 +81,12 @@ exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).lean();
 
-    if (!product || !product.isActive) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+if (!product) {
+  return res.status(404).json({
+    success: false,
+    message: "Product not found",
+  });
+
     }
 
     product.variants = product.variants.filter(v => v.stock > 0);
@@ -235,6 +236,12 @@ exports.getAllProductsAdmin = async (req, res) => {
 exports.createManualProduct = async (req, res) => {
   try {
     const data = req.body;
+if (!Array.isArray(data.images) || data.images.length === 0) {
+  return res.status(400).json({
+    success: false,
+    message: "At least one product image is required",
+  });
+}
 
     if (!data.sectionId || !data.subCategory) {
       return res.status(400).json({
@@ -260,7 +267,11 @@ exports.createManualProduct = async (req, res) => {
     data.stock = variants.reduce((sum, v) => sum + v.stock, 0);
 
     // keep old category for backward compatibility
-    data.category = data.category.toLowerCase();
+if (!data.category) {
+  data.category = data.subCategory.toLowerCase();
+} else {
+  data.category = data.category.toLowerCase();
+}
 
     const product = await Product.create(data);
 
@@ -326,15 +337,34 @@ exports.updateProduct = async (req, res) => {
       });
     }
 
-    if (data.name !== undefined) product.name = data.name;
-    if (data.description !== undefined) product.description = data.description;
-    if (data.category !== undefined)
-      product.category = data.category.toLowerCase();
+    // BASIC INFO
+    if (typeof data.name === "string" && data.name.trim()) {
+      product.name = data.name.trim();
+    }
 
+    if (typeof data.description === "string") {
+      product.description = data.description;
+    }
+
+    // CATEGORY (SAFE)
+    if (data.category) {
+      product.category = data.category.toLowerCase();
+    }
+
+    if (data.sectionId) {
+      product.sectionId = data.sectionId;
+    }
+
+    if (data.subCategory) {
+      product.subCategory = data.subCategory;
+    }
+
+    // IMAGES
     if (Array.isArray(data.images) && data.images.length > 0) {
       product.images = data.images;
     }
 
+    // FLAGS
     if (typeof data.isFeatured === "boolean")
       product.isFeatured = data.isFeatured;
 
@@ -347,6 +377,7 @@ exports.updateProduct = async (req, res) => {
     if (typeof data.offerPercentage === "number")
       product.offerPercentage = data.offerPercentage;
 
+    // VARIANTS
     if (Array.isArray(data.variants) && data.variants.length > 0) {
       const variants = normalizeVariants(data.variants);
 
@@ -397,6 +428,57 @@ exports.getProductsByCategorySlug = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to load products",
+    });
+  }
+};
+exports.deleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    await product.deleteOne();
+
+    res.json({
+      success: true,
+      message: "Product deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete product error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete product",
+    });
+  }
+};
+exports.toggleProductStatus = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    product.isActive = !product.isActive;
+    await product.save();
+
+    res.json({
+      success: true,
+      data: { isActive: product.isActive },
+    });
+  } catch (err) {
+    console.error("Toggle product status error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update product status",
     });
   }
 };
