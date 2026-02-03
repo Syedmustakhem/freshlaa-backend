@@ -3,7 +3,7 @@ const Restaurant = require("../models/Restaurant");
 /* ➕ ADD RESTAURANT */
 const addRestaurant = async (req, res) => {
   try {
-    const {
+    let {
       name,
       image,
       address,
@@ -13,13 +13,16 @@ const addRestaurant = async (req, res) => {
       isOpen,
     } = req.body;
 
-    // 🔒 Required validation
     if (!name || !categorySlug || !openTime || !closeTime) {
       return res.status(400).json({
         success: false,
         message: "name, categorySlug, openTime and closeTime are required",
       });
     }
+
+    // ✅ NORMALIZE
+    name = name.trim().toLowerCase();
+    categorySlug = categorySlug.trim().toLowerCase();
 
     const restaurant = await Restaurant.create({
       name,
@@ -28,7 +31,7 @@ const addRestaurant = async (req, res) => {
       categorySlug,
       openTime,
       closeTime,
-      isOpen,
+      isOpen: typeof isOpen === "boolean" ? isOpen : true,
     });
 
     res.status(201).json({
@@ -48,7 +51,10 @@ const addRestaurant = async (req, res) => {
 const getRestaurants = async (req, res) => {
   try {
     const { categorySlug } = req.query;
-    const filter = categorySlug ? { categorySlug } : {};
+
+    const filter = categorySlug
+      ? { categorySlug: categorySlug.trim().toLowerCase() }
+      : {};
 
     const restaurants = await Restaurant.find(filter).sort({ createdAt: -1 });
 
@@ -96,7 +102,7 @@ const updateRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const {
+    let {
       name,
       image,
       address,
@@ -113,6 +119,10 @@ const updateRestaurant = async (req, res) => {
       });
     }
 
+    // ✅ NORMALIZE
+    name = name.trim().toLowerCase();
+    categorySlug = categorySlug.trim().toLowerCase();
+
     const restaurant = await Restaurant.findByIdAndUpdate(
       id,
       {
@@ -122,9 +132,9 @@ const updateRestaurant = async (req, res) => {
         categorySlug,
         openTime,
         closeTime,
-        isOpen,
+        isOpen: typeof isOpen === "boolean" ? isOpen : true,
       },
-      { new: true, runValidators: true } // 🔥 VERY IMPORTANT
+      { new: true, runValidators: true }
     );
 
     if (!restaurant) {
