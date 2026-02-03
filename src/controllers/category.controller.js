@@ -32,6 +32,7 @@ const getZeptoCategories = async (req, res) => {
 };
 
 /* ================= SUB-CATEGORIES BY SECTION ================= */
+/* ================= SUB-CATEGORIES BY SECTION ================= */
 const getCategoriesBySection = async (req, res) => {
   try {
     const { sectionId } = req.params;
@@ -41,13 +42,16 @@ const getCategoriesBySection = async (req, res) => {
     }
 
     const categories = await Category.find({
-      sectionId,
+      sectionId: new mongoose.Types.ObjectId(sectionId),
       isActive: true,
     })
       .sort({ order: 1 })
       .lean();
 
-    res.json({ success: true, data: categories });
+    res.json({
+      success: true,
+      data: categories,
+    });
   } catch (err) {
     console.error("getCategoriesBySection error:", err);
     res.status(500).json({
@@ -56,6 +60,7 @@ const getCategoriesBySection = async (req, res) => {
     });
   }
 };
+
 
 
 /* ================= PRODUCTS BY SECTION + CATEGORY ================= */
@@ -67,14 +72,13 @@ const getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    // 1️⃣ Find categories under section
+    // find categories under section
     const categoryQuery = {
-      sectionId,
+      sectionId: new mongoose.Types.ObjectId(sectionId),
       isActive: true,
     };
 
-    // ✅ Use slug instead of title
-    if (subCategory && subCategory !== "top-picks") {
+    if (subCategory) {
       categoryQuery.slug = subCategory;
     }
 
@@ -84,17 +88,12 @@ const getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    // 2️⃣ Extract category slugs
-    const categorySlugs = categories.map((c) => c.slug);
+    const slugs = categories.map(c => c.slug);
 
-    // 3️⃣ Find products
     const products = await Product.find({
-      category: { $in: categorySlugs }, // category stored as slug
+      category: { $in: slugs }, // MUST MATCH SLUG
       isActive: true,
-      stock: { $gt: 0 },
-    })
-      .sort({ order: 1 })
-      .lean();
+    }).lean();
 
     res.json({
       success: true,
