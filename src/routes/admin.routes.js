@@ -6,6 +6,7 @@ const { createInitialAdmin } = require("../controllers/admin/initAdmin.controlle
 const { getDashboardMetrics } = require("../controllers/admin/dashboard.controller");
 const { updateOrderStatus } = require("../controllers/order.controller");
 const Category = require("../models/Category");
+const CategorySection = require("../models/CategorySection");
 
 const adminAuth = require("../middlewares/adminAuth");
 const User = require("../models/User");
@@ -218,9 +219,18 @@ router.get("/users", adminAuth, async (req, res) => {
  * GET /api/admin/categories
  * Get all categories for admin panel
  */
+/**
+ * GET /api/admin/categories
+ * Optional: ?sectionId=xxxx
+ */
 router.get("/categories", adminAuth, async (req, res) => {
   try {
-    const categories = await Category.find()
+    const { sectionId } = req.query;
+
+    const query = {};
+    if (sectionId) query.sectionId = sectionId;
+
+    const categories = await Category.find(query)
       .populate("sectionId", "title slug")
       .sort({ order: 1 })
       .lean();
@@ -234,6 +244,29 @@ router.get("/categories", adminAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to load categories",
+    });
+  }
+});
+
+/**
+ * GET /api/admin/category-sections
+ * Used in Product Add/Edit form
+ */
+router.get("/category-sections", adminAuth, async (req, res) => {
+  try {
+    const sections = await CategorySection.find()
+      .sort({ order: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: sections,
+    });
+  } catch (err) {
+    console.error("ADMIN CATEGORY SECTIONS ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load category sections",
     });
   }
 });

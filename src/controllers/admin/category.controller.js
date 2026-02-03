@@ -2,7 +2,14 @@ const Category = require("../../models/Category");
 
 exports.getAdminCategories = async (req, res) => {
   try {
-    const categories = await Category.find()
+    const { sectionId } = req.query;
+
+    const query = {};
+    if (sectionId) {
+      query.sectionId = sectionId;
+    }
+
+    const categories = await Category.find(query)
       .populate("sectionId", "title slug")
       .sort({ order: 1 });
 
