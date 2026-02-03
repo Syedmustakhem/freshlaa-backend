@@ -9,7 +9,6 @@ async function runMigration() {
   console.log("✅ Connected to DB");
 
   const categories = await Category.find({ isActive: true }).lean();
-
   if (!categories.length) {
     console.log("❌ No categories found");
     process.exit(0);
@@ -21,37 +20,43 @@ async function runMigration() {
   console.log(`🛒 Found ${products.length} products`);
 
   let updated = 0;
+  let skipped = 0;
 
   for (const product of products) {
-    const rawCategory = (product.category || "").toLowerCase().trim();
+    if (!product.category || typeof product.category !== "string") {
+      skipped++;
+      continue;
+    }
 
-    // 1️⃣ Try exact slug match
-    let matched = categories.find(c => c.slug === rawCategory);
+    const raw = product.category.toLowerCase().trim();
 
-    // 2️⃣ Try title fuzzy match
+    // 1️⃣ Exact slug match
+    let matched = categories.find(c => c.slug === raw);
+
+    // 2️⃣ Exact title match (cleaned)
     if (!matched) {
       matched = categories.find(c =>
-        rawCategory.includes(c.title.toLowerCase()) ||
-        c.title.toLowerCase().includes(rawCategory)
+        c.title.toLowerCase().replace(/[^a-z0-9]/g, "") ===
+        raw.replace(/[^a-z0-9]/g, "")
       );
     }
 
-    // 3️⃣ Try keyword match
+    // 3️⃣ Word overlap (SAFE version)
     if (!matched) {
       matched = categories.find(c => {
         const words = c.title.toLowerCase().split(" ");
-        return words.some(w => rawCategory.includes(w));
+        return words.filter(w => w.length > 3).some(w => raw.includes(w));
       });
     }
 
     if (!matched) {
       console.log(
-        `⚠️ No category match for product: "${product.name}" → "${product.category}"`
+        `⚠️ Skipped: "${product.name}" → "${product.category}"`
       );
+      skipped++;
       continue;
     }
 
-    // 🔥 UPDATE PRODUCT
     await Product.updateOne(
       { _id: product._id },
       { $set: { category: matched.slug } }
@@ -59,11 +64,14 @@ async function runMigration() {
 
     updated++;
     console.log(
-      `✅ ${product.name}: "${rawCategory}" → "${matched.slug}"`
+      `✅ ${product.name}: "${product.category}" → "${matched.slug}"`
     );
   }
 
-  console.log(`\n🎉 Migration complete. Updated ${updated} products.`);
+  console.log("\n🎉 MIGRATION SUMMARY");
+  console.log(`✅ Updated: ${updated}`);
+  console.log(`⚠️ Skipped: ${skipped}`);
+
   process.exit(0);
 }
 
