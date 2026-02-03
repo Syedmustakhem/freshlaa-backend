@@ -54,14 +54,40 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
-      {
-        type: "SPONSORED",
-        order: 3,
-        data: {
-          image:
-            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769531510/sponsored_sirn1a.jpg",
-        },
-      },
+    {
+  type: "SPONSORED",
+  order: 3,
+  schemaVersion: 1,
+  data: {
+    layout: "SPLIT_50",
+    imagePosition: "RIGHT",
+
+    content: {
+      sponsoredLabel: "Sponsored",
+      title: "Fresh Picks for Smart Shoppers",
+      subtitle: "Carefully curated partner deals, just for you",
+      ctaText: "Explore Deals →"
+    },
+
+    image: {
+      url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769531510/sponsored_sirn1a.jpg",
+      resizeMode: "cover"
+    },
+
+    style: {
+      backgroundColor: "#F4FAF6",
+      titleColor: "#1f3d2b",
+      subtitleColor: "#4f6f5f",
+      ctaColor: "#2e7d32"
+    },
+
+    animation: {
+      sponsoredPulse: true,
+      ctaSlide: true
+    }
+  }
+},
+
 
       { type: "CATEGORIES", order: 4 },
 
