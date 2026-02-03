@@ -3,12 +3,21 @@ const Restaurant = require("../models/Restaurant");
 /* ➕ ADD RESTAURANT */
 const addRestaurant = async (req, res) => {
   try {
-    const { name, image, address, categorySlug } = req.body;
+    const {
+      name,
+      image,
+      address,
+      categorySlug,
+      openTime,
+      closeTime,
+      isOpen,
+    } = req.body;
 
-    if (!name || !categorySlug) {
+    // 🔒 Required validation
+    if (!name || !categorySlug || !openTime || !closeTime) {
       return res.status(400).json({
         success: false,
-        message: "name and categorySlug are required",
+        message: "name, categorySlug, openTime and closeTime are required",
       });
     }
 
@@ -17,6 +26,9 @@ const addRestaurant = async (req, res) => {
       image,
       address,
       categorySlug,
+      openTime,
+      closeTime,
+      isOpen,
     });
 
     res.status(201).json({
@@ -24,6 +36,7 @@ const addRestaurant = async (req, res) => {
       data: restaurant,
     });
   } catch (err) {
+    console.error("ADD RESTAURANT ERROR:", err);
     res.status(500).json({
       success: false,
       message: err.message,
@@ -31,15 +44,13 @@ const addRestaurant = async (req, res) => {
   }
 };
 
-/* 📥 GET RESTAURANTS (SLUG BASED) */
+/* 📥 GET RESTAURANTS */
 const getRestaurants = async (req, res) => {
   try {
     const { categorySlug } = req.query;
-
     const filter = categorySlug ? { categorySlug } : {};
 
-    const restaurants = await Restaurant.find(filter)
-      .sort({ createdAt: -1 });
+    const restaurants = await Restaurant.find(filter).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -79,22 +90,41 @@ const toggleRestaurantStatus = async (req, res) => {
     });
   }
 };
+
 /* ✏️ UPDATE RESTAURANT */
 const updateRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, image, address, categorySlug, isOpen } = req.body;
+
+    const {
+      name,
+      image,
+      address,
+      categorySlug,
+      openTime,
+      closeTime,
+      isOpen,
+    } = req.body;
+
+    if (!name || !categorySlug || !openTime || !closeTime) {
+      return res.status(400).json({
+        success: false,
+        message: "name, categorySlug, openTime and closeTime are required",
+      });
+    }
 
     const restaurant = await Restaurant.findByIdAndUpdate(
       id,
       {
-        ...(name && { name }),
-        ...(image && { image }),
-        ...(address && { address }),
-        ...(categorySlug && { categorySlug }),
-        ...(typeof isOpen === "boolean" && { isOpen }),
+        name,
+        image,
+        address,
+        categorySlug,
+        openTime,
+        closeTime,
+        isOpen,
       },
-      { new: true }
+      { new: true, runValidators: true } // 🔥 VERY IMPORTANT
     );
 
     if (!restaurant) {
