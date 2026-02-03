@@ -1,58 +1,149 @@
 require("dotenv").config();
-
 const mongoose = require("mongoose");
-const Section = require("../src/models/CategorySection");
-const Category = require("../src/models/Category");
 
-mongoose.connect(process.env.MONGO_URI);
+const CategorySection = require("../src/models/CategorySection");
+const Category = require("../src/models/Category");
 
 (async () => {
   try {
-    await Section.deleteMany();
+    /* ================= CONNECT ================= */
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB connected");
+
+    /* ================= CLEAN ================= */
     await Category.deleteMany();
+    await CategorySection.deleteMany();
 
     /* ================= SECTIONS ================= */
-    const sections = await Section.insertMany([
-      { title: "Chicken Biryani Masala", image: "https://cdn.app/sections/chicken-biryani-masala.png", order: 1, columns: 3 },
-      { title: "Basmati Rice", image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769966804/basmati_kwkkg5.jpg", order: 2, columns: 3 },
-      { title: "Regular Rice", image: "hhttps://res.cloudinary.com/dxiujfq7i/image/upload/v1769967369/regular_rice_o4idpp.jpg", order: 3, columns: 3 },
-      { title: "Atta, Dal & Sugar", image: "https://cdn.app/sections/atta-dal-sugar.png", order: 4, columns: 3 },
-      { title: "Pappad & Pickles", image: "https://cdn.app/sections/pappad-pickles.png", order: 5, columns: 3 },
-      { title: "Maggi & Noodles", image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769963167/maggie_j6qf1g.jpg", order: 6, columns: 3 },
-      { title: "Oats & Honey", image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769967105/saffola_rhbxha.jpg", order: 7, columns: 3 },
-      { title: "Home Cleaning Products", image: "https://cdn.app/sections/home-cleaning.png", order: 8, columns: 3 },
-      { title: "Bathing Soaps & Shampoo Products", image: "https://cdn.app/sections/bathing-soaps-shampoo.png", order: 9, columns: 3 },
-      { title: "Sweets & Snacks", image: "https://cdn.app/sections/sweets-snacks.png", order: 10, columns: 3 },
-      { title: "Chocolates & Biscuits", image: "https://cdn.app/sections/chocolates-biscuits.png", order: 11, columns: 3 },
-      { title: "Berries", image: "https://cdn.app/sections/berries.png", order: 12, columns: 3 },
+    const sections = await CategorySection.insertMany([
+      {
+        title: "Badam & Seeds",
+        slug: "badam-seeds",
+        image: "https://cdn.app/sections/chocolates-biscuits.png",
+        order: 1,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Berries",
+        slug: "berries",
+        image: "https://cdn.app/sections/berries.png",
+        order: 2,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Oats & Honey",
+        slug: "oats-honey",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769967105/saffola_rhbxha.jpg",
+        order: 3,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Home Made Masala Powders",
+        slug: "home-made-masala-powders",
+        image: "https://cdn.app/sections/chicken-biryani-masala.png",
+        order: 4,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Basmati Rice",
+        slug: "basmati-rice",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769966804/basmati_kwkkg5.jpg",
+        order: 5,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Regular Rice",
+        slug: "regular-rice",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769967369/regular_rice_o4idpp.jpg",
+        order: 6,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Atta, Dal & Sugar",
+        slug: "atta-dal-sugar",
+        image: "https://cdn.app/sections/atta-dal-sugar.png",
+        order: 7,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Pappad & Pickles",
+        slug: "pappad-pickles",
+        image: "https://cdn.app/sections/pappad-pickles.png",
+        order: 8,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Maggi & Noodles",
+        slug: "maggi-noodles",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769963167/maggie_j6qf1g.jpg",
+        order: 9,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Home Cleaning Products",
+        slug: "home-cleaning-products",
+        image: "https://cdn.app/sections/home-cleaning.png",
+        order: 10,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Bathing Soaps & Shampoo Products",
+        slug: "bathing-soaps-shampoo",
+        image: "https://cdn.app/sections/bathing-soaps-shampoo.png",
+        order: 11,
+        columns: 3,
+        isActive: true,
+      },
+      {
+        title: "Chocolates & Biscuits",
+        slug: "chocolates-biscuits",
+        image: "https://cdn.app/sections/sweets-snacks.png",
+        order: 12,
+        columns: 3,
+        isActive: true,
+      },
     ]);
 
-    /* ================= SUB-CATEGORIES MAP ================= */
+    /* ================= SUB-CATEGORIES ================= */
     const SUB_CATEGORIES = {
-      "Chicken Biryani Masala": ["Ready Masala Mixes", "Biryani Masala", "Chicken Masala", "Meat Masala", "Whole Spices"],
-      "Basmati Rice": ["Premium Basmati", "Everyday Basmati", "Aged Basmati", "Mini Pack", "Bulk Pack"],
-      "Regular Rice": ["Sona Masoori", "Ponni Rice", "Idli Rice", "Broken Rice", "Local Varieties"],
-      "Atta, Dal & Sugar": ["Wheat Atta", "Multigrain Atta", "Dals", "Sugar & Jaggery", "Organic Staples"],
-      "Pappad & Pickles": ["Papad", "Mango Pickles", "Mixed Pickles", "Chutneys", "Condiments"],
-      "Maggi & Noodles": ["Instant Noodles", "Cup Noodles", "Pasta", "Vermicelli", "Ready Meals"],
-      "Oats & Honey": ["Fresh Oats", "Pure Honey", "Frozen Veggies", "Sprouts", "Mixed Vegetables"],
-      "Home Cleaning Products": ["Floor Cleaners", "Dishwash", "Toilet Cleaners", "Laundry", "Disinfectants"],
-      "Bathing Soaps & Shampoo Products": ["Bathing Soaps", "Body Wash", "Shampoos", "Conditioners", "Hair Oils"],
-      "Sweets & Snacks": ["Indian Sweets", "Namkeen", "Mixtures", "Fryums", "Festive Packs"],
-      "Chocolates & Biscuits": ["Chocolates", "Cookies", "Cream Biscuits", "Marie & Digestive", "Kids Snacks"],
+      "Badam & Seeds": ["Chocolates", "Cookies", "Cream Biscuits", "Marie Digestive", "Kids Snacks"],
       "Berries": ["Fresh Berries", "Dried Berries", "Frozen Berries", "Exotic Fruits", "Organic Fruits"],
+      "Oats & Honey": ["Fresh Oats", "Pure Honey", "Sprouts", "Mixed Vegetables"],
+      "Home Made Masala Powders": ["Biryani Masala", "Chicken Masala", "Meat Masala", "Whole Spices"],
+      "Basmati Rice": ["Premium Basmati", "Everyday Basmati", "Aged Basmati", "Mini Pack", "Bulk Pack"],
+      "Regular Rice": ["Sona Masoori", "Ponni Rice", "Idli Rice", "Broken Rice"],
+      "Atta, Dal & Sugar": ["Wheat Atta", "Multigrain Atta", "Dals", "Sugar Jaggery"],
+      "Pappad & Pickles": ["Papad", "Mango Pickles", "Mixed Pickles", "Chutneys"],
+      "Maggi & Noodles": ["Instant Noodles", "Cup Noodles", "Pasta", "Vermicelli"],
+      "Home Cleaning Products": ["Floor Cleaners", "Dishwash", "Toilet Cleaners", "Laundry"],
+      "Bathing Soaps & Shampoo Products": ["Bathing Soaps", "Body Wash", "Shampoos", "Hair Oils"],
+      "Chocolates & Biscuits": ["Indian Sweets", "Namkeen", "Mixtures", "Festive Packs"],
     };
 
     /* ================= INSERT SUB-CATEGORIES ================= */
     const categories = [];
 
-    sections.forEach(section => {
+    sections.forEach((section) => {
       const subs = SUB_CATEGORIES[section.title] || [];
 
       subs.forEach((name, index) => {
         categories.push({
           title: name,
-          slug: `${section.title}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          slug: `${section.slug}-${name}`
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, ""),
+          parentSlug: section.slug,
           sectionId: section._id,
           order: index + 1,
           isActive: true,
@@ -62,7 +153,7 @@ mongoose.connect(process.env.MONGO_URI);
 
     await Category.insertMany(categories);
 
-    console.log("✅ Sections + Sub-Categories seeded successfully");
+    console.log("🎉 Sections & Sub-Categories seeded successfully");
     process.exit(0);
   } catch (error) {
     console.error("❌ Seeding failed:", error);

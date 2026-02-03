@@ -5,6 +5,7 @@ const { adminLogin } = require("../controllers/admin/Adminauth.controller");
 const { createInitialAdmin } = require("../controllers/admin/initAdmin.controller");
 const { getDashboardMetrics } = require("../controllers/admin/dashboard.controller");
 const { updateOrderStatus } = require("../controllers/order.controller");
+const Category = require("../models/Category");
 
 const adminAuth = require("../middlewares/adminAuth");
 const User = require("../models/User");
@@ -210,6 +211,29 @@ router.get("/users", adminAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to load users",
+    });
+  }
+});
+/**
+ * GET /api/admin/categories
+ * Get all categories for admin panel
+ */
+router.get("/categories", adminAuth, async (req, res) => {
+  try {
+    const categories = await Category.find()
+      .populate("sectionId", "title slug")
+      .sort({ order: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (err) {
+    console.error("ADMIN CATEGORIES ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load categories",
     });
   }
 });
