@@ -10,6 +10,12 @@ const restaurantSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+filters: [
+  {
+    label: { type: String, required: true },
+    key: { type: String, required: true }
+  }
+],
 
     /* 🕒 RESTAURANT TIMINGS */
     openTime: {
