@@ -36,11 +36,11 @@ const CategorySectionSchema = new mongoose.Schema(
       default: 3,
     },
 
-    visible: {
-      type: Boolean,
-      default: true,
-      index: true,
-    },
+   isActive: {        // ✅ FIX
+    type: Boolean,
+    default: true,
+    index: true,
+  },
   },
   { timestamps: true }
 );
