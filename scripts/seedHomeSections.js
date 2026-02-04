@@ -70,7 +70,7 @@ mongoose.connect(process.env.MONGO_URI);
     },
 
     image: {
-      url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769531510/sponsored_sirn1a.jpg",
+      url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1770194936/ChatGPT_Image_Feb_4_2026_01_35_04_AM_maxifg.png",
       resizeMode: "cover"
     },
 
