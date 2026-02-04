@@ -23,17 +23,31 @@ async function runMigration() {
   let skipped = 0;
 
   for (const product of products) {
-    if (!product.category || typeof product.category !== "string") {
+    // already migrated
+    if (
+      product.subCategory &&
+      categories.some(c => c.slug === product.subCategory)
+    ) {
       skipped++;
       continue;
     }
 
-    const raw = product.category.toLowerCase().trim();
+    const source =
+      product.subCategory ||
+      product.category ||
+      "";
 
-    // 1️⃣ Exact slug match
+    if (!source) {
+      skipped++;
+      continue;
+    }
+
+    const raw = source.toLowerCase().trim();
+
+    // 1️⃣ exact slug match
     let matched = categories.find(c => c.slug === raw);
 
-    // 2️⃣ Exact title match (cleaned)
+    // 2️⃣ exact title match (normalized)
     if (!matched) {
       matched = categories.find(c =>
         c.title.toLowerCase().replace(/[^a-z0-9]/g, "") ===
@@ -41,30 +55,33 @@ async function runMigration() {
       );
     }
 
-    // 3️⃣ Word overlap (SAFE version)
+    // 3️⃣ safe word overlap (length > 4)
     if (!matched) {
       matched = categories.find(c => {
         const words = c.title.toLowerCase().split(" ");
-        return words.filter(w => w.length > 3).some(w => raw.includes(w));
+        return words.some(w => w.length > 4 && raw.includes(w));
       });
     }
 
     if (!matched) {
-      console.log(
-        `⚠️ Skipped: "${product.name}" → "${product.category}"`
-      );
+      console.log(`⚠️ Skipped: ${product.name} → "${source}"`);
       skipped++;
       continue;
     }
 
     await Product.updateOne(
       { _id: product._id },
-      { $set: { category: matched.slug } }
+      {
+        $set: {
+          subCategory: matched.slug,   // ✅ THIS IS THE FIX
+          category: matched.slug,      // keep backward compatibility
+        },
+      }
     );
 
     updated++;
     console.log(
-      `✅ ${product.name}: "${product.category}" → "${matched.slug}"`
+      `✅ ${product.name}: "${source}" → "${matched.slug}"`
     );
   }
 
