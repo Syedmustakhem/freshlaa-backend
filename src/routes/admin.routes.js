@@ -270,5 +270,43 @@ router.get("/category-sections", adminAuth, async (req, res) => {
     });
   }
 });
+router.patch("/categories/:slug/image", adminAuth, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({
+        success: false,
+        message: "Image URL is required",
+      });
+    }
+
+    const updated = await Category.findOneAndUpdate(
+      { slug },
+      { $set: { image } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (err) {
+    console.error("UPDATE CATEGORY IMAGE ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update category image",
+    });
+  }
+});
+
 
 module.exports = router;
