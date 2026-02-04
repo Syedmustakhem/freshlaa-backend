@@ -16,35 +16,87 @@ webpush.setVapidDetails(
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
   try {
-    const { items, address, paymentMethod, total } = req.body;
+    const {
+      items,
+      address,
+      paymentMethod,
+      total,
+      payment, // 👈 Razorpay payload (for ONLINE)
+    } = req.body;
 
-    if (!Array.isArray(items) || !items.length)
+    if (!Array.isArray(items) || !items.length) {
       return res.status(400).json({ success: false, message: "No items in order" });
+    }
 
-    if (!address || typeof address !== "object")
+    if (!address || typeof address !== "object") {
       return res.status(400).json({ success: false, message: "Address missing" });
+    }
 
-    if (!total || total <= 0)
+    if (!total || total <= 0) {
       return res.status(400).json({ success: false, message: "Invalid total" });
+    }
 
     const normalizedItems = items.map((item) => ({
       productId: item.productId || item._id || "",
-      name: item.name || item.title || item.selectedVariant?.label || "Item",
-      image: item.image || item.thumbnail || item.images?.[0] || "",
+      name: item.name || item.title || "Item",
+      image: item.image || "",
       price: Number(item.price || item.finalPrice || 0),
       qty: Number(item.qty || 1),
     }));
 
+    /* ================= ONLINE PAYMENT VERIFICATION ================= */
+    let paymentStatus = "Pending";
+    let razorpayData = null;
+
+    if (paymentMethod === "ONLINE") {
+      if (
+        !payment?.razorpay_payment_id ||
+        !payment?.razorpay_order_id ||
+        !payment?.razorpay_signature
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment verification data missing",
+        });
+      }
+
+      // 🔐 VERIFY SIGNATURE
+      const crypto = require("crypto");
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_SECRET)
+        .update(
+          payment.razorpay_order_id + "|" + payment.razorpay_payment_id
+        )
+        .digest("hex");
+
+      if (expectedSignature !== payment.razorpay_signature) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment verification failed",
+        });
+      }
+
+      paymentStatus = "Paid";
+      razorpayData = {
+        razorpay_order_id: payment.razorpay_order_id,
+        razorpay_payment_id: payment.razorpay_payment_id,
+        razorpay_signature: payment.razorpay_signature,
+      };
+    }
+
+    /* ================= CREATE ORDER ================= */
     const order = await Order.create({
       user: req.user._id,
       items: normalizedItems,
       address,
       paymentMethod: paymentMethod || "COD",
+      paymentStatus,
+      paymentDetails: razorpayData,
       total,
       status: "Placed",
     });
 
-    // 🔔 SOCKET
+    // 🔥 SOCKET
     global.io.emit("new-order", {
       orderId: order._id,
       total: order.total,
@@ -55,43 +107,31 @@ exports.createOrder = async (req, res) => {
     // ⚡ RESPOND FAST
     res.status(201).json({ success: true, order });
 
-  // 🔔 ADMIN BACKGROUND PUSH (SAFE & CLEAN)
-try {
-  const subs = await AdminPush.find({
-    endpoint: { $exists: true, $ne: "" },
-  });
+    /* ================= PUSH NOTIFICATIONS (NON-BLOCKING) ================= */
 
-  const payload = JSON.stringify({
-    title: "🛒 New Order",
-    body: `₹${order.total} order placed`,
-    image: order.items?.[0]?.image,
-  });
-
-  for (const s of subs) {
+    // ADMIN PUSH
     try {
-      await webpush.sendNotification(
-        s.subscription,
-        payload
-      );
-    } catch (err) {
-      console.error(
-        "❌ Admin push failed:",
-        err.message
-      );
+      const subs = await AdminPush.find({ endpoint: { $exists: true, $ne: "" } });
+      const payload = JSON.stringify({
+        title: "🛒 New Order",
+        body: `₹${order.total} order placed`,
+        image: order.items?.[0]?.image,
+      });
 
-      // 🧹 AUTO-REMOVE DEAD SUBSCRIPTIONS
-      if (err.statusCode === 404 || err.statusCode === 410) {
-        await AdminPush.deleteOne({ _id: s._id });
-        console.log("🧹 Removed expired admin subscription");
+      for (const s of subs) {
+        try {
+          await webpush.sendNotification(s.subscription, payload);
+        } catch (err) {
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            await AdminPush.deleteOne({ _id: s._id });
+          }
+        }
       }
+    } catch (err) {
+      console.error("ADMIN PUSH ERROR:", err.message);
     }
-  }
-} catch (err) {
-  console.error("ADMIN PUSH ERROR:", err.message);
-}
 
-
-    // 📲 USER PUSH (OPTIONAL BUT RECOMMENDED)
+    // USER PUSH
     try {
       const user = await User.findById(req.user._id);
       if (user?.expoPushToken) {

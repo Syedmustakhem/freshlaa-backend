@@ -29,24 +29,35 @@ const orderSchema = new mongoose.Schema(
       default: "COD",
     },
 
+    /* ===== PAYMENT FIELDS (CRITICAL) ===== */
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Paid", "Failed", "Refunded"],
+      default: "Pending",
+    },
+
+    paymentDetails: {
+      razorpay_order_id: { type: String },
+      razorpay_payment_id: { type: String },
+      razorpay_signature: { type: String },
+    },
+
     total: {
       type: Number,
       required: true,
     },
 
     status: {
-  type: String,
-  enum: [
-    "Placed",
-    "Packed",
-    "OutForDelivery",
-    "Delivered",
-    "Cancelled",
-  ],
-  default: "Placed",
-},
-
-
+      type: String,
+      enum: [
+        "Placed",
+        "Packed",
+        "OutForDelivery",
+        "Delivered",
+        "Cancelled",
+      ],
+      default: "Placed",
+    },
   },
   { timestamps: true }
 );
