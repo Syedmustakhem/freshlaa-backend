@@ -118,7 +118,7 @@ const Category = require("../src/models/Category");
     const SUB_CATEGORIES = {
       "Badam & Seeds": ["Chocolates", "Cookies", "Cream Biscuits", "Marie Digestive", "Kids Snacks"],
       "Berries": ["Fresh Berries", "Dried Berries", "Frozen Berries", "Exotic Fruits", "Organic Fruits"],
-      "Oats & Honey": ["Fresh Oats", "Pure Honey", "Sprouts", "Mixed Vegetables"],
+      "Oats & Honey": ["Fresh Oats", "fresh Honey", "Sprouts", "Mixed Vegetables"],
       "Home Made Masala Powders": ["Biryani Masala", "Chicken Masala", "Meat Masala", "Whole Spices"],
       "Basmati Rice": ["Premium Basmati", "Everyday Basmati", "Aged Basmati", "Mini Pack", "Bulk Pack"],
       "Regular Rice": ["Sona Masoori", "Ponni Rice", "Idli Rice", "Broken Rice"],
