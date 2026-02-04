@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const variantSchema = new mongoose.Schema({
   label: String,
   price: Number,
+  mrp: Number, // optional MRP for variant offers
 });
 
 const addonSchema = new mongoose.Schema({
@@ -24,7 +25,9 @@ const hotelMenuItemSchema = new mongoose.Schema(
     },
 
     categoryKey: { type: String, required: true },
-    basePrice: { type: Number, required: true },
+
+    mrp: { type: Number }, // 👈 OFFER / DISPLAY PRICE
+    basePrice: { type: Number, required: true }, // 👈 REAL SELLING PRICE
 
     variants: [variantSchema],
     addons: [addonSchema],
@@ -38,7 +41,6 @@ const hotelMenuItemSchema = new mongoose.Schema(
     },
 
     isAvailable: { type: Boolean, default: true },
-
     outOfStockUntil: Date,
   },
   { timestamps: true }

@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
+
+const HotelMenuItem = require("../models/HotelMenuItem");
 
 const {
   getHotelMenu,
@@ -8,15 +11,24 @@ const {
   disableHotelMenuItem,
 } = require("../controllers/hotelMenu.controller");
 
-/* APP */
+/* ================= APP ================= */
 router.get("/", getHotelMenu);
 
-/* ADMIN */
+/* ================= ADMIN ================= */
 router.get("/admin/:hotelId", async (req, res) => {
   try {
-    const items = await require("../models/HotelMenuItem").find({
-      hotelId: req.params.hotelId,
-    }).sort({ createdAt: -1 });
+    const { hotelId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(hotelId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid hotelId",
+      });
+    }
+
+    const items = await HotelMenuItem.find({ hotelId })
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const HotelMenuItem = require("../models/HotelMenuItem");
 const Restaurant = require("../models/Restaurant");
 
@@ -6,16 +7,14 @@ const getHotelMenu = async (req, res) => {
   try {
     const { hotelId, categoryKey } = req.query;
 
-    /* 🔴 hotelId IS MANDATORY */
-    if (!hotelId) {
+    if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
       return res.status(400).json({
         success: false,
-        message: "hotelId is required",
+        message: "Valid hotelId is required",
       });
     }
 
-    /* 🔎 CHECK RESTAURANT */
-    const restaurant = await Restaurant.findById(hotelId);
+    const restaurant = await Restaurant.findById(hotelId).lean();
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -23,7 +22,6 @@ const getHotelMenu = async (req, res) => {
       });
     }
 
-    /* 🔒 RESTAURANT CLOSED */
     if (!restaurant.isOpen) {
       return res.json({
         success: true,
@@ -32,7 +30,6 @@ const getHotelMenu = async (req, res) => {
       });
     }
 
-    /* 🧠 BUILD FILTER */
     const now = new Date();
 
     const filter = {
@@ -44,15 +41,13 @@ const getHotelMenu = async (req, res) => {
       ],
     };
 
-    /* 🧩 OPTIONAL CATEGORY FILTER */
     if (categoryKey) {
       filter.categoryKey = categoryKey;
     }
 
-    /* 🍽️ FETCH MENU */
-    const items = await HotelMenuItem.find(filter).sort({
-      createdAt: -1,
-    });
+    const items = await HotelMenuItem.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,
@@ -71,6 +66,15 @@ const getHotelMenu = async (req, res) => {
 /* ➕ ADD MENU ITEM (ADMIN) */
 const addHotelMenuItem = async (req, res) => {
   try {
+    const { mrp, basePrice } = req.body;
+
+    if (mrp && mrp < basePrice) {
+      return res.status(400).json({
+        success: false,
+        message: "MRP cannot be less than base price",
+      });
+    }
+
     const item = await HotelMenuItem.create(req.body);
     res.status(201).json({ success: true, data: item });
   } catch (err) {
@@ -80,20 +84,53 @@ const addHotelMenuItem = async (req, res) => {
 
 /* ✏️ UPDATE MENU ITEM (ADMIN) */
 const updateHotelMenuItem = async (req, res) => {
-  const updated = await HotelMenuItem.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true }
-  );
-  res.json({ success: true, data: updated });
+  try {
+    const { mrp, basePrice } = req.body;
+
+    if (mrp && basePrice && mrp < basePrice) {
+      return res.status(400).json({
+        success: false,
+        message: "MRP cannot be less than base price",
+      });
+    }
+
+    const updated = await HotelMenuItem.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 /* ❌ DISABLE MENU ITEM (ADMIN) */
 const disableHotelMenuItem = async (req, res) => {
-  await HotelMenuItem.findByIdAndUpdate(req.params.id, {
-    isAvailable: false,
-  });
-  res.json({ success: true });
+  try {
+    const updated = await HotelMenuItem.findByIdAndUpdate(req.params.id, {
+      isAvailable: false,
+    });
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 module.exports = {
