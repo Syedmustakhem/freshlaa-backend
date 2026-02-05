@@ -34,6 +34,15 @@ const hotelMenuItemSchema = new mongoose.Schema(
 
     availableFrom: { type: String, default: null },
     availableTo: { type: String, default: null },
+isBestseller: {
+  type: Boolean,
+  default: false,
+},
+
+isRecommended: {
+  type: Boolean,
+  default: false,
+},
 
     deliveryTime: {
       type: String,
