@@ -5,8 +5,9 @@ const Restaurant = require("../models/Restaurant");
 /* 📥 GET HOTEL MENU (APP) */
 const getHotelMenu = async (req, res) => {
   try {
-    const { hotelId, categoryKey } = req.query;
+    const { hotelId, categoryKey, foodType, availableOnly } = req.query;
 
+    /* ================= VALIDATION ================= */
     if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
       return res.status(400).json({
         success: false,
@@ -27,9 +28,11 @@ const getHotelMenu = async (req, res) => {
         success: true,
         restaurantClosed: true,
         data: [],
+        filters: [],
       });
     }
 
+    /* ================= BASE FILTER ================= */
     const now = new Date();
 
     const filter = {
@@ -41,18 +44,57 @@ const getHotelMenu = async (req, res) => {
       ],
     };
 
-    if (categoryKey) {
-      filter.categoryKey = categoryKey;
+    /* ================= APPLY QUERY FILTERS ================= */
+    if (categoryKey) filter.categoryKey = categoryKey;
+    if (foodType === "VEG") filter.foodType = "VEG";
+    if (foodType === "NON_VEG") filter.foodType = "NON_VEG";
+
+    if (availableOnly === "true") {
+      const time = now.toTimeString().slice(0, 5);
+      filter.$and = [
+        {
+          $or: [
+            { availableFrom: null },
+            { availableTo: null },
+            {
+              availableFrom: { $lte: time },
+              availableTo: { $gte: time },
+            },
+          ],
+        },
+      ];
     }
 
+    /* ================= FETCH MENU ================= */
     const items = await HotelMenuItem.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
+    /* ================= BUILD FILTER CHIPS ================= */
+    const filters = [{ key: "ALL", label: "All" }];
+
+    const hasVeg = await HotelMenuItem.exists({ hotelId, foodType: "VEG" });
+    const hasNonVeg = await HotelMenuItem.exists({ hotelId, foodType: "NON_VEG" });
+
+    if (hasVeg) filters.push({ key: "VEG", label: "🟢 Veg" });
+    if (hasNonVeg) filters.push({ key: "NON_VEG", label: "🔴 Non-Veg" });
+
+    filters.push({ key: "AVAILABLE", label: "⚡ Available Now" });
+
+    const categories = await HotelMenuItem.distinct("categoryKey", { hotelId });
+    categories.forEach((cat) => {
+      filters.push({
+        key: `CATEGORY:${cat}`,
+        label: cat.replace(/-/g, " "),
+      });
+    });
+
+    /* ================= RESPONSE ================= */
     res.json({
       success: true,
       restaurantClosed: false,
       data: items,
+      filters,
     });
   } catch (err) {
     console.error("Get Hotel Menu Error:", err);
