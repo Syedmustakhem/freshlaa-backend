@@ -5,7 +5,7 @@ const Restaurant = require("../models/Restaurant");
 /* 📥 GET HOTEL MENU (APP) */
 const getHotelMenu = async (req, res) => {
   try {
-    const { hotelId, categoryKey, foodType, availableOnly } = req.query;
+    const { hotelId, filterKey } = req.query;
 
     /* ================= VALIDATION ================= */
     if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
@@ -44,42 +44,80 @@ const getHotelMenu = async (req, res) => {
       ],
     };
 
-    /* ================= APPLY QUERY FILTERS ================= */
-    if (categoryKey) filter.categoryKey = categoryKey;
-    if (foodType === "VEG") filter.foodType = "VEG";
-    if (foodType === "NON_VEG") filter.foodType = "NON_VEG";
+    /* ================= APPLY FILTER KEY ================= */
+    if (filterKey && filterKey !== "ALL") {
+      // Veg / Non-Veg
+      if (filterKey === "VEG") filter.foodType = "VEG";
+      if (filterKey === "NON_VEG") filter.foodType = "NON_VEG";
 
-    if (availableOnly === "true") {
-      const time = now.toTimeString().slice(0, 5);
-      filter.$and = [
-        {
-          $or: [
-            { availableFrom: null },
-            { availableTo: null },
-            {
-              availableFrom: { $lte: time },
-              availableTo: { $gte: time },
-            },
-          ],
-        },
-      ];
+      // Bestseller / Recommended
+      if (filterKey === "BESTSELLER") filter.isBestseller = true;
+      if (filterKey === "RECOMMENDED") filter.isRecommended = true;
+
+      // Available now
+      if (filterKey === "AVAILABLE") {
+        const time = now.toTimeString().slice(0, 5);
+        filter.$and = [
+          {
+            $or: [
+              { availableFrom: null },
+              { availableTo: null },
+              {
+                availableFrom: { $lte: time },
+                availableTo: { $gte: time },
+              },
+            ],
+          },
+        ];
+      }
+
+      // Category
+      if (
+        typeof filterKey === "string" &&
+        filterKey.startsWith("CATEGORY:")
+      ) {
+        filter.categoryKey = filterKey.split(":")[1];
+      }
     }
 
     /* ================= FETCH MENU ================= */
     const items = await HotelMenuItem.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({
+        isBestseller: -1,
+        isRecommended: -1,
+        createdAt: -1,
+      })
       .lean();
 
     /* ================= BUILD FILTER CHIPS ================= */
     const filters = [{ key: "ALL", label: "All" }];
 
     const hasVeg = await HotelMenuItem.exists({ hotelId, foodType: "VEG" });
-    const hasNonVeg = await HotelMenuItem.exists({ hotelId, foodType: "NON_VEG" });
+    const hasNonVeg = await HotelMenuItem.exists({
+      hotelId,
+      foodType: "NON_VEG",
+    });
 
     if (hasVeg) filters.push({ key: "VEG", label: "🟢 Veg" });
     if (hasNonVeg) filters.push({ key: "NON_VEG", label: "🔴 Non-Veg" });
 
     filters.push({ key: "AVAILABLE", label: "⚡ Available Now" });
+
+    const hasBestseller = await HotelMenuItem.exists({
+      hotelId,
+      isBestseller: true,
+    });
+
+    const hasRecommended = await HotelMenuItem.exists({
+      hotelId,
+      isRecommended: true,
+    });
+
+    if (hasBestseller)
+      filters.push({ key: "BESTSELLER", label: "⭐ Bestseller" });
+
+    if (hasRecommended)
+      filters.push({ key: "RECOMMENDED", label: "👍 Recommended" });
 
     const categories = await HotelMenuItem.distinct("categoryKey", { hotelId });
     categories.forEach((cat) => {
@@ -90,7 +128,7 @@ const getHotelMenu = async (req, res) => {
     });
 
     /* ================= RESPONSE ================= */
-    res.json({
+    return res.json({
       success: true,
       restaurantClosed: false,
       data: items,
@@ -98,7 +136,7 @@ const getHotelMenu = async (req, res) => {
     });
   } catch (err) {
     console.error("Get Hotel Menu Error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -118,9 +156,12 @@ const addHotelMenuItem = async (req, res) => {
     }
 
     const item = await HotelMenuItem.create(req.body);
-    res.status(201).json({ success: true, data: item });
+    return res.status(201).json({ success: true, data: item });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
@@ -149,9 +190,12 @@ const updateHotelMenuItem = async (req, res) => {
       });
     }
 
-    res.json({ success: true, data: updated });
+    return res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
@@ -169,9 +213,12 @@ const disableHotelMenuItem = async (req, res) => {
       });
     }
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
