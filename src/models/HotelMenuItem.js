@@ -25,6 +25,29 @@ const hotelMenuItemSchema = new mongoose.Schema(
     },
 
     categoryKey: { type: String, required: true },
+filters: [
+  {
+    type: String,
+    enum: [
+      "pizza",
+      "burger",
+      "juices",
+      "non-veg-starters",
+      "veg-starters",
+      "curries",
+      "fried-rice",
+      "biryani",
+      "non-veg-curries",
+      "fast-food",
+      "butter-milk",
+      "dates-juices",
+      "dry-fruit-juices",
+      "egg",
+      "french-fries",
+    ],
+    index: true,
+  },
+],
 
     mrp: { type: Number }, // 👈 OFFER / DISPLAY PRICE
     basePrice: { type: Number, required: true }, // 👈 REAL SELLING PRICE

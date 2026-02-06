@@ -1,8 +1,11 @@
 const mongoose = require("mongoose");
 const HotelMenuItem = require("../models/HotelMenuItem");
 const Restaurant = require("../models/Restaurant");
+const { MENU_FILTERS } = require("../../constants/menuFilters");
 
-/* 📥 GET HOTEL MENU (APP) */
+/* =========================================================
+   📥 GET HOTEL MENU (APP)
+   ========================================================= */
 const getHotelMenu = async (req, res) => {
   try {
     const { hotelId, filterKey } = req.query;
@@ -71,12 +74,17 @@ const getHotelMenu = async (req, res) => {
         ];
       }
 
-      // Category
-      if (
-        typeof filterKey === "string" &&
-        filterKey.startsWith("CATEGORY:")
-      ) {
+      // Category filter
+      if (filterKey.startsWith("CATEGORY:")) {
         filter.categoryKey = filterKey.split(":")[1];
+      }
+
+      // 🔥 MENU FILTERS
+      if (filterKey.startsWith("FILTER:")) {
+        const menuFilter = filterKey.split(":")[1];
+        if (MENU_FILTERS.includes(menuFilter)) {
+          filter.filters = { $in: [menuFilter] };
+        }
       }
     }
 
@@ -127,6 +135,20 @@ const getHotelMenu = async (req, res) => {
       });
     });
 
+    /* ================= MENU FILTER CHIPS ================= */
+    const menuFilters = await HotelMenuItem.distinct("filters", { hotelId });
+
+    menuFilters
+      .filter(Boolean)
+      .forEach((f) => {
+        if (MENU_FILTERS.includes(f)) {
+          filters.push({
+            key: `FILTER:${f}`,
+            label: f.replace(/-/g, " "),
+          });
+        }
+      });
+
     /* ================= RESPONSE ================= */
     return res.json({
       success: true,
@@ -143,16 +165,30 @@ const getHotelMenu = async (req, res) => {
   }
 };
 
-/* ➕ ADD MENU ITEM (ADMIN) */
+/* =========================================================
+   ➕ ADD MENU ITEM (ADMIN)
+   ========================================================= */
 const addHotelMenuItem = async (req, res) => {
   try {
-    const { mrp, basePrice } = req.body;
+    const { mrp, basePrice, filters } = req.body;
 
     if (mrp && mrp < basePrice) {
       return res.status(400).json({
         success: false,
         message: "MRP cannot be less than base price",
       });
+    }
+
+    if (filters) {
+      const invalidFilters = filters.filter(
+        (f) => !MENU_FILTERS.includes(f)
+      );
+      if (invalidFilters.length) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid menu filters: ${invalidFilters.join(", ")}`,
+        });
+      }
     }
 
     const item = await HotelMenuItem.create(req.body);
@@ -165,16 +201,30 @@ const addHotelMenuItem = async (req, res) => {
   }
 };
 
-/* ✏️ UPDATE MENU ITEM (ADMIN) */
+/* =========================================================
+   ✏️ UPDATE MENU ITEM (ADMIN)
+   ========================================================= */
 const updateHotelMenuItem = async (req, res) => {
   try {
-    const { mrp, basePrice } = req.body;
+    const { mrp, basePrice, filters } = req.body;
 
     if (mrp && basePrice && mrp < basePrice) {
       return res.status(400).json({
         success: false,
         message: "MRP cannot be less than base price",
       });
+    }
+
+    if (filters) {
+      const invalidFilters = filters.filter(
+        (f) => !MENU_FILTERS.includes(f)
+      );
+      if (invalidFilters.length) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid menu filters: ${invalidFilters.join(", ")}`,
+        });
+      }
     }
 
     const updated = await HotelMenuItem.findByIdAndUpdate(
@@ -199,7 +249,9 @@ const updateHotelMenuItem = async (req, res) => {
   }
 };
 
-/* ❌ DISABLE MENU ITEM (ADMIN) */
+/* =========================================================
+   ❌ DISABLE MENU ITEM (ADMIN)
+   ========================================================= */
 const disableHotelMenuItem = async (req, res) => {
   try {
     const updated = await HotelMenuItem.findByIdAndUpdate(req.params.id, {
