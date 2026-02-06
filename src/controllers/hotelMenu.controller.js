@@ -63,12 +63,13 @@ const filterKey = req.query.filterKey?.trim();
       }
 
       // 🔥 MENU FILTERS
-      if (filterKey.startsWith("FILTER:")) {
-        const menuFilter = filterKey.split(":")[1];
-        if (MENU_FILTERS.includes(menuFilter)) {
-          filter.filters = { $in: [menuFilter] };
-        }
-      }
+     if (filterKey.startsWith("FILTER:")) {
+  const menuFilter = filterKey.split(":")[1];
+  if (MENU_FILTERS.includes(menuFilter)) {
+    filter.filters = { $exists: true, $in: [menuFilter] };
+  }
+}
+
     }
 
     /* ================= FETCH MENU ================= */
@@ -100,18 +101,25 @@ const filterKey = req.query.filterKey?.trim();
       filters.push({ key: "RECOMMENDED", label: "👍 Recommended" });
 
     const categories = await HotelMenuItem.distinct("categoryKey", { hotelId });
-    categories.forEach((cat) => {
-     if (!filters.some(fl => fl.key === `FILTER:${f}`)) {
-  filters.push({
-    key: `FILTER:${f}`,
-    label: f.replace(/-/g, " "),
-  });
-}
 
-    });
+categories
+  .filter(Boolean)
+  .forEach((cat) => {
+    const key = `CATEGORY:${cat}`;
+
+    if (!filters.some((fl) => fl.key === key)) {
+      filters.push({
+        key,
+        label: cat.replace(/-/g, " "),
+      });
+    }
+  });
 
     /* ================= MENU FILTER CHIPS ================= */
-    const menuFilters = await HotelMenuItem.distinct("filters", { hotelId });
+const menuFilters = await HotelMenuItem.distinct("filters", {
+  hotelId,
+  filters: { $exists: true, $ne: [] },
+});
 
     menuFilters
       .filter(Boolean)
