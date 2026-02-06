@@ -8,7 +8,8 @@ const { MENU_FILTERS } = require("../../constants/menuFilters");
    ========================================================= */
 const getHotelMenu = async (req, res) => {
   try {
-    const { hotelId, filterKey } = req.query;
+const { hotelId } = req.query;
+const filterKey = req.query.filterKey?.trim();
 
     /* ================= VALIDATION ================= */
     if (!hotelId || !mongoose.Types.ObjectId.isValid(hotelId)) {
@@ -50,29 +51,11 @@ const getHotelMenu = async (req, res) => {
     /* ================= APPLY FILTER KEY ================= */
     if (filterKey && filterKey !== "ALL") {
       // Veg / Non-Veg
-      if (filterKey === "VEG") filter.foodType = "VEG";
-      if (filterKey === "NON_VEG") filter.foodType = "NON_VEG";
 
       // Bestseller / Recommended
       if (filterKey === "BESTSELLER") filter.isBestseller = true;
       if (filterKey === "RECOMMENDED") filter.isRecommended = true;
 
-      // Available now
-      if (filterKey === "AVAILABLE") {
-        const time = now.toTimeString().slice(0, 5);
-        filter.$and = [
-          {
-            $or: [
-              { availableFrom: null },
-              { availableTo: null },
-              {
-                availableFrom: { $lte: time },
-                availableTo: { $gte: time },
-              },
-            ],
-          },
-        ];
-      }
 
       // Category filter
       if (filterKey.startsWith("CATEGORY:")) {
@@ -100,17 +83,6 @@ const getHotelMenu = async (req, res) => {
     /* ================= BUILD FILTER CHIPS ================= */
     const filters = [{ key: "ALL", label: "All" }];
 
-    const hasVeg = await HotelMenuItem.exists({ hotelId, foodType: "VEG" });
-    const hasNonVeg = await HotelMenuItem.exists({
-      hotelId,
-      foodType: "NON_VEG",
-    });
-
-    if (hasVeg) filters.push({ key: "VEG", label: "🟢 Veg" });
-    if (hasNonVeg) filters.push({ key: "NON_VEG", label: "🔴 Non-Veg" });
-
-    filters.push({ key: "AVAILABLE", label: "⚡ Available Now" });
-
     const hasBestseller = await HotelMenuItem.exists({
       hotelId,
       isBestseller: true,
@@ -129,10 +101,13 @@ const getHotelMenu = async (req, res) => {
 
     const categories = await HotelMenuItem.distinct("categoryKey", { hotelId });
     categories.forEach((cat) => {
-      filters.push({
-        key: `CATEGORY:${cat}`,
-        label: cat.replace(/-/g, " "),
-      });
+     if (!filters.some(fl => fl.key === `FILTER:${f}`)) {
+  filters.push({
+    key: `FILTER:${f}`,
+    label: f.replace(/-/g, " "),
+  });
+}
+
     });
 
     /* ================= MENU FILTER CHIPS ================= */
