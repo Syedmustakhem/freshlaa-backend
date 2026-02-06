@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
-  label: String,
+  key: {
+    type: String, // "half", "full"
+    required: true,
+  },
+  label: String, // "Half", "Full"
   price: Number,
-  mrp: Number, // optional MRP for variant offers
+  mrp: Number,
 });
 
 const addonSchema = new mongoose.Schema({
