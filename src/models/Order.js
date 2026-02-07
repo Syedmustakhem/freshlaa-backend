@@ -15,12 +15,48 @@ const orderSchema = new mongoose.Schema(
         price: Number,
         image: String,
         qty: Number,
+        
+        // 🆕 Optional fields - only populated for hotel orders
+        itemModel: {
+          type: String,
+          enum: ["HotelMenuItem", "Product"],
+          default: "Product" // Default to grocery
+        },
+        
+        // 🆕 Hotel-specific fields (optional)
+        variant: {
+          key: String,
+          label: String,
+          price: Number
+        },
+        selectedAddons: [{
+          name: String,
+          price: Number
+        }],
+        customizations: {
+          spiceLevel: String,
+          specialInstructions: String
+        },
+        hotelId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Restaurant"
+        }
       },
     ],
 
     address: {
       type: Object,
       required: true,
+    },
+
+    // 🆕 Scheduled delivery (optional - only for hotel orders)
+    scheduledFor: {
+      type: Date,
+      default: null
+    },
+    isScheduled: {
+      type: Boolean,
+      default: false
     },
 
     paymentMethod: {
@@ -61,5 +97,9 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// 🆕 Index for faster queries
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ "items.itemModel": 1 });
 
 module.exports = mongoose.model("Order", orderSchema);

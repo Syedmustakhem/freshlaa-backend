@@ -9,6 +9,9 @@ const {
   addHotelMenuItem,
   updateHotelMenuItem,
   disableHotelMenuItem,
+  getSimilarItems,
+  getRecentlyOrdered,
+  incrementViewCount,
 } = require("../controllers/hotelMenu.controller");
 
 /* ================= APP ================= */
@@ -45,5 +48,7 @@ router.get("/admin/:hotelId", async (req, res) => {
 router.post("/", addHotelMenuItem);
 router.put("/:id", updateHotelMenuItem);
 router.delete("/:id", disableHotelMenuItem);
-
+router.get("/hotel/menu/similar/:itemId", getSimilarItems);
+router.get("/hotel/menu/recently-ordered", getRecentlyOrdered);
+router.post("/hotel/menu/view/:itemId", incrementViewCount);
 module.exports = router;

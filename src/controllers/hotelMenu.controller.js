@@ -256,10 +256,118 @@ const disableHotelMenuItem = async (req, res) => {
     });
   }
 };
+/* =========================================================
+   🎯 GET SIMILAR ITEMS
+   ========================================================= */
+const getSimilarItems = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    
+    const item = await HotelMenuItem.findById(itemId).lean();
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found"
+      });
+    }
+
+    // Find similar items based on category and filters
+    const similar = await HotelMenuItem.find({
+      hotelId: item.hotelId,
+      _id: { $ne: itemId },
+      $or: [
+        { categoryKey: item.categoryKey },
+        { filters: { $in: item.filters || [] } }
+      ],
+      isAvailable: true
+    })
+    .limit(6)
+    .sort({ orderCount: -1 })
+    .lean();
+
+    return res.json({
+      success: true,
+      data: similar
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+/* =========================================================
+   📜 GET USER'S RECENTLY ORDERED ITEMS
+   ========================================================= */
+const getRecentlyOrdered = async (req, res) => {
+  try {
+    const { userId, hotelId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId required"
+      });
+    }
+
+    // Get user's last 10 orders from this hotel
+    const orders = await Order.find({
+      user: userId,
+      "items.hotelId": hotelId,
+      status: "Delivered"
+    })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .lean();
+
+    // Extract unique item IDs
+    const itemIds = [...new Set(
+      orders.flatMap(o => 
+        o.items
+          .filter(i => i.itemModel === "HotelMenuItem")
+          .map(i => i.productId)
+      )
+    )];
+
+    return res.json({
+      success: true,
+      data: itemIds
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
+/* =========================================================
+   📊 INCREMENT VIEW COUNT
+   ========================================================= */
+const incrementViewCount = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    
+    await HotelMenuItem.findByIdAndUpdate(itemId, {
+      $inc: { viewCount: 1 }
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
 
 module.exports = {
   getHotelMenu,
   addHotelMenuItem,
   updateHotelMenuItem,
   disableHotelMenuItem,
+  getSimilarItems,          // 🆕
+  getRecentlyOrdered,       // 🆕
+  incrementViewCount        // 🆕
 };
