@@ -116,18 +116,18 @@ const Category = require("../src/models/Category");
 
     /* ================= SUB-CATEGORIES ================= */
     const SUB_CATEGORIES = {
-      "Badam & Seeds": ["Chocolates", "Cookies", "Cream Biscuits", "Marie Digestive", "Kids Snacks"],
+      "Badam & Seeds": ["Badam & Cashew", "All Seeds", "Roasted Items", "Dry Berries", "Mixed Dryfruits"],
       "Berries": ["Fresh Berries", "Dried Berries", "Frozen Berries", "Exotic Fruits", "Organic Fruits"],
-      "Oats & Honey": ["Fresh Oats", "fresh Honey", "Sprouts", "Mixed Vegetables"],
-      "Home Made Masala Powders": ["Biryani Masala", "Chicken Masala", "Meat Masala", "Whole Spices"],
-      "Basmati Rice": ["Premium Basmati", "Everyday Basmati", "Aged Basmati", "Mini Pack", "Bulk Pack"],
+      "Oats & Honey": ["Oats", "Honey", "Weight Loss", "Mixed Vegetables"],
+      "Home Made Masala Powders": ["Home made Masala Powders", "Masala Powders", " All Spices", "Spices Powder"],
+      "Basmati & Regular Rice": ["Premium Basmati", "Regular Rice", "Brown Rice"],
       "Regular Rice": ["Sona Masoori", "Ponni Rice", "Idli Rice", "Broken Rice"],
-      "Atta, Dal & Sugar": ["Wheat Atta", "Multigrain Atta", "Dals", "Sugar Jaggery"],
-      "Pappad & Pickles": ["Papad", "Mango Pickles", "Mixed Pickles", "Chutneys"],
-      "Maggi & Noodles": ["Instant Noodles", "Cup Noodles", "Pasta", "Vermicelli"],
+      "Atta, Dal & Sugar": [" Atta & Oil", "Ghee", "Dal & Pulses", "Olive Oil"],
+      "Pappad & Pickles": ["Papad", "Home Made Pickles", "Mixed Pickles", "Chutneys"],
+      "Maggi & Noodles": ["Pasta & Noodles", " Roasted Semiya", "Pasta", "Vermicelli"],
       "Home Cleaning Products": ["Floor Cleaners", "Dishwash", "Toilet Cleaners", "Laundry"],
       "Bathing Soaps & Shampoo Products": ["Bathing Soaps", "Body Wash", "Shampoos", "Hair Oils"],
-      "Chocolates & Biscuits": ["Indian Sweets", "Namkeen", "Mixtures", "Festive Packs"],
+      "Chocolates & Biscuits": ["Chocoklates", "Biscuts", "Sweet", "Hot"],
     };
 
     /* ================= INSERT SUB-CATEGORIES ================= */
