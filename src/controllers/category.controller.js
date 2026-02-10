@@ -110,6 +110,7 @@ const getProductsBySection = async (req, res) => {
 /* ================= TOP LEVEL CATEGORIES ================= */
 const getTopCategoriesWithPreview = async (req, res) => {
   try {
+    // 1️⃣ Get top-level active categories
     const categories = await Category.find({
       isActive: true,
       $or: [
@@ -120,48 +121,71 @@ const getTopCategoriesWithPreview = async (req, res) => {
       .sort({ order: 1 })
       .lean();
 
-    const result = [];
+    if (!categories.length) {
+      return res.json({ success: true, data: [] });
+    }
 
-    for (const cat of categories) {
-      const products = await Product.find({
-        subCategory: cat.slug,
-        isActive: true,
-      })
-        .limit(4)
-        .select("images")
-        .lean();
+    const slugs = categories.map(c => c.slug);
 
-      let previewImages = products
-        .map(p => p.images?.[0])
-        .filter(Boolean);
+    // 2️⃣ Get product counts for all categories (single aggregation)
+    const productStats = await Product.aggregate([
+      {
+        $match: {
+          subCategory: { $in: slugs },
+          isActive: true
+        }
+      },
+      {
+        $group: {
+          _id: "$subCategory",
+          count: { $sum: 1 },
+          previewImages: { $push: { $arrayElemAt: ["$images", 0] } }
+        }
+      }
+    ]);
 
-      // 🔥 IMPORTANT: Fallback to category images
+    // Convert to map for fast lookup
+    const statsMap = {};
+    productStats.forEach(stat => {
+      statsMap[stat._id] = {
+        count: stat.count,
+        previewImages: stat.previewImages.slice(0, 4)
+      };
+    });
+
+    // 3️⃣ Build final response
+    const result = categories.map(cat => {
+      const stats = statsMap[cat.slug];
+
+      let previewImages = stats?.previewImages?.filter(Boolean) || [];
+
+      // Fallback to category images if no products
       if (previewImages.length === 0 && cat.images?.length) {
         previewImages = cat.images.slice(0, 4);
       }
 
-      result.push({
+      return {
         _id: cat._id,
         title: cat.title,
         slug: cat.slug,
         images: previewImages,
-      });
-    }
+        count: stats?.count || 0   // 🔥 REAL COUNT
+      };
+    });
 
     res.json({
       success: true,
-      data: result,
+      data: result
     });
 
   } catch (err) {
     console.error("Top categories preview error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to load top categories",
+      message: "Failed to load top categories"
     });
   }
 };
-
 
 
 const createCategory = async (req, res) => {
