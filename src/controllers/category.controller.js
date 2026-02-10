@@ -111,8 +111,8 @@ const getProductsBySection = async (req, res) => {
 const getTopCategoriesWithPreview = async (req, res) => {
   try {
     const categories = await Category.find({
-      parentSlug: null,
       isActive: true,
+      sectionId: null   // 🔥 only standalone categories
     })
       .sort({ order: 1 })
       .lean();
@@ -145,6 +145,7 @@ const getTopCategoriesWithPreview = async (req, res) => {
       success: true,
       data: result,
     });
+
   } catch (err) {
     console.error("Top categories preview error:", err);
     res.status(500).json({
@@ -153,6 +154,7 @@ const getTopCategoriesWithPreview = async (req, res) => {
     });
   }
 };
+
 
 const createCategory = async (req, res) => {
   try {
