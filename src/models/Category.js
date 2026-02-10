@@ -17,10 +17,10 @@ const CategorySchema = new mongoose.Schema(
       index: true,
     },
 
-    image: {
-      type: String,
-      default: null,
-    },
+    images: {
+  type: [String],
+  default: [],
+},
 
     // 🔥 hierarchy (used for future nesting if needed)
     parentSlug: {

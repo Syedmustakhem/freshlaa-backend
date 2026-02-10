@@ -108,32 +108,57 @@ const getProductsBySection = async (req, res) => {
   }
 };
 /* ================= TOP LEVEL CATEGORIES ================= */
-const getTopCategories = async (req, res) => {
+const getTopCategoriesWithPreview = async (req, res) => {
   try {
     const categories = await Category.find({
-      parentSlug: null,   // 🔥 only top-level
+      parentSlug: null,
       isActive: true,
     })
       .sort({ order: 1 })
       .lean();
 
+    const result = [];
+
+    for (const cat of categories) {
+      const products = await Product.find({
+        subCategory: cat.slug,
+        isActive: true,
+      })
+        .limit(4)
+        .select("images")
+        .lean();
+
+      const previewImages = products
+        .map(p => p.images?.[0])
+        .filter(Boolean);
+
+      result.push({
+        _id: cat._id,
+        title: cat.title,
+        slug: cat.slug,
+        images: previewImages,
+        count: products.length,
+      });
+    }
+
     res.json({
       success: true,
-      data: categories,
+      data: result,
     });
   } catch (err) {
-    console.error("getTopCategories error:", err);
+    console.error("Top categories preview error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to load categories",
+      message: "Failed to load top categories",
     });
   }
 };
+
 
 module.exports = {
   getZeptoCategories,
   getCategoriesBySection,
   getProductsBySection,
-  getTopCategories,   // 🔥 add this
+  getTopCategoriesWithPreview,   // 🔥 add this
 };
 
