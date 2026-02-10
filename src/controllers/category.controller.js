@@ -107,9 +107,33 @@ const getProductsBySection = async (req, res) => {
     });
   }
 };
+/* ================= TOP LEVEL CATEGORIES ================= */
+const getTopCategories = async (req, res) => {
+  try {
+    const categories = await Category.find({
+      parentSlug: null,   // 🔥 only top-level
+      isActive: true,
+    })
+      .sort({ order: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (err) {
+    console.error("getTopCategories error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load categories",
+    });
+  }
+};
 
 module.exports = {
   getZeptoCategories,
   getCategoriesBySection,
   getProductsBySection,
+  getTopCategories,   // 🔥 add this
 };
+

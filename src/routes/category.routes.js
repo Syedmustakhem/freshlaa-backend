@@ -9,5 +9,6 @@ console.log("CATEGORY CONTROLLER:", Object.keys(categoryController));
 router.get("/", categoryController.getZeptoCategories);
 router.get("/section/:sectionId", categoryController.getCategoriesBySection);
 // router.get("/landing/:slug", categoryController.getCategoryLanding);
+router.get("/top", categoryController.getTopCategories);
 
 module.exports = router;
