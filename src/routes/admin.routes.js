@@ -415,5 +415,31 @@ router.delete("/categories/:slug", adminAuth, async (req, res) => {
     });
   }
 });
+// UPDATE CATEGORY
+router.put("/categories/:id", adminAuth, async (req, res) => {
+  const { title, slug, isActive } = req.body;
+
+  const updated = await Category.findByIdAndUpdate(
+    req.params.id,
+    { title, slug, isActive },
+    { new: true }
+  );
+
+  res.json({ success: true, data: updated });
+});
+
+// TOGGLE STATUS
+router.patch("/categories/:id/status", adminAuth, async (req, res) => {
+  const cat = await Category.findById(req.params.id);
+  cat.isActive = !cat.isActive;
+  await cat.save();
+  res.json({ success: true });
+});
+
+// DELETE
+router.delete("/categories/:id", adminAuth, async (req, res) => {
+  await Category.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
+});
 
 module.exports = router;
