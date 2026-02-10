@@ -225,13 +225,19 @@ router.get("/users", adminAuth, async (req, res) => {
  */
 router.get("/categories", adminAuth, async (req, res) => {
   try {
-    const { sectionId } = req.query;
+    const { sectionId, displayType } = req.query;
 
     const query = {};
-    if (sectionId) query.sectionId = sectionId;
+
+    if (sectionId) {
+      query.sectionId = sectionId;
+    }
+
+    if (displayType) {
+      query.displayType = displayType;
+    }
 
     const categories = await Category.find(query)
-      .populate("sectionId", "title slug")
       .sort({ order: 1 })
       .lean();
 
@@ -240,7 +246,6 @@ router.get("/categories", adminAuth, async (req, res) => {
       data: categories,
     });
   } catch (err) {
-    console.error("ADMIN CATEGORIES ERROR:", err);
     res.status(500).json({
       success: false,
       message: "Failed to load categories",
