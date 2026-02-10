@@ -15,4 +15,12 @@ module.exports.MENU_FILTERS = [
   "dry-fruit-juices",
   "egg",
   "french-fries",
+  "dum-biryani",
+  "chicken-mandi",
+  "mutton-mandi",
+  "fish",
+  "dry-items",
+  "roti-items",
+  "veg-curries",
+  "nonveg-curries",
 ];
