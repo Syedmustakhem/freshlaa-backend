@@ -3,11 +3,13 @@ const Category = require("../models/Category");
 const CategorySection = require("../models/CategorySection");
 const Product = require("../models/Product");
 
-/* ================= HOME SECTIONS (ZEPTO HOME) ================= */
+/* =========================================================
+   1️⃣ ZEPTO HOME SECTIONS
+========================================================= */
 const getZeptoCategories = async (req, res) => {
   try {
     const sections = await CategorySection.find({
-      isActive: true, // ✅ use isActive
+      isActive: true,
     })
       .sort({ order: 1 })
       .lean();
@@ -31,8 +33,9 @@ const getZeptoCategories = async (req, res) => {
   }
 };
 
-/* ================= SUB-CATEGORIES BY SECTION ================= */
-/* ================= SUB-CATEGORIES BY SECTION ================= */
+/* =========================================================
+   2️⃣ SUB-CATEGORIES BY SECTION (ZEPTO ONLY)
+========================================================= */
 const getCategoriesBySection = async (req, res) => {
   try {
     const { sectionId } = req.params;
@@ -43,6 +46,7 @@ const getCategoriesBySection = async (req, res) => {
 
     const categories = await Category.find({
       sectionId: new mongoose.Types.ObjectId(sectionId),
+      displayType: "section", // 🔥 IMPORTANT
       isActive: true,
     })
       .sort({ order: 1 })
@@ -61,9 +65,9 @@ const getCategoriesBySection = async (req, res) => {
   }
 };
 
-
-
-/* ================= PRODUCTS BY SECTION + CATEGORY ================= */
+/* =========================================================
+   3️⃣ PRODUCTS BY SECTION + CATEGORY (ZEPTO ONLY)
+========================================================= */
 const getProductsBySection = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;
@@ -72,9 +76,9 @@ const getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    // find categories under section
     const categoryQuery = {
       sectionId: new mongoose.Types.ObjectId(sectionId),
+      displayType: "section", // 🔥 PREVENT MIXING
       isActive: true,
     };
 
@@ -88,10 +92,10 @@ const getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const slugs = categories.map(c => c.slug);
+    const slugs = categories.map((c) => c.slug);
 
     const products = await Product.find({
-      category: { $in: slugs }, // MUST MATCH SLUG
+      category: { $in: slugs },
       isActive: true,
     }).lean();
 
@@ -107,16 +111,16 @@ const getProductsBySection = async (req, res) => {
     });
   }
 };
-/* ================= TOP LEVEL CATEGORIES ================= */
+
+/* =========================================================
+   4️⃣ TOP PREVIEW CATEGORIES (BLINK STYLE)
+========================================================= */
 const getTopCategoriesWithPreview = async (req, res) => {
   try {
-    // 1️⃣ Get top-level active categories
+    // 1️⃣ Only top categories
     const categories = await Category.find({
+      displayType: "top",   // 🔥 ONLY TOP
       isActive: true,
-      $or: [
-        { parentSlug: null },
-        { parentSlug: { $exists: false } }
-      ]
     })
       .sort({ order: 1 })
       .lean();
@@ -125,39 +129,41 @@ const getTopCategoriesWithPreview = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const slugs = categories.map(c => c.slug);
+    const slugs = categories.map((c) => c.slug);
 
-    // 2️⃣ Get product counts for all categories (single aggregation)
+    // 2️⃣ Get real product counts + preview images
     const productStats = await Product.aggregate([
       {
         $match: {
           subCategory: { $in: slugs },
-          isActive: true
-        }
+          isActive: true,
+        },
       },
       {
         $group: {
           _id: "$subCategory",
           count: { $sum: 1 },
-          previewImages: { $push: { $arrayElemAt: ["$images", 0] } }
-        }
-      }
+          previewImages: {
+            $push: { $arrayElemAt: ["$images", 0] },
+          },
+        },
+      },
     ]);
 
-    // Convert to map for fast lookup
     const statsMap = {};
-    productStats.forEach(stat => {
+    productStats.forEach((stat) => {
       statsMap[stat._id] = {
         count: stat.count,
-        previewImages: stat.previewImages.slice(0, 4)
+        previewImages: stat.previewImages.slice(0, 4),
       };
     });
 
-    // 3️⃣ Build final response
-    const result = categories.map(cat => {
+    // 3️⃣ Build response
+    const result = categories.map((cat) => {
       const stats = statsMap[cat.slug];
 
-      let previewImages = stats?.previewImages?.filter(Boolean) || [];
+      let previewImages =
+        stats?.previewImages?.filter(Boolean) || [];
 
       // Fallback to category images if no products
       if (previewImages.length === 0 && cat.images?.length) {
@@ -169,39 +175,44 @@ const getTopCategoriesWithPreview = async (req, res) => {
         title: cat.title,
         slug: cat.slug,
         images: previewImages,
-        count: stats?.count || 0   // 🔥 REAL COUNT
+        count: stats?.count || 0,
       };
     });
 
     res.json({
       success: true,
-      data: result
+      data: result,
     });
-
   } catch (err) {
     console.error("Top categories preview error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to load top categories"
+      message: "Failed to load top categories",
     });
   }
 };
 
-
+/* =========================================================
+   5️⃣ CREATE CATEGORY (ADMIN)
+========================================================= */
 const createCategory = async (req, res) => {
   try {
-    const { title, slug, sectionId, isActive } = req.body;
-
-    const imageUrls = req.files?.map(
-      (file) => `${process.env.BASE_URL}/uploads/${file.filename}`
-    );
-
-    const category = await Category.create({
+    const {
       title,
       slug,
       sectionId,
       isActive,
-      images: imageUrls || [],
+      displayType,
+      images,
+    } = req.body;
+
+    const category = await Category.create({
+      title,
+      slug,
+      sectionId: sectionId || null,
+      displayType: displayType || "section",
+      isActive,
+      images: images || [],
     });
 
     res.json({
@@ -209,7 +220,7 @@ const createCategory = async (req, res) => {
       data: category,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Create category error:", err);
     res.status(500).json({
       success: false,
       message: "Failed to create category",
@@ -222,6 +233,5 @@ module.exports = {
   getCategoriesBySection,
   getProductsBySection,
   getTopCategoriesWithPreview,
-  createCategory,   // 🔥 add this
+  createCategory,
 };
-

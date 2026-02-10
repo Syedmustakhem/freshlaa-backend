@@ -18,25 +18,32 @@ const CategorySchema = new mongoose.Schema(
     },
 
     images: {
-  type: [String],
-  default: [],
-},
+      type: [String],
+      default: [],
+    },
 
-    // 🔥 hierarchy (used for future nesting if needed)
+    // 🔥 hierarchy (future nesting support)
     parentSlug: {
       type: String,
-      default: null, // null = top-level category
+      default: null,
       index: true,
     },
 
-    // 🔝 link sub-category to section
-   sectionId: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "CategorySection",
-  default: null,
-  index: true,
-},
+    // 🔝 optional section link (for Zepto style categories)
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CategorySection",
+      default: null,
+      index: true,
+    },
 
+    // 🔥 SUPER IMPORTANT (future scalable filter)
+    displayType: {
+      type: String,
+      enum: ["section", "top", "featured", "festival", "trending"],
+      default: "section",
+      index: true,
+    },
 
     order: {
       type: Number,
