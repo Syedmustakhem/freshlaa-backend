@@ -154,11 +154,40 @@ const getTopCategoriesWithPreview = async (req, res) => {
   }
 };
 
+const createCategory = async (req, res) => {
+  try {
+    const { title, slug, sectionId, isActive } = req.body;
+
+    const imageUrls = req.files?.map(
+      (file) => `${process.env.BASE_URL}/uploads/${file.filename}`
+    );
+
+    const category = await Category.create({
+      title,
+      slug,
+      sectionId,
+      isActive,
+      images: imageUrls || [],
+    });
+
+    res.json({
+      success: true,
+      data: category,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create category",
+    });
+  }
+};
 
 module.exports = {
   getZeptoCategories,
   getCategoriesBySection,
   getProductsBySection,
-  getTopCategoriesWithPreview,   // 🔥 add this
+  getTopCategoriesWithPreview,
+  createCategory,   // 🔥 add this
 };
 

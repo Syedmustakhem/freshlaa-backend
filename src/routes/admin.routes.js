@@ -307,6 +307,43 @@ router.patch("/categories/:slug/image", adminAuth, async (req, res) => {
     });
   }
 });
+router.patch("/categories/:slug/images", adminAuth, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { images } = req.body; // array of image URLs
+
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Images array is required",
+      });
+    }
+
+    const updated = await Category.findOneAndUpdate(
+      { slug },
+      { $set: { images } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (err) {
+    console.error("UPDATE CATEGORY IMAGES ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update category images",
+    });
+  }
+});
 
 
 module.exports = router;
