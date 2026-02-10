@@ -22,5 +22,4 @@ module.exports.MENU_FILTERS = [
   "dry-items",
   "roti-items",
   "veg-curries",
-  "nonveg-curries",
 ];
