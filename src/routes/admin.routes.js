@@ -344,6 +344,71 @@ router.patch("/categories/:slug/images", adminAuth, async (req, res) => {
     });
   }
 });
+router.post("/categories", adminAuth, async (req, res) => {
+  try {
+    const { title, slug, images, isActive } = req.body;
 
+    if (!title || !slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and slug are required",
+      });
+    }
+
+    const exists = await Category.findOne({ slug });
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Slug already exists",
+      });
+    }
+
+    const category = await Category.create({
+      title,
+      slug,
+      images: images || [],
+      isActive: isActive ?? true,
+    });
+
+    res.json({
+      success: true,
+      data: category,
+    });
+
+  } catch (err) {
+    console.error("ADMIN CREATE CATEGORY ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create category",
+    });
+  }
+});
+
+router.delete("/categories/:slug", adminAuth, async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const deleted = await Category.findOneAndDelete({ slug });
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Category deleted successfully",
+    });
+
+  } catch (err) {
+    console.error("ADMIN DELETE CATEGORY ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete category",
+    });
+  }
+});
 
 module.exports = router;
