@@ -30,12 +30,13 @@ const CategorySchema = new mongoose.Schema(
     },
 
     // 🔝 link sub-category to section
-    sectionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CategorySection",
-      required: true,              // IMPORTANT
-      index: true,
-    },
+   sectionId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "CategorySection",
+  default: null,
+  index: true,
+},
+
 
     order: {
       type: Number,
