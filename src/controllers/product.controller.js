@@ -75,6 +75,31 @@ exports.getAllProducts = async (req, res) => {
     });
   }
 };
+exports.getTrendingProducts = async (req, res) => {
+  try {
+    const trending = await Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.productId",
+          totalQty: { $sum: "$items.qty" },
+        },
+      },
+      { $sort: { totalQty: -1 } },
+      { $limit: 10 },
+    ]);
+
+    res.json({
+      success: true,
+      trending,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 /* ================= GET PRODUCT BY ID ================= */
 exports.getProductById = async (req, res) => {

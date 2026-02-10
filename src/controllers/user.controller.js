@@ -43,6 +43,22 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: "Profile update failed" });
   }
 };
+exports.getLoyaltyPoints = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    res.json({
+      success: true,
+      loyaltyPoints: user.loyaltyPoints,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 /* SAVE EXPO PUSH TOKEN */
 exports.savePushToken = async (req, res) => {
   try {

@@ -234,6 +234,43 @@ exports.cancelOrder = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+/* ================= GET LAST ORDER (QUICK REORDER) ================= */
+exports.getLastOrder = async (req, res) => {
+  try {
+    const order = await Order.findOne({ user: req.user._id })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+/* ================= GET ACTIVE ORDER ================= */
+exports.getActiveOrder = async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      user: req.user._id,
+      status: { $in: ["Placed", "Packed", "OutForDelivery"] },
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 /* ================= ADMIN: UPDATE ORDER STATUS ================= */
 exports.updateOrderStatus = async (req, res) => {
   try {
@@ -257,6 +294,14 @@ exports.updateOrderStatus = async (req, res) => {
     // ✅ Update status
     order.status = status;
     await order.save();
+    if (status === "Delivered") {
+  const rewardPoints = Math.floor(order.total * 0.05); // 5% reward
+
+  await User.findByIdAndUpdate(order.user, {
+    $inc: { loyaltyPoints: rewardPoints },
+  });
+}
+
 // 🔥 REALTIME: Notify admin & app about status update
 global.io.emit("order-updated", {
   orderId: order._id.toString(),

@@ -10,6 +10,8 @@ const {
   getOrderById,
   cancelOrder,
   updateOrderStatus,
+  getLastOrder,
+  getActiveOrder,
 } = require("../controllers/order.controller");
 
 /* ================= ADMIN ROUTES ================= */
@@ -18,6 +20,11 @@ router.put("/admin/:id/status", protect, admin, updateOrderStatus);
 /* ================= USER ROUTES ================= */
 router.post("/", protect, createOrder);
 router.get("/", protect, getMyOrders);
+
+// 🔥 IMPORTANT: Put specific routes BEFORE :id
+router.get("/last", protect, getLastOrder);
+router.get("/active", protect, getActiveOrder);
+
 router.get("/:id", protect, getOrderById);
 router.put("/:id/cancel", protect, cancelOrder);
 
