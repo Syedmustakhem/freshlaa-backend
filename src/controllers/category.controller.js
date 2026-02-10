@@ -112,7 +112,10 @@ const getTopCategoriesWithPreview = async (req, res) => {
   try {
     const categories = await Category.find({
       isActive: true,
-      sectionId: null   // 🔥 only standalone categories
+      $or: [
+        { parentSlug: null },
+        { parentSlug: { $exists: false } }
+      ]
     })
       .sort({ order: 1 })
       .lean();
@@ -128,16 +131,20 @@ const getTopCategoriesWithPreview = async (req, res) => {
         .select("images")
         .lean();
 
-      const previewImages = products
+      let previewImages = products
         .map(p => p.images?.[0])
         .filter(Boolean);
+
+      // 🔥 IMPORTANT: Fallback to category images
+      if (previewImages.length === 0 && cat.images?.length) {
+        previewImages = cat.images.slice(0, 4);
+      }
 
       result.push({
         _id: cat._id,
         title: cat.title,
         slug: cat.slug,
         images: previewImages,
-        count: products.length,
       });
     }
 
@@ -154,6 +161,7 @@ const getTopCategoriesWithPreview = async (req, res) => {
     });
   }
 };
+
 
 
 const createCategory = async (req, res) => {
