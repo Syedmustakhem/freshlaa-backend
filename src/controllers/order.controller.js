@@ -256,7 +256,7 @@ exports.getActiveOrder = async (req, res) => {
   try {
     const order = await Order.findOne({
       user: req.user._id,
-      status: { $in: ["Placed", "Packed", "OutForDelivery"] },
+      status: { $ne: "Delivered" },
     }).sort({ createdAt: -1 });
 
     res.json({
