@@ -389,32 +389,7 @@ router.post("/categories", adminAuth, async (req, res) => {
   }
 });
 
-router.delete("/categories/:slug", adminAuth, async (req, res) => {
-  try {
-    const { slug } = req.params;
 
-    const deleted = await Category.findOneAndDelete({ slug });
-
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Category deleted successfully",
-    });
-
-  } catch (err) {
-    console.error("ADMIN DELETE CATEGORY ERROR:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete category",
-    });
-  }
-});
 // UPDATE CATEGORY
 router.put("/categories/:id", adminAuth, async (req, res) => {
   const { title, slug, isActive } = req.body;
