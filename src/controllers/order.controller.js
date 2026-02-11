@@ -252,16 +252,16 @@ exports.getLastOrder = async (req, res) => {
   }
 };
 /* ================= GET ACTIVE ORDER ================= */
-exports.getActiveOrder = async (req, res) => {
+exports.getActiveOrders = async (req, res) => {
   try {
-    const order = await Order.findOne({
+    const orders = await Order.find({
       user: req.user._id,
       status: { $nin: ["Delivered", "Cancelled"] },
     }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      order,
+      orders,
     });
   } catch (error) {
     res.status(500).json({

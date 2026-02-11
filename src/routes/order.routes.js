@@ -23,7 +23,7 @@ router.get("/", protect, getMyOrders);
 
 // 🔥 IMPORTANT: Put specific routes BEFORE :id
 router.get("/last", protect, getLastOrder);
-router.get("/active", protect, getActiveOrder);
+router.get("/active", protect, getActiveOrders);
 
 router.get("/:id", protect, getOrderById);
 router.put("/:id/cancel", protect, cancelOrder);
