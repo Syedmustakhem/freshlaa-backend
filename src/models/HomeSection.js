@@ -6,6 +6,7 @@ const HomeSectionSchema = new mongoose.Schema({
     required: true,
     enum: [
       "HEADER",
+      "ACTIVE_ORDER", 
       "BANNERS",
       "SPONSORED",
       "CATEGORIES",

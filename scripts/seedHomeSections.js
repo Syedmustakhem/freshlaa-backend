@@ -40,6 +40,11 @@ mongoose.connect(process.env.MONGO_URI);
           },
         },
       },
+{
+  type: "ACTIVE_ORDER",
+  order: 2,
+  data: {},
+},
 
       {
         type: "BANNERS",
