@@ -11,7 +11,7 @@ const {
   cancelOrder,
   updateOrderStatus,
   getLastOrder,
-  getActiveOrder,
+  getActiveOrders,
 } = require("../controllers/order.controller");
 
 /* ================= ADMIN ROUTES ================= */
