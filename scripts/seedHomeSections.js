@@ -48,7 +48,7 @@ mongoose.connect(process.env.MONGO_URI);
 
       {
         type: "BANNERS",
-        order: 2,
+        order: 3,
         data: {
           image: [
             "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg",
@@ -61,7 +61,7 @@ mongoose.connect(process.env.MONGO_URI);
 
     {
   type: "SPONSORED",
-  order: 3,
+  order: 4,
   schemaVersion: 1,
   data: {
     layout: "SPLIT_50",
@@ -94,20 +94,26 @@ mongoose.connect(process.env.MONGO_URI);
 },
 
 
-      { type: "CATEGORIES", order: 4 },
+      { type: "CATEGORIES", order: 5 },
 
       {
         type: "ZEPTO_CATEGORIES",
-        order: 5,
+        order: 6,
         data: {
           title: "Explore Categories",
         },
       },
 
-      { type: "DAILY_NEEDS", order: 6 },
-      { type: "ZOMATO", order: 7 },
-      { type: "TRENDING", order: 8 },
-      { type: "FOOTER", order: 9 },
+      { type: "DAILY_NEEDS", order: 7 },
+      {
+  type: "QUICK_REORDER",
+  order: 8,
+  data: {},
+},
+
+      { type: "ZOMATO", order: 9 },
+      { type: "TRENDING", order: 10 },
+      { type: "FOOTER", order: 11 },
     ]);
 
     console.log("✅ HomeSection seeded successfully with HEADER search CTA");
