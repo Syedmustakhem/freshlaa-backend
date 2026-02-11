@@ -1,46 +1,66 @@
 const mongoose = require("mongoose");
 
+/* ================= VARIANT SCHEMA ================= */
 const variantSchema = new mongoose.Schema({
   key: {
-    type: String, // "half", "full"
+    type: String,
+    required: true, // auto-generated from label in frontend
+  },
+  label: {
+    type: String,
     required: true,
   },
-  label: String, // "Half", "Full"
-  price: Number,
+  price: {
+    type: Number,
+    required: true,
+  },
   mrp: Number,
 });
 
+/* ================= ADDON SCHEMA ================= */
 const addonSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
-  isAvailable: { type: Boolean, default: true },
+  name: {
+    type: String,
+    required: true,
+  },
+  price: {
+    type: Number,
+    required: true,
+  },
+  isAvailable: {
+    type: Boolean,
+    default: true,
+  },
   category: {
     type: String,
     enum: ["topping", "side", "drink", "extra"],
-    default: "extra"
-  }
-});
-
-const customizationSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    enum: ["spice-level", "size", "addon"],
-    required: true
+    default: "extra",
   },
-  label: String,
-  options: [{
-    value: String,
-    label: String,
-    priceModifier: { type: Number, default: 0 }
-  }]
 });
 
+/* ================= MAIN MENU SCHEMA ================= */
 const hotelMenuItemSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    description: String,
-    image: String,
-    images: [String], // 🆕 Multiple images for carousel
+    /* BASIC INFO */
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: "",
+    },
+
+    image: {
+      type: String,
+      default: "",
+    },
+
+    images: {
+      type: [String],
+      default: [],
+    },
 
     hotelId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -48,7 +68,14 @@ const hotelMenuItemSchema = new mongoose.Schema(
       required: true,
     },
 
-    categoryKey: { type: String, required: true },
+    /* CATEGORY */
+    categoryKey: {
+      type: String,
+      required: true,
+      index: true,
+    },
+
+    /* FILTERS (MATCHING FRONTEND EXACTLY) */
     filters: [
       {
         type: String,
@@ -56,8 +83,8 @@ const hotelMenuItemSchema = new mongoose.Schema(
           "pizza",
           "burger",
           "juices",
-          "non-veg-starters",
           "veg-starters",
+          "non-veg-starters",
           "curries",
           "fried-rice",
           "biryani",
@@ -68,31 +95,58 @@ const hotelMenuItemSchema = new mongoose.Schema(
           "dry-fruit-juices",
           "egg",
           "french-fries",
+
+          // ✅ Newly added frontend filters
+          "dum-biryani",
+          "chicken-mandi",
+          "mutton-mandi",
+          "fish",
+          "dry-items",
+          "roti-items",
+          "veg-curries",
         ],
         index: true,
       },
     ],
 
-    mrp: { type: Number },
-    basePrice: { type: Number, required: true },
+    /* PRICING */
+    basePrice: {
+      type: Number,
+      default: null, // NOT required anymore (variants supported)
+    },
 
-    variants: [variantSchema],
-    addons: [addonSchema],
-    customizations: [customizationSchema], // 🆕 Spice levels, sizes, etc.
+    mrp: {
+      type: Number,
+      default: null,
+    },
 
-    // 🆕 Recommendations
-    similarItems: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "HotelMenuItem"
-    }],
+    variants: {
+      type: [variantSchema],
+      default: [],
+    },
 
-    // 🆕 Popularity tracking
-    orderCount: { type: Number, default: 0 },
-    viewCount: { type: Number, default: 0 },
+    addons: {
+      type: [addonSchema],
+      default: [],
+    },
 
-    availableFrom: { type: String, default: null },
-    availableTo: { type: String, default: null },
-    
+    /* TIMING */
+    availableFrom: {
+      type: String,
+      default: null,
+    },
+
+    availableTo: {
+      type: String,
+      default: null,
+    },
+
+    deliveryTime: {
+      type: String,
+      default: "20-30 mins",
+    },
+
+    /* BADGES */
     isBestseller: {
       type: Boolean,
       default: false,
@@ -103,29 +157,38 @@ const hotelMenuItemSchema = new mongoose.Schema(
       default: false,
     },
 
-    deliveryTime: {
-      type: String,
-      default: "20–30 mins",
+    isAvailable: {
+      type: Boolean,
+      default: true,
     },
 
-    isAvailable: { type: Boolean, default: true },
-    outOfStockUntil: Date,
-    
-    // 🆕 Nutrition info (optional)
-    nutritionInfo: {
-      calories: Number,
-      protein: Number,
-      carbs: Number,
-      fat: Number
-    }
+    outOfStockUntil: {
+      type: Date,
+      default: null,
+    },
+
+    /* ANALYTICS */
+    orderCount: {
+      type: Number,
+      default: 0,
+    },
+
+    viewCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
+
+/* ================= INDEXES ================= */
 
 hotelMenuItemSchema.index({
   hotelId: 1,
   categoryKey: 1,
   isAvailable: 1,
 });
+
+/* ================= EXPORT ================= */
 
 module.exports = mongoose.model("HotelMenuItem", hotelMenuItemSchema);
