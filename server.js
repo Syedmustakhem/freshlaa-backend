@@ -7,14 +7,12 @@ const { Server } = require("socket.io");
 const app = require("./app");
 const connectDB = require("./src/config/db");
 
-connectDB(); // ✅ KEEP THIS
+connectDB();
 
 const PORT = process.env.PORT || 5000;
 
-// 🔥 CREATE HTTP SERVER
 const server = http.createServer(app);
 
-// 🔥 ATTACH SOCKET.IO
 const io = new Server(server, {
   cors: {
     origin: [
@@ -27,19 +25,35 @@ const io = new Server(server, {
   },
 });
 
-// 🔥 MAKE SOCKET AVAILABLE EVERYWHERE
 global.io = io;
 
-// 🔥 SOCKET CONNECTION
+/* ================= SOCKET CONNECTION ================= */
 io.on("connection", (socket) => {
-  console.log("🟢 Admin connected:", socket.id);
+  console.log("🟢 Client connected:", socket.id);
+
+  /* 🔥 JOIN ORDER ROOM */
+  socket.on("join-order", (orderId) => {
+    if (!orderId) return;
+
+    const roomId = String(orderId); // very important
+    socket.join(roomId);
+
+    console.log(`📦 Socket ${socket.id} joined order room: ${roomId}`);
+  });
+
+  /* 🔥 LEAVE ORDER ROOM (optional) */
+  socket.on("leave-order", (orderId) => {
+    const roomId = String(orderId);
+    socket.leave(roomId);
+    console.log(`🚪 Socket ${socket.id} left room: ${roomId}`);
+  });
 
   socket.on("disconnect", () => {
-    console.log("🔴 Admin disconnected:", socket.id);
+    console.log("🔴 Client disconnected:", socket.id);
   });
 });
 
-// 🔥 START SERVER
+/* ================= START SERVER ================= */
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Freshlaa backend + Socket.io running on port ${PORT}`);
 });

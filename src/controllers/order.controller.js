@@ -304,10 +304,12 @@ exports.updateOrderStatus = async (req, res) => {
 }
 
 // 🔥 REALTIME: Notify admin & app about status update
-global.io.emit("order-updated", {
-  orderId: order._id.toString(),
-  status,
-});
+global.io
+  .to(order._id.toString())   // 🔥 send only to this order room
+  .emit("order-updated", {
+    orderId: order._id.toString(),
+    status,
+  });
 
 
     // ✅ Respond immediately (IMPORTANT)
