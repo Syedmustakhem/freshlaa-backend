@@ -2,11 +2,12 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
 const sendPush = require("../utils/sendPush");
+const { sendWhatsAppTemplate } = require("../services/whatsapp.service");
 
 const AdminPush = require("../models/AdminPush");
 const webpush = require("web-push");
 
-// VAPID CONFIG (ONCE)
+// VAPID CONFIG
 webpush.setVapidDetails(
   "mailto:support@freshlaa.com",
   process.env.VAPID_PUBLIC_KEY,
@@ -16,78 +17,38 @@ webpush.setVapidDetails(
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
   try {
-    const {
-      items,
-      address,
-      paymentMethod,
-      total,
-      payment, // 👈 Razorpay payload (for ONLINE)
-    } = req.body;
+    const { items, address, paymentMethod, total, payment } = req.body;
 
-    if (!Array.isArray(items) || !items.length) {
+    if (!Array.isArray(items) || !items.length)
       return res.status(400).json({ success: false, message: "No items in order" });
-    }
 
-    if (!address || typeof address !== "object") {
+    if (!address || typeof address !== "object")
       return res.status(400).json({ success: false, message: "Address missing" });
-    }
 
-    if (!total || total <= 0) {
+    if (!total || total <= 0)
       return res.status(400).json({ success: false, message: "Invalid total" });
-    }
 
-    const normalizedItems = items.map((item) => ({
-      productId: item.productId || item._id || "",
-      name: item.name || item.title || "Item",
-      image: item.image || "",
-      price: Number(item.price || item.finalPrice || 0),
-      qty: Number(item.qty || 1),
-    }));
-
-    /* ================= ONLINE PAYMENT VERIFICATION ================= */
     let paymentStatus = "Pending";
     let razorpayData = null;
 
     if (paymentMethod === "ONLINE") {
-      if (
-        !payment?.razorpay_payment_id ||
-        !payment?.razorpay_order_id ||
-        !payment?.razorpay_signature
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Payment verification data missing",
-        });
-      }
-
-      // 🔐 VERIFY SIGNATURE
       const crypto = require("crypto");
+
       const expectedSignature = crypto
         .createHmac("sha256", process.env.RAZORPAY_SECRET)
-        .update(
-          payment.razorpay_order_id + "|" + payment.razorpay_payment_id
-        )
+        .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
         .digest("hex");
 
-      if (expectedSignature !== payment.razorpay_signature) {
-        return res.status(400).json({
-          success: false,
-          message: "Payment verification failed",
-        });
-      }
+      if (expectedSignature !== payment.razorpay_signature)
+        return res.status(400).json({ success: false, message: "Payment verification failed" });
 
       paymentStatus = "Paid";
-      razorpayData = {
-        razorpay_order_id: payment.razorpay_order_id,
-        razorpay_payment_id: payment.razorpay_payment_id,
-        razorpay_signature: payment.razorpay_signature,
-      };
+      razorpayData = payment;
     }
 
-    /* ================= CREATE ORDER ================= */
     const order = await Order.create({
       user: req.user._id,
-      items: normalizedItems,
+      items,
       address,
       paymentMethod: paymentMethod || "COD",
       paymentStatus,
@@ -96,40 +57,25 @@ exports.createOrder = async (req, res) => {
       status: "Placed",
     });
 
-    // 🔥 SOCKET
     global.io.emit("new-order", {
       orderId: order._id,
       total: order.total,
-      items: order.items,
-      createdAt: order.createdAt,
     });
 
-    // ⚡ RESPOND FAST
     res.status(201).json({ success: true, order });
-
-    /* ================= PUSH NOTIFICATIONS (NON-BLOCKING) ================= */
 
     // ADMIN PUSH
     try {
-      const subs = await AdminPush.find({ endpoint: { $exists: true, $ne: "" } });
+      const subs = await AdminPush.find();
       const payload = JSON.stringify({
         title: "🛒 New Order",
         body: `₹${order.total} order placed`,
-        image: order.items?.[0]?.image,
       });
 
       for (const s of subs) {
-        try {
-          await webpush.sendNotification(s.subscription, payload);
-        } catch (err) {
-          if (err.statusCode === 404 || err.statusCode === 410) {
-            await AdminPush.deleteOne({ _id: s._id });
-          }
-        }
+        await webpush.sendNotification(s.subscription, payload).catch(() => {});
       }
-    } catch (err) {
-      console.error("ADMIN PUSH ERROR:", err.message);
-    }
+    } catch {}
 
     // USER PUSH
     try {
@@ -142,13 +88,72 @@ exports.createOrder = async (req, res) => {
           data: { orderId: order._id.toString() },
         });
       }
-    } catch (err) {
-      console.error("USER PUSH ERROR:", err.message);
+    } catch {}
+
+    // WHATSAPP
+    try {
+      const user = await User.findById(req.user._id);
+      if (user?.phone) {
+        await sendWhatsAppTemplate(
+          user.phone.replace("+", ""),
+          "order_placed",
+          [order._id, order.total]
+        );
+      }
+    } catch (e) {
+      console.log("WA error:", e.message);
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to place order" });
+  }
+};
+
+/* ================= UPDATE ORDER STATUS ================= */
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId, status } = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+    order.status = status;
+    await order.save();
+
+    res.json({ success: true, order });
+
+    const user = await User.findById(order.user);
+
+    // PUSH
+    if (user?.expoPushToken) {
+      sendPush({
+        expoPushToken: user.expoPushToken,
+        title: "Order Update",
+        body: `Your order is now ${status}`,
+        data: { orderId: order._id.toString(), status },
+      });
     }
 
+    // WHATSAPP
+    if (user?.phone) {
+      const map = {
+        Packed: "order_packed",
+        OutForDelivery: "order_out_for_delivery",
+        Delivered: "order_delivered",
+        Cancelled: "order_cancelled",
+      };
+
+      if (map[status]) {
+        await sendWhatsAppTemplate(
+          user.phone.replace("+", ""),
+          map[status],
+          [order._id]
+        );
+      }
+    }
   } catch (error) {
-    console.error("Create order error:", error);
-    res.status(500).json({ success: false, message: "Failed to place order" });
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to update order" });
   }
 };
 
