@@ -3,6 +3,7 @@ const Order = require("../models/Order");
 const User = require("../models/User");
 const sendPush = require("../utils/sendPush");
 const { sendWhatsAppTemplate } = require("../services/whatsapp.service");
+const crypto = require("crypto");
 
 const AdminPush = require("../models/AdminPush");
 const webpush = require("web-push");
@@ -32,7 +33,17 @@ exports.createOrder = async (req, res) => {
     let razorpayData = null;
 
     if (paymentMethod === "ONLINE") {
-      const crypto = require("crypto");
+      if (
+  !payment?.razorpay_order_id ||
+  !payment?.razorpay_payment_id ||
+  !payment?.razorpay_signature
+) {
+  return res.status(400).json({
+    success: false,
+    message: "Payment data missing",
+  });
+}
+
 
       const expectedSignature = crypto
         .createHmac("sha256", process.env.RAZORPAY_SECRET)
@@ -61,6 +72,7 @@ exports.createOrder = async (req, res) => {
       orderId: order._id,
       total: order.total,
     });
+const user = await User.findById(req.user._id);
 
     res.status(201).json({ success: true, order });
 
@@ -72,14 +84,20 @@ exports.createOrder = async (req, res) => {
         body: `₹${order.total} order placed`,
       });
 
-      for (const s of subs) {
-        await webpush.sendNotification(s.subscription, payload).catch(() => {});
-      }
+    for (const s of subs) {
+  try {
+    await webpush.sendNotification(s.subscription, payload);
+  } catch (err) {
+    if (err.statusCode === 404 || err.statusCode === 410) {
+      await AdminPush.deleteOne({ _id: s._id });
+    }
+  }
+}
+
     } catch {}
 
     // USER PUSH
     try {
-      const user = await User.findById(req.user._id);
       if (user?.expoPushToken) {
         sendPush({
           expoPushToken: user.expoPushToken,
@@ -92,7 +110,6 @@ exports.createOrder = async (req, res) => {
 
     // WHATSAPP
     try {
-      const user = await User.findById(req.user._id);
       if (user?.phone) {
         await sendWhatsAppTemplate(
           user.phone.replace("+", ""),
@@ -106,54 +123,6 @@ exports.createOrder = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Failed to place order" });
-  }
-};
-
-/* ================= UPDATE ORDER STATUS ================= */
-exports.updateOrderStatus = async (req, res) => {
-  try {
-    const { orderId, status } = req.body;
-
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
-
-    order.status = status;
-    await order.save();
-
-    res.json({ success: true, order });
-
-    const user = await User.findById(order.user);
-
-    // PUSH
-    if (user?.expoPushToken) {
-      sendPush({
-        expoPushToken: user.expoPushToken,
-        title: "Order Update",
-        body: `Your order is now ${status}`,
-        data: { orderId: order._id.toString(), status },
-      });
-    }
-
-    // WHATSAPP
-    if (user?.phone) {
-      const map = {
-        Packed: "order_packed",
-        OutForDelivery: "order_out_for_delivery",
-        Delivered: "order_delivered",
-        Cancelled: "order_cancelled",
-      };
-
-      if (map[status]) {
-        await sendWhatsAppTemplate(
-          user.phone.replace("+", ""),
-          map[status],
-          [order._id]
-        );
-      }
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Failed to update order" });
   }
 };
 
@@ -229,6 +198,34 @@ exports.cancelOrder = async (req, res) => {
 
     order.status = "Cancelled";
     await order.save();
+    // 📲 WhatsApp Cancel Notification
+try {
+  const user = await User.findById(order.user);
+  if (user?.phone) {
+    await sendWhatsAppTemplate(
+      user.phone.replace("+", ""),
+      "order_cancelled",
+      [order._id]
+    );
+  }
+} catch (err) {
+  console.log("WA Cancel error:", err.message);
+}
+
+// 🔔 Push Cancel Notification
+try {
+  const user = await User.findById(order.user);
+  if (user?.expoPushToken) {
+    sendPush({
+      expoPushToken: user.expoPushToken,
+      title: "Order Cancelled",
+      body: "❌ Your order has been cancelled",
+      data: { orderId: order._id.toString() },
+    });
+  }
+} catch (err) {
+  console.log("Push Cancel error:", err.message);
+}
 
     res.json({
       success: true,
@@ -300,6 +297,8 @@ exports.updateOrderStatus = async (req, res) => {
     // ✅ Update status
     order.status = status;
     await order.save();
+    const user = await User.findById(order.user);
+
     if (status === "Delivered") {
   const rewardPoints = Math.floor(order.total * 0.05); // 5% reward
 
@@ -326,7 +325,6 @@ global.io
 
     // 🔔 SEND PUSH IN BACKGROUND (NON-BLOCKING)
     try {
-      const user = await User.findById(order.user);
 
       if (user?.expoPushToken) {
         let title = "Order Update";
@@ -366,6 +364,29 @@ global.io
     } catch (pushErr) {
       console.error("PUSH ERROR (IGNORED):", pushErr.message);
     }
+    // 📲 WHATSAPP (NON-BLOCKING)
+try {
+
+  if (user?.phone) {
+    const map = {
+      Packed: "order_packed",
+      OutForDelivery: "order_out_for_delivery",
+      Delivered: "order_delivered",
+      Cancelled: "order_cancelled",
+    };
+
+    if (map[status]) {
+      await sendWhatsAppTemplate(
+        user.phone.replace("+", ""),
+        map[status],
+        [order._id]
+      );
+    }
+  }
+} catch (waErr) {
+  console.error("WA ERROR:", waErr.message);
+}
+
   } catch (error) {
     console.error("UPDATE ORDER STATUS ERROR:", error);
     res.status(500).json({
@@ -373,4 +394,5 @@ global.io
       message: "Failed to update order status",
     });
   }
+  
 };
