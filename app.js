@@ -84,6 +84,30 @@ app.get("/", (req, res) => {
     message: "Freshlaa Backend Running ✅",
   });
 });
+/* ================= WHATSAPP WEBHOOK ================= */
+
+const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+
+// 1️⃣ Verification Endpoint
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("✅ WhatsApp Webhook Verified");
+    return res.status(200).send(challenge);
+  } else {
+    console.log("❌ Verification Failed");
+    return res.sendStatus(403);
+  }
+});
+
+// 2️⃣ Receive Messages & Status
+app.post("/webhook", (req, res) => {
+  console.log("📩 WhatsApp Webhook:", JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
 
 /* ================= 404 ================= */
 
