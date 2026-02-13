@@ -100,7 +100,6 @@ exports.getTrendingProducts = async (req, res) => {
     });
   }
 };
-
 /* ================= GET PRODUCT BY ID ================= */
 exports.getProductById = async (req, res) => {
   try {
@@ -201,23 +200,6 @@ exports.getFeaturedProducts = async (req, res) => {
   });
 };
 
-/* ================= TRENDING ================= */
-exports.getTrendingProducts = async (req, res) => {
-  const products = await Product.find({
-    isTrending: true,
-    isActive: true,
-    stock: { $gt: 0 },
-  }).lean();
-
-  products.forEach(p => {
-    p.variants = p.variants.filter(v => v.stock > 0);
-  });
-
-  res.json({
-    success: true,
-    data: products,
-  });
-};
 
 /* ================= OFFERS ================= */
 exports.getOfferProducts = async (req, res) => {
@@ -314,12 +296,12 @@ exports.getProductsBySubCategory = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;
 
-    if (!sectionId || !subCategory) {
-      return res.status(400).json({
-        success: false,
-        message: "sectionId and subCategory are required",
-      });
-    }
+  if (!subCategory) {
+  return res.status(400).json({
+    success: false,
+    message: "subCategory is required",
+  });
+}
 
     const products = await Product.find({
       sectionId,
@@ -377,9 +359,9 @@ exports.updateProduct = async (req, res) => {
       product.sectionId = data.sectionId;
     }
 
-    if (data.subCategory) {
-      product.subCategory = data.subCategory;
-    }
+    if (data.category) {
+  product.subCategory = data.category.toLowerCase();
+}
 
     // IMAGES
     if (Array.isArray(data.images) && data.images.length > 0) {
