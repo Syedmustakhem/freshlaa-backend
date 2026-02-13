@@ -268,12 +268,12 @@ if (!Array.isArray(data.images) || data.images.length === 0) {
   });
 }
 
-    if (!data.sectionId || !data.subCategory) {
-      return res.status(400).json({
-        success: false,
-        message: "sectionId and subCategory are required",
-      });
-    }
+   if (!data.name || !data.category) {
+  return res.status(400).json({
+    success: false,
+    message: "Name and category are required",
+  });
+}
 
     if (!Array.isArray(data.variants) || data.variants.length === 0) {
       return res.status(400).json({
@@ -292,12 +292,9 @@ if (!Array.isArray(data.images) || data.images.length === 0) {
     data.stock = variants.reduce((sum, v) => sum + v.stock, 0);
 
     // keep old category for backward compatibility
-if (!data.category) {
-  data.category = data.subCategory.toLowerCase();
-} else {
-  data.category = data.category.toLowerCase();
-}
-
+data.category = data.category.toLowerCase();
+data.sectionId = data.sectionId || null;
+data.subCategory = data.category; // keep compatibility if needed
     const product = await Product.create(data);
 
     res.status(201).json({
