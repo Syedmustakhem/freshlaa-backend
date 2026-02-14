@@ -488,6 +488,7 @@ exports.toggleProductStatus = async (req, res) => {
 };
 
 /* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
+/* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
 exports.getProductsBySection = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;
@@ -496,31 +497,22 @@ exports.getProductsBySection = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    // 1️⃣ Find categories under section
-    const categoryQuery = {
+    let query = {
       sectionId,
       isActive: true,
+      stock: { $gt: 0 },
     };
 
-    if (subCategory && subCategory !== "Top Picks") {
-      categoryQuery.title = subCategory;
+    // 🔥 TOP PICKS (NO subCategory selected)
+    if (!subCategory) {
+      query.isFeatured = true;   // ✅ ONLY featured products
+    } 
+    // 🔥 NORMAL SUB CATEGORY
+    else {
+      query.subCategory = subCategory.toLowerCase();
     }
 
-    const categories = await Category.find(categoryQuery).lean();
-
-    if (!categories.length) {
-      return res.json({ success: true, data: [] });
-    }
-
-    // 2️⃣ Extract slugs
-    const categorySlugs = categories.map(c => c.slug);
-
-    // 3️⃣ Find products by category slug
-    const products = await Product.find({
-      category: { $in: categorySlugs },
-      isActive: true,
-      stock: { $gt: 0 },
-    })
+    const products = await Product.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -529,6 +521,7 @@ exports.getProductsBySection = async (req, res) => {
     });
 
     res.json({ success: true, data: products });
+
   } catch (err) {
     console.error("getProductsBySection error:", err);
     res.status(500).json({
