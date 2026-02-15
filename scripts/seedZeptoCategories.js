@@ -127,7 +127,7 @@ const Category = require("../src/models/Category");
       "Maggi & Noodles": ["Pasta & Noodles", " Roasted Semiya", "Pasta", "Vermicelli"],
       "Home Cleaning Products": ["Floor Cleaners", "Dishwash", "Toilet Cleaners", "Laundry"],
       "Bathing Soaps & Shampoo Products": ["Bathing Soaps", "Body Wash", "Shampoos", "Hair Oils"],
-      "Chocolates & Biscuits": ["Chocoklates", "Biscuts", "Sweet", "Hot"],
+      "Chocolates & Biscuits": ["Chocoklates", "Biscuts", "Sweet", "Hot item"],
     };
 
     /* ================= INSERT SUB-CATEGORIES ================= */
