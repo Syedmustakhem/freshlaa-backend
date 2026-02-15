@@ -5,19 +5,21 @@ const HomeSectionSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-  "HEADER",
-  "ACTIVE_ORDER",   // 👈 ADD THIS
-  "BANNERS",
-  "SPONSORED",
-  "CATEGORIES",
-  "ZEPTO_CATEGORIES",
-  "DAILY_NEEDS",
-  "QUICK_REORDER",
-  "ZOMATO",
-  "TRENDING",
-  "FOOTER",
-],
-
+      "HEADER",
+      "ACTIVE_ORDER",
+      "RAMADAN_SPECIAL",    // 👈 NEW - Add Ramadan section
+      "BANNERS",
+      "SPONSORED",
+      "CATEGORIES",
+      "ZEPTO_CATEGORIES",
+      "DAILY_NEEDS",
+      "QUICK_REORDER",
+      "ZOMATO",
+      "TRENDING",
+      "LOYALTY_REWARDS",
+      "REVIEWS",
+      "FOOTER",
+    ],
   },
 
   order: {
