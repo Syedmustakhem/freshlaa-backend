@@ -107,8 +107,8 @@ const CategorySection = require("../src/models/CategorySection");
         isActive: true,
       },
       {
-        title: "Fast Food",
-        slug: "fast-food",
+        title: "Dairy",
+        slug: "dairy",
         image: null,
         parentSlug: null,
         sectionId: foodSection._id,
@@ -116,8 +116,8 @@ const CategorySection = require("../src/models/CategorySection");
         isActive: true,
       },
       {
-        title: "Pani Puri & More",
-        slug: "pani-puri-more",
+        title: "Fresh Vegetables",
+        slug: "fresh vegetables",
         image: null,
         parentSlug: null,
         sectionId: foodSection._id,
