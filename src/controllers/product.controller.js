@@ -486,8 +486,6 @@ exports.toggleProductStatus = async (req, res) => {
     });
   }
 };
-
-/* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
 /* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
 exports.getProductsBySection = async (req, res) => {
   try {
