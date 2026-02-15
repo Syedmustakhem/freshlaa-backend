@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 
 const variantSchema = new mongoose.Schema({
-label: { type: String, trim: true, default: "" },  unit: { type: String, enum: ["kg", "g", "l", "ml", "pcs"], required: true },
+  label: { type: String, required: true, trim: true },
+  unit: { type: String, enum: ["kg", "g", "l", "ml", "pcs"], required: true },
   value: { type: Number, required: true, min: 0.001 },
   price: { type: Number, required: true, min: 0 },
   mrp: { type: Number, min: 0 },
@@ -16,19 +17,19 @@ const productSchema = new mongoose.Schema(
     description: { type: String, default: "" },
 
     /* ================= NEW (IMPORTANT) ================= */
-   sectionId: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "CategorySection",
-  required: false,   // ✅ make optional
-  default: null
-},
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CategorySection",
+      required: true,
+      index: true,
+    },
 
     subCategory: {
-  type: String,
-  trim: true,
-  index: true,
-  default: null,
-},
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
 
     /* ================= OLD CATEGORY (KEEP FOR BACKWARD COMPATIBILITY) ================= */
     category: {
