@@ -9,7 +9,7 @@ const razorpay = new Razorpay({
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
   try {
-    const amount = req.body?.amount; // amount MUST be in paise
+    const amount = req.body?.amount * 100; // 🔥 FIXED
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
@@ -19,7 +19,7 @@ exports.createOrder = async (req, res) => {
     }
 
     const order = await razorpay.orders.create({
-      amount, // ✅ already in paise
+      amount, 
       currency: "INR",
       receipt: `order_${Date.now()}`,
       payment_capture: 1,
