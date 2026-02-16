@@ -46,9 +46,9 @@ exports.createOrder = async (req, res) => {
 
 
       const expectedSignature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_SECRET)
-        .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
-        .digest("hex");
+  .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+  .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
+  .digest("hex");
 
       if (expectedSignature !== payment.razorpay_signature)
         return res.status(400).json({ success: false, message: "Payment verification failed" });
