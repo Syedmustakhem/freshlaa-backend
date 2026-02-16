@@ -19,7 +19,7 @@ const Category = require("../src/models/Category");
       {
         title: "Badam & Seeds",
         slug: "badam-seeds",
-        image: "https://cdn.app/sections/chocolates-biscuits.png",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1771218096/WhatsApp_Image_2026-02-16_at_10.12.27_AM_ergpug.jpg",
         order: 1,
         columns: 3,
         isActive: true,
@@ -35,7 +35,7 @@ const Category = require("../src/models/Category");
       {
         title: "Home Made Masala Powders",
         slug: "home-made-masala-powders",
-        image: "https://cdn.app/sections/chicken-biryani-masala.png",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1771217987/WhatsApp_Image_2026-02-16_at_10.12.24_AM_u3hbxg.jpg",
         order: 3,
         columns: 3,
         isActive: true,
@@ -51,7 +51,7 @@ const Category = require("../src/models/Category");
       {
         title: "Atta, Dal & Sugar",
         slug: "atta-dal-sugar",
-        image: "https://cdn.app/sections/atta-dal-sugar.png",
+        image: "hhttps://res.cloudinary.com/dxiujfq7i/image/upload/v1771218258/WhatsApp_Image_2026-02-16_at_10.12.25_AM2_mvo6er.jpg",
         order: 5,
         columns: 3,
         isActive: true,
@@ -68,7 +68,7 @@ const Category = require("../src/models/Category");
       {
         title: "Home Cleaning Products",
         slug: "home-cleaning-products",
-        image: "https://cdn.app/sections/home-cleaning.png",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1771219422/WhatsApp_Image_2026-02-16_at_10.12.26_AM_dlkqic.jpg",
         order: 7,
         columns: 3,
         isActive: true,
@@ -84,8 +84,16 @@ const Category = require("../src/models/Category");
       {
         title: "Chocolates & Biscuits",
         slug: "chocolates-biscuits",
-        image: "https://cdn.app/sections/sweets-snacks.png",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1771218096/WhatsApp_Image_2026-02-16_at_10.12.26_AM_w6nuqu.jpg",
         order: 9,
+        columns: 3,
+        isActive: true,
+      },
+       {
+        title: "Ryhthu & Angadi",
+        slug: "rythu-angadi",
+        image: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1771218096/WhatsApp_Image_2026-02-16_at_10.12.26_AM_w6nuqu.jpg",
+        order: 10,
         columns: 3,
         isActive: true,
       },
@@ -102,6 +110,7 @@ const Category = require("../src/models/Category");
       "Home Cleaning Products": ["Floor Cleaners", "Dishwash", "Toilet Cleaners", "Laundry"],
       "Bathing Soaps & Shampoo Products": ["Bathing Soaps", "Body Wash", "Shampoos", "Hair Oils"],
       "Chocolates & Biscuits": ["Chocoklates", "Biscuts", "Sweet", "Hot item"],
+      "Rythu & Angadi": ["urea","pesticides","nature","pure","fresh","natural","fresh"],
     };
 
     /* ================= INSERT SUB-CATEGORIES ================= */
