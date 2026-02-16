@@ -196,42 +196,80 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
+    // 🔥 REFUND LOGIC (IMPORTANT)
+    if (
+      order.paymentMethod === "ONLINE" &&
+      order.paymentStatus === "Paid" &&
+      order.paymentDetails?.razorpay_payment_id &&
+      order.paymentStatus !== "Refunded"
+    ) {
+      try {
+        const refund = await razorpay.payments.refund(
+          order.paymentDetails.razorpay_payment_id,
+          {
+            amount: order.total * 100, // refund in paise
+          }
+        );
+
+        console.log("✅ Refund Success:", refund.id);
+
+        order.paymentStatus = "Refunded";
+        order.refundId = refund.id;
+
+      } catch (refundError) {
+        console.error("❌ Refund Failed:", refundError);
+        return res.status(500).json({
+          success: false,
+          message: "Order cancelled but refund failed. Please contact support.",
+        });
+      }
+    }
+
+    // ✅ Now cancel order
     order.status = "Cancelled";
     await order.save();
-    // 📲 WhatsApp Cancel Notification
-try {
-  const user = await User.findById(order.user);
-  if (user?.phone) {
-    await sendWhatsAppTemplate(
-      user.phone.replace("+", ""),
-      "order_cancelled",
-      [order._id]
-    );
-  }
-} catch (err) {
-  console.log("WA Cancel error:", err.message);
-}
 
-// 🔔 Push Cancel Notification
-try {
-  const user = await User.findById(order.user);
-  if (user?.expoPushToken) {
-    sendPush({
-      expoPushToken: user.expoPushToken,
-      title: "Order Cancelled",
-      body: "❌ Your order has been cancelled",
-      data: { orderId: order._id.toString() },
-    });
-  }
-} catch (err) {
-  console.log("Push Cancel error:", err.message);
-}
+    const user = await User.findById(order.user);
+
+    // 📲 WhatsApp Notification
+    try {
+      if (user?.phone) {
+        await sendWhatsAppTemplate(
+          user.phone.replace("+", ""),
+          "order_cancelled",
+          [order._id]
+        );
+      }
+    } catch (err) {
+      console.log("WA Cancel error:", err.message);
+    }
+
+    // 🔔 Push Notification
+    try {
+      if (user?.expoPushToken) {
+        sendPush({
+          expoPushToken: user.expoPushToken,
+          title: "Order Cancelled",
+          body:
+            order.paymentMethod === "ONLINE"
+              ? "❌ Order cancelled. Refund initiated."
+              : "❌ Your order has been cancelled",
+          data: { orderId: order._id.toString() },
+        });
+      }
+    } catch (err) {
+      console.log("Push Cancel error:", err.message);
+    }
 
     res.json({
       success: true,
-      message: "Order cancelled",
+      message:
+        order.paymentMethod === "ONLINE"
+          ? "Order cancelled and refund initiated"
+          : "Order cancelled",
       order,
     });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
