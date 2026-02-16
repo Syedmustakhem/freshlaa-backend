@@ -2,12 +2,14 @@ const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema(
   {
+    /* ================= USER ================= */
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
+    /* ================= ITEMS ================= */
     items: [
       {
         productId: String,
@@ -15,49 +17,57 @@ const orderSchema = new mongoose.Schema(
         price: Number,
         image: String,
         qty: Number,
-        
-        // 🆕 Optional fields - only populated for hotel orders
+
+        // Grocery or Hotel
         itemModel: {
           type: String,
           enum: ["HotelMenuItem", "Product"],
-          default: "Product" // Default to grocery
+          default: "Product",
         },
-        
-        // 🆕 Hotel-specific fields (optional)
+
+        // Hotel optional fields
         variant: {
           key: String,
           label: String,
-          price: Number
+          price: Number,
         },
-        selectedAddons: [{
-          name: String,
-          price: Number
-        }],
+
+        selectedAddons: [
+          {
+            name: String,
+            price: Number,
+          },
+        ],
+
         customizations: {
           spiceLevel: String,
-          specialInstructions: String
+          specialInstructions: String,
         },
+
         hotelId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Restaurant"
-        }
+          ref: "Restaurant",
+        },
       },
     ],
 
+    /* ================= DELIVERY ================= */
     address: {
       type: Object,
       required: true,
     },
 
-    // 🆕 Scheduled delivery (optional - only for hotel orders)
     scheduledFor: {
       type: Date,
-      default: null
+      default: null,
     },
+
     isScheduled: {
       type: Boolean,
-      default: false
+      default: false,
     },
+
+    /* ================= PAYMENT ================= */
 
     paymentMethod: {
       type: String,
@@ -65,7 +75,6 @@ const orderSchema = new mongoose.Schema(
       default: "COD",
     },
 
-    /* ===== PAYMENT FIELDS (CRITICAL) ===== */
     paymentStatus: {
       type: String,
       enum: ["Pending", "Paid", "Failed", "Refunded"],
@@ -78,10 +87,32 @@ const orderSchema = new mongoose.Schema(
       razorpay_signature: { type: String },
     },
 
+    /* ================= REFUND ================= */
+
+    refundId: {
+      type: String,
+      default: null,
+    },
+
+    refundStatus: {
+      type: String,
+      enum: ["None", "Initiated", "Processed", "Failed"],
+      default: "None",
+    },
+
+    refundAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    /* ================= ORDER TOTAL ================= */
+
     total: {
       type: Number,
       required: true,
     },
+
+    /* ================= ORDER STATUS ================= */
 
     status: {
       type: String,
@@ -98,8 +129,10 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🆕 Index for faster queries
+/* ================= INDEXES ================= */
+
 orderSchema.index({ user: 1, createdAt: -1 });
-orderSchema.index({ "items.itemModel": 1 });
+orderSchema.index({ "paymentDetails.razorpay_payment_id": 1 });
+orderSchema.index({ refundId: 1 });
 
 module.exports = mongoose.model("Order", orderSchema);
