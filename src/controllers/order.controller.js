@@ -112,10 +112,15 @@ const user = await User.findById(req.user._id);
     try {
       if (user?.phone) {
         await sendWhatsAppTemplate(
-          user.phone.replace("+", ""),
-          "order_placed",
-          [order._id, order.total]
-        );
+  user.phone.replace("+", ""),
+  "order_placed",
+  [
+    user.name || "Customer",                 // {{1}}
+    order.items[0]?.hotelId ? "Freshlaa Restaurant" : "Freshlaa Grocery", // {{2}}
+    order._id.toString(),                    // {{3}}
+    `₹${order.total}`                        // {{4}}
+  ]
+);
       }
     } catch (e) {
       console.log("WA error:", e.message);
