@@ -19,18 +19,13 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    const amount = amountInRupees * 100; // convert to paise
-
     const order = await razorpay.orders.create({
-      amount,
+      amount: amountInRupees * 100,
       currency: "INR",
       receipt: `order_${Date.now()}`,
     });
 
-    return res.json({
-      success: true,
-      order,
-    });
+    return res.json({ success: true, order });
 
   } catch (error) {
     console.error("❌ Razorpay create order error:", error);
@@ -72,12 +67,6 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    // 🔥 Mark order as Paid (extra safety)
-    await Order.findOneAndUpdate(
-      { "paymentDetails.razorpay_order_id": razorpay_order_id },
-      { paymentStatus: "Paid" }
-    );
-
     return res.json({
       success: true,
       message: "Payment verified",
@@ -93,26 +82,29 @@ exports.verifyPayment = async (req, res) => {
 };
 
 
-/* ================= WEBHOOK (ENTERPRISE SAFE) ================= */
+/* ================= WEBHOOK ================= */
 exports.razorpayWebhook = async (req, res) => {
   try {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers["x-razorpay-signature"];
 
+    // 🔥 IMPORTANT: req.body is raw buffer
     const expectedSignature = crypto
       .createHmac("sha256", webhookSecret)
-      .update(JSON.stringify(req.body))
+      .update(req.body)
       .digest("hex");
 
     if (signature !== expectedSignature) {
+      console.log("❌ Invalid webhook signature");
       return res.status(400).json({ success: false });
     }
 
-    const event = req.body.event;
+    const body = JSON.parse(req.body.toString());
+    const event = body.event;
 
-    /* 🔥 PAYMENT CAPTURED */
+    /* ================= PAYMENT CAPTURED ================= */
     if (event === "payment.captured") {
-      const payment = req.body.payload.payment.entity;
+      const payment = body.payload.payment.entity;
 
       await Order.findOneAndUpdate(
         { "paymentDetails.razorpay_payment_id": payment.id },
@@ -122,9 +114,9 @@ exports.razorpayWebhook = async (req, res) => {
       console.log("✅ Payment captured:", payment.id);
     }
 
-    /* 🔥 REFUND PROCESSED */
+    /* ================= REFUND PROCESSED ================= */
     if (event === "refund.processed") {
-      const refund = req.body.payload.refund.entity;
+      const refund = body.payload.refund.entity;
 
       await Order.findOneAndUpdate(
         { refundId: refund.id },
@@ -140,7 +132,7 @@ exports.razorpayWebhook = async (req, res) => {
     return res.json({ success: true });
 
   } catch (error) {
-    console.error("❌ Webhook error:", error);
+    console.error("🔥 Webhook error:", error);
     return res.status(500).json({ success: false });
   }
 };

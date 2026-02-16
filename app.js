@@ -38,6 +38,8 @@ const offerRoutes = require(
 
 /* ================= MIDDLEWARE ================= */
 
+/* ================= MIDDLEWARE ================= */
+
 app.use(
   cors({
     origin: [
@@ -52,9 +54,15 @@ app.use(
   })
 );
 
+/* 🔥 Razorpay Webhook RAW */
+app.use(
+  "/api/razorpay/webhook",
+  express.raw({ type: "*/*" })
+);
+
+/* Normal JSON for everything else */
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-
 /* ================= ROUTES ================= */
 
 app.use("/api/auth", authRoutes);
