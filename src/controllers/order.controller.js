@@ -417,14 +417,16 @@ try {
       Delivered: "order_delivered",
       Cancelled: "order_cancelled",
     };
-
-    if (map[status]) {
-      await sendWhatsAppTemplate(
-        user.phone.replace("+", ""),
-        map[status],
-        [order._id]
-      );
-    }
+if (map[status]) {
+  await sendWhatsAppTemplate(
+    user.phone.replace("+", ""),
+    map[status],
+    [
+      user.name || "Customer",      // {{1}}
+      order._id.toString()          // {{2}}
+    ]
+  );
+}
   }
 } catch (waErr) {
   console.error("WA ERROR:", waErr.message);
