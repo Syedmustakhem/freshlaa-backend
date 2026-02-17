@@ -37,32 +37,29 @@ mongoose.connect(process.env.MONGO_URI);
           },
         },
       },
+
       {
         type: "ACTIVE_ORDER",
         order: 2,
         data: {},
       },
-      
-      // 🌙 RAMADAN SPECIAL SECTION - ENHANCED
+
+      // 🌙 RAMADAN SPECIAL SECTION
       {
         type: "RAMADAN_SPECIAL",
         order: 3,
         data: {
           title: "Ramadan Mubarak",
           subtitle: "Special Offers Just For You",
-          
-          // Categories for filtering
           categories: [
-            { id: "all", name: "All", icon: "🌙" },
-            { id: "dates", name: "Dates", icon: "🌴" },
-            { id: "dry-fruits", name: "Dry Fruits", icon: "🥜" },
-            { id: "beverages", name: "Beverages", icon: "🥤" },
-            { id: "sweets", name: "Sweets", icon: "🍬" },
-            { id: "combo", name: "Combo Packs", icon: "🎁" },
+            { id: "all",        name: "All",         icon: "🌙" },
+            { id: "dates",      name: "Dates",       icon: "🌴" },
+            { id: "dry-fruits", name: "Dry Fruits",  icon: "🥜" },
+            { id: "beverages",  name: "Beverages",   icon: "🥤" },
+            { id: "sweets",     name: "Sweets",      icon: "🍬" },
+            { id: "combo",      name: "Combo Packs", icon: "🎁" },
           ],
-
           offers: [
-            // DATES SECTION
             {
               id: 1,
               title: "Premium Ajwa Dates",
@@ -75,11 +72,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "dates",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "dates_001", categoryId: "dates" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "dates_001", categoryId: "dates" } },
             },
             {
               id: 2,
@@ -93,11 +86,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "dates",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "dates_002", categoryId: "dates" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "dates_002", categoryId: "dates" } },
             },
             {
               id: 3,
@@ -111,14 +100,8 @@ mongoose.connect(process.env.MONGO_URI);
               category: "dates",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "dates_003", categoryId: "dates" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "dates_003", categoryId: "dates" } },
             },
-
-            // DRY FRUITS SECTION
             {
               id: 4,
               title: "Mixed Dry Fruits",
@@ -131,11 +114,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "dry-fruits",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "dryfruits_001", categoryId: "dry-fruits" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "dryfruits_001", categoryId: "dry-fruits" } },
             },
             {
               id: 5,
@@ -149,11 +128,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "dry-fruits",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "dryfruits_002", categoryId: "dry-fruits" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "dryfruits_002", categoryId: "dry-fruits" } },
             },
             {
               id: 6,
@@ -167,14 +142,8 @@ mongoose.connect(process.env.MONGO_URI);
               category: "dry-fruits",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "dryfruits_003", categoryId: "dry-fruits" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "dryfruits_003", categoryId: "dry-fruits" } },
             },
-
-            // BEVERAGES SECTION
             {
               id: 7,
               title: "Rooh Afza 800ml",
@@ -187,11 +156,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "beverages",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "beverages_001", categoryId: "beverages" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "beverages_001", categoryId: "beverages" } },
             },
             {
               id: 8,
@@ -205,14 +170,8 @@ mongoose.connect(process.env.MONGO_URI);
               category: "beverages",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "beverages_002", categoryId: "beverages" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "beverages_002", categoryId: "beverages" } },
             },
-
-            // SWEETS SECTION
             {
               id: 9,
               title: "Baklava Box",
@@ -225,11 +184,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "sweets",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "sweets_001", categoryId: "sweets" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "sweets_001", categoryId: "sweets" } },
             },
             {
               id: 10,
@@ -243,11 +198,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "sweets",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "sweets_002", categoryId: "sweets" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "sweets_002", categoryId: "sweets" } },
             },
             {
               id: 11,
@@ -261,14 +212,8 @@ mongoose.connect(process.env.MONGO_URI);
               category: "sweets",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "sweets_003", categoryId: "sweets" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "sweets_003", categoryId: "sweets" } },
             },
-
-            // COMBO PACKS
             {
               id: 12,
               title: "Iftar Combo Pack",
@@ -281,11 +226,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "combo",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "combo_001", categoryId: "combo" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "combo_001", categoryId: "combo" } },
             },
             {
               id: 13,
@@ -299,11 +240,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "combo",
               inStock: true,
               featured: true,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "combo_002", categoryId: "combo" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "combo_002", categoryId: "combo" } },
             },
             {
               id: 14,
@@ -317,14 +254,8 @@ mongoose.connect(process.env.MONGO_URI);
               category: "combo",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "combo_003", categoryId: "combo" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "combo_003", categoryId: "combo" } },
             },
-
-            // ADDITIONAL POPULAR ITEMS
             {
               id: 15,
               title: "Honey Pure 500ml",
@@ -337,11 +268,7 @@ mongoose.connect(process.env.MONGO_URI);
               category: "beverages",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "honey_001", categoryId: "beverages" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "honey_001", categoryId: "beverages" } },
             },
             {
               id: 16,
@@ -355,22 +282,12 @@ mongoose.connect(process.env.MONGO_URI);
               category: "combo",
               inStock: true,
               featured: false,
-              action: {
-                type: "navigate",
-                screen: "ProductDetails",
-                params: { productId: "fruits_001", categoryId: "fruits" }
-              }
+              action: { type: "navigate", screen: "ProductDetails", params: { productId: "fruits_001", categoryId: "fruits" } },
             },
           ],
-          
-          // Optional: Add date range for auto-hide after Ramadan
           startDate: "2025-02-28T00:00:00.000Z",
           endDate: "2025-03-30T23:59:59.999Z",
-          
-          // Badge text
           badge: "Limited Time Offer",
-          
-          // Show featured items first
           sortBy: "featured",
         },
       },
@@ -391,63 +308,59 @@ mongoose.connect(process.env.MONGO_URI);
       {
         type: "SPONSORED",
         order: 5,
-        schemaVersion: 1,
         data: {
+          schemaVersion: 1,           // ✅ moved inside data (not a top-level field)
           layout: "SPLIT_50",
           imagePosition: "RIGHT",
-
           content: {
             sponsoredLabel: "Sponsored",
             title: "Fresh Picks for Smart Shoppers",
             subtitle: "Carefully curated partner deals, just for you",
-            ctaText: "Explore Deals →"
+            ctaText: "Explore Deals →",
           },
-
           image: {
             url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1770194936/ChatGPT_Image_Feb_4_2026_01_35_04_AM_maxifg.png",
-            resizeMode: "cover"
+            resizeMode: "cover",
           },
-
           style: {
             backgroundColor: "#F4FAF6",
             titleColor: "#1f3d2b",
             subtitleColor: "#4f6f5f",
-            ctaColor: "#2e7d32"
+            ctaColor: "#2e7d32",
           },
-
           animation: {
             sponsoredPulse: true,
-            ctaSlide: true
-          }
-        }
+            ctaSlide: true,
+          },
+        },
       },
 
-      { type: "CATEGORIES", order: 6 },
+      { type: "CATEGORIES",       order: 6, data: {} },
 
       {
         type: "ZEPTO_CATEGORIES",
         order: 7,
-        data: {
-          title: "Explore Categories",
-        },
+        data: { title: "Explore Categories" },
       },
 
-      { type: "DAILY_NEEDS", order: 8 },
-      
+      // ✅ CATEGORY_CAROUSEL — comma fixed, unique order
       {
-        type: "QUICK_REORDER",
-        order: 9,
+        type: "CATEGORY_CAROUSEL",
+        order: 8,
         data: {},
       },
 
-      { type: "ZOMATO", order: 10 },
-      { type: "TRENDING", order: 11 },
-      { type: "FOOTER", order: 12 },
+      { type: "DAILY_NEEDS",    order: 9,  data: {} },  // ✅ order fixed from 8 → 9
+      { type: "QUICK_REORDER",  order: 10, data: {} },
+      { type: "ZOMATO",         order: 11, data: {} },
+      { type: "TRENDING",       order: 12, data: {} },
+      { type: "FOOTER",         order: 13, data: {} },
     ]);
 
-    console.log("✅ HomeSection seeded successfully with ENHANCED RAMADAN_SPECIAL section");
+    console.log("✅ HomeSection seeded successfully");
     console.log("📦 Total Ramadan Products: 16");
     console.log("🏷️  Categories: All, Dates, Dry Fruits, Beverages, Sweets, Combo Packs");
+    console.log("🎠  CategoryCarousel added at order 8");
     process.exit(0);
   } catch (err) {
     console.error("❌ Seeding failed:", err);
