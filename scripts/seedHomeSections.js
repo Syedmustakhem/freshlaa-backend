@@ -344,16 +344,17 @@ mongoose.connect(process.env.MONGO_URI);
       },
 
       // ✅ CATEGORY_CAROUSEL — comma fixed, unique order
-      {
+     
+
+      { type: "DAILY_NEEDS",    order: 8,  data: {} },  // ✅ order fixed from 8 → 9
+      { type: "QUICK_REORDER",  order: 9, data: {} },
+      { type: "ZOMATO",         order: 10, data: {} },
+      { type: "TRENDING",       order: 11, data: {} },
+       {
         type: "CATEGORY_CAROUSEL",
-        order: 8,
+        order: 12,
         data: {},
       },
-
-      { type: "DAILY_NEEDS",    order: 9,  data: {} },  // ✅ order fixed from 8 → 9
-      { type: "QUICK_REORDER",  order: 10, data: {} },
-      { type: "ZOMATO",         order: 11, data: {} },
-      { type: "TRENDING",       order: 12, data: {} },
       { type: "FOOTER",         order: 13, data: {} },
     ]);
 

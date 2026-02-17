@@ -12,13 +12,14 @@ const HomeSectionSchema = new mongoose.Schema({
       "SPONSORED",
       "CATEGORIES",
       "ZEPTO_CATEGORIES",
-      "CATEGORY_CAROUSEL",   // ✅ ADD THIS LINE
+     // ✅ ADD THIS LINE
 
       "DAILY_NEEDS",
       
       "ZOMATO",
+     
+      "CATEGORY_CAROUSEL",
       "TRENDING",
-      "LOYALTY_REWARDS",
       "REVIEWS",
       "QUICK_REORDER",
       "FOOTER",
