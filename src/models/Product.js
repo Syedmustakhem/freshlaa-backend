@@ -17,12 +17,13 @@ const productSchema = new mongoose.Schema(
     description: { type: String, default: "" },
 
     /* ================= NEW (IMPORTANT) ================= */
-    sectionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CategorySection",
-      required: true,
-      index: true,
-    },
+   sectionId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "CategorySection",
+  default: null,
+  index: true,
+},
+
 
     subCategory: {
       type: String,
