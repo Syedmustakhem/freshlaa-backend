@@ -12,12 +12,8 @@ const HomeSectionSchema = new mongoose.Schema({
       "SPONSORED",
       "CATEGORIES",
       "ZEPTO_CATEGORIES",
-     // ✅ ADD THIS LINE
-
       "DAILY_NEEDS",
-      
       "ZOMATO",
-     
       "CATEGORY_CAROUSEL",
       "TRENDING",
       "REVIEWS",

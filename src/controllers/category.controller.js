@@ -227,6 +227,36 @@ const createCategory = async (req, res) => {
     });
   }
 };
+/* =========================================================
+   6️⃣ DISPLAY CATEGORIES (FEATURED / FESTIVAL / TRENDING)
+========================================================= */
+const getDisplayCategories = async (req, res) => {
+  try {
+    const { type } = req.query;
+
+    if (!type) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const categories = await Category.find({
+      displayType: type,   // 🔥 featured / festival / trending
+      isActive: true,
+    })
+      .sort({ order: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (err) {
+    console.error("getDisplayCategories error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load display categories",
+    });
+  }
+};
 
 module.exports = {
   getZeptoCategories,
@@ -234,4 +264,5 @@ module.exports = {
   getProductsBySection,
   getTopCategoriesWithPreview,
   createCategory,
+  getDisplayCategories, // ✅ ADD THIS
 };
