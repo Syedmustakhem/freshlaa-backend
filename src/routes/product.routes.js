@@ -39,7 +39,7 @@ router.get("/featured", getFeaturedProducts);
 router.get("/trending", getTrendingProducts);
 router.get("/offers", getOfferProducts);
 
-router.get("/search", searchProducts);
+router.get("/search", searchProducts);    
 router.get("/category/:category", getProductsByCategory);
 router.get("/by-sub-category", getProductsBySubCategory);
 

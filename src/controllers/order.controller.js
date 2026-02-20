@@ -1,289 +1,276 @@
-// TOP IMPORTS
+const mongoose = require("mongoose");
+const Product = require("../models/Product");
 const Order = require("../models/Order");
 const User = require("../models/User");
 const sendPush = require("../utils/sendPush");
 const { sendWhatsAppTemplate } = require("../services/whatsapp.service");
 const crypto = require("crypto");
-
+const Razorpay = require("razorpay");
+const { calculateOrder } = require("../services/pricing.service");
 const AdminPush = require("../models/AdminPush");
 const webpush = require("web-push");
 
-// VAPID CONFIG
-webpush.setVapidDetails(
-  "mailto:support@freshlaa.com",
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+/* ================= ENV SAFETY ================= */
+
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  throw new Error("Razorpay keys missing in env");
+}
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+try {
+  webpush.setVapidDetails(
+    "mailto:support@freshlaa.com",
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+} catch (err) {
+  console.error("VAPID Config Error:", err.message);
+}
 
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
-    const { items, address, paymentMethod, total, payment } = req.body;
+    session.startTransaction();
+
+    const { items, address, paymentMethod, payment, couponCode } = req.body;
 
     if (!Array.isArray(items) || !items.length)
-      return res.status(400).json({ success: false, message: "No items in order" });
+      throw new Error("No items in order");
 
     if (!address || typeof address !== "object")
-      return res.status(400).json({ success: false, message: "Address missing" });
+      throw new Error("Address missing");
 
-    if (!total || total <= 0)
-      return res.status(400).json({ success: false, message: "Invalid total" });
+    const allowedMethods = ["COD", "ONLINE"];
+    if (!allowedMethods.includes(paymentMethod || "COD"))
+      throw new Error("Invalid payment method");
+
+    const result = await calculateOrder(items, session, couponCode);
 
     let paymentStatus = "Pending";
     let razorpayData = null;
 
     if (paymentMethod === "ONLINE") {
       if (
-  !payment?.razorpay_order_id ||
-  !payment?.razorpay_payment_id ||
-  !payment?.razorpay_signature
-) {
-  return res.status(400).json({
-    success: false,
-    message: "Payment data missing",
-  });
-}
-
+        !payment?.razorpay_order_id ||
+        !payment?.razorpay_payment_id ||
+        !payment?.razorpay_signature
+      ) {
+        throw new Error("Payment data missing");
+      }
 
       const expectedSignature = crypto
-  .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-  .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
-  .digest("hex");
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
+        .digest("hex");
 
       if (expectedSignature !== payment.razorpay_signature)
-        return res.status(400).json({ success: false, message: "Payment verification failed" });
+        throw new Error("Payment verification failed");
 
       paymentStatus = "Paid";
       razorpayData = payment;
     }
 
-    const order = await Order.create({
-      user: req.user._id,
-      items,
-      address,
-      paymentMethod: paymentMethod || "COD",
-      paymentStatus,
-      paymentDetails: razorpayData,
-      total,
-      status: "Placed",
-    });
+    const orderDoc = await Order.create(
+      [{
+        user: req.user._id,
+        items: result.validatedItems,
+        address,
+        paymentMethod: paymentMethod || "COD",
+        paymentStatus,
+        paymentDetails: razorpayData,
+        total: result.grandTotal,
+        breakdown: result,
+        status: "Placed",
+      }],
+      { session }
+    );
 
-    global.io.emit("new-order", {
-      orderId: order._id,
-      total: order.total,
-    });
-const user = await User.findById(req.user._id);
+    const order = orderDoc[0];
 
-    res.status(201).json({ success: true, order });
+    await session.commitTransaction();
+    session.endSession();
 
-    // ADMIN PUSH
+    const user = await User.findById(req.user._id).lean();
+
+    if (global.io) {
+      global.io.emit("new-order", {
+        orderId: order._id.toString(),
+        total: order.total,
+      });
+    }
+
+    /* ADMIN PUSH */
     try {
-      const subs = await AdminPush.find();
+      const subs = await AdminPush.find().select("subscription");
       const payload = JSON.stringify({
         title: "🛒 New Order",
         body: `₹${order.total} order placed`,
+        data: { orderId: order._id.toString() },
       });
 
-    for (const s of subs) {
-  try {
-    await webpush.sendNotification(s.subscription, payload);
-  } catch (err) {
-    if (err.statusCode === 404 || err.statusCode === 410) {
-      await AdminPush.deleteOne({ _id: s._id });
-    }
-  }
-}
-
-    } catch {}
-
-    // USER PUSH
-    try {
-      if (user?.expoPushToken) {
-        sendPush({
-          expoPushToken: user.expoPushToken,
-          title: "Order Placed",
-          body: `Your order of ₹${order.total} has been placed`,
-          data: { orderId: order._id.toString() },
-        });
+      for (const s of subs) {
+        try {
+          await webpush.sendNotification(s.subscription, payload);
+        } catch (err) {
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            await AdminPush.deleteOne({ _id: s._id });
+          }
+        }
       }
-    } catch {}
+    } catch (err) {
+      console.error("Admin Push Error:", err.message);
+    }
 
-    // WHATSAPP
-    try {
-      if (user?.phone) {
+    if (user?.expoPushToken) {
+      sendPush({
+        expoPushToken: user.expoPushToken,
+        title: "Order Placed",
+        body: `Your order of ₹${order.total} has been placed`,
+        data: { orderId: order._id.toString() },
+      });
+    }
+
+    if (user?.phone) {
+      try {
         await sendWhatsAppTemplate(
-  user.phone.replace("+", ""),
-  "order_placed",
-  [
-    user.name || "Customer",                 // {{1}}
-    order.items[0]?.hotelId ? "Freshlaa Restaurant" : "Freshlaa Grocery", // {{2}}
-    order._id.toString(),                    // {{3}}
-    `₹${order.total}`                        // {{4}}
-  ]
-);
+          user.phone.replace("+", ""),
+          "order_placed",
+          [
+            user.name || "Customer",
+            "Freshlaa Grocery",
+            order._id.toString(),
+            `₹${order.total}`,
+          ]
+        );
+      } catch (err) {
+        console.error("WhatsApp Error:", err.message);
       }
-    } catch (e) {
-      console.log("WA error:", e.message);
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Failed to place order" });
-  }
-};
-
-
-/* ================= GET MY ORDERS ================= */
-exports.getMyOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({ user: req.user._id })
-      .sort({ createdAt: -1 }); // 🔥 latest first
-
-    res.json({
-      success: true,
-      orders,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-/* ================= GET ORDER BY ID ================= */
-exports.getOrderById = async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
     }
 
-    if (order.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
+    res.status(201).json({ success: true, order });
 
-    res.json({
-      success: true,
-      order,
-    });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 /* ================= CANCEL ORDER ================= */
 exports.cancelOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
-    const order = await Order.findById(req.params.id);
+    session.startTransaction();
 
-    if (!order) {
+    const order = await Order.findById(req.params.id).session(session);
+
+    if (!order)
       return res.status(404).json({ success: false, message: "Order not found" });
-    }
 
-    if (order.user.toString() !== req.user._id.toString()) {
+    if (order.user.toString() !== req.user._id.toString())
       return res.status(403).json({ success: false, message: "Access denied" });
-    }
 
-    if (order.status === "Delivered") {
-      return res.status(400).json({
-        success: false,
-        message: "Delivered order cannot be cancelled",
-      });
-    }
+    if (order.status === "Cancelled")
+      return res.status(400).json({ success: false, message: "Order already cancelled" });
 
-    // 🔥 REFUND LOGIC (IMPORTANT)
+    if (order.status === "Delivered")
+      return res.status(400).json({ success: false, message: "Delivered order cannot be cancelled" });
+
+    /* REFUND SAFETY */
     if (
       order.paymentMethod === "ONLINE" &&
       order.paymentStatus === "Paid" &&
-      order.paymentDetails?.razorpay_payment_id &&
-      order.paymentStatus !== "Refunded"
+      order.paymentDetails?.razorpay_payment_id
     ) {
-      try {
-        const refund = await razorpay.payments.refund(
-          order.paymentDetails.razorpay_payment_id,
-          {
-            amount: order.total * 100, // refund in paise
-          }
-        );
+      if (order.paymentStatus === "Refunded")
+        throw new Error("Already refunded");
 
-        console.log("✅ Refund Success:", refund.id);
+      const refund = await razorpay.payments.refund(
+        order.paymentDetails.razorpay_payment_id,
+        { amount: order.total * 100 }
+      );
 
-        order.paymentStatus = "Refunded";
-        order.refundId = refund.id;
-
-      } catch (refundError) {
-        console.error("❌ Refund Failed:", refundError);
-        return res.status(500).json({
-          success: false,
-          message: "Order cancelled but refund failed. Please contact support.",
-        });
-      }
+      order.paymentStatus = "Refunded";
+      order.refundId = refund.id;
     }
 
-    // ✅ Now cancel order
+    /* RESTORE STOCK */
+    for (const item of order.items) {
+      const product = await Product.findById(item.product).session(session);
+      if (!product) continue;
+
+      if (item.variantId && product.variants?.length) {
+        const variant = product.variants.id(item.variantId);
+        if (variant) variant.stock += item.qty;
+      } else {
+        product.stock += item.qty;
+      }
+
+      await product.save({ session });
+    }
+
     order.status = "Cancelled";
-    await order.save();
+    await order.save({ session });
 
-    const user = await User.findById(order.user);
+    await session.commitTransaction();
+    session.endSession();
 
-    // 📲 WhatsApp Notification
-    try {
-      if (user?.phone) {
-        await sendWhatsAppTemplate(
-          user.phone.replace("+", ""),
-          "order_cancelled",
-          [order._id]
-        );
-      }
-    } catch (err) {
-      console.log("WA Cancel error:", err.message);
+    res.json({ success: true, message: "Order cancelled", order });
+
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
     }
+    session.endSession();
 
-    // 🔔 Push Notification
-    try {
-      if (user?.expoPushToken) {
-        sendPush({
-          expoPushToken: user.expoPushToken,
-          title: "Order Cancelled",
-          body:
-            order.paymentMethod === "ONLINE"
-              ? "❌ Order cancelled. Refund initiated."
-              : "❌ Your order has been cancelled",
-          data: { orderId: order._id.toString() },
-        });
-      }
-    } catch (err) {
-      console.log("Push Cancel error:", err.message);
-    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-    res.json({
-      success: true,
-      message:
-        order.paymentMethod === "ONLINE"
-          ? "Order cancelled and refund initiated"
-          : "Order cancelled",
-      order,
-    });
+/* ================= GET ORDERS ================= */
+exports.getMyOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
 
+    res.json({ success: true, orders });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-/* ================= GET LAST ORDER (QUICK REORDER) ================= */
+
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).lean();
+
+    if (!order)
+      return res.status(404).json({ success: false, message: "Order not found" });
+
+    if (order.user.toString() !== req.user._id.toString())
+      return res.status(403).json({ success: false, message: "Access denied" });
+
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+/* ================= GET LAST ORDER ================= */
 exports.getLastOrder = async (req, res) => {
   try {
     const order = await Order.findOne({ user: req.user._id })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,
@@ -296,13 +283,16 @@ exports.getLastOrder = async (req, res) => {
     });
   }
 };
-/* ================= GET ACTIVE ORDER ================= */
+
+/* ================= GET ACTIVE ORDERS ================= */
 exports.getActiveOrders = async (req, res) => {
   try {
     const orders = await Order.find({
       user: req.user._id,
       status: { $nin: ["Delivered", "Cancelled"] },
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,
@@ -315,129 +305,55 @@ exports.getActiveOrders = async (req, res) => {
     });
   }
 };
-
-
-/* ================= ADMIN: UPDATE ORDER STATUS ================= */
+/* ================= ADMIN UPDATE STATUS ================= */
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
 
-    if (!orderId || !status) {
-      return res.status(400).json({
-        success: false,
-        message: "orderId and status required",
-      });
-    }
+    const allowedStatuses = [
+      "Placed",
+      "Packed",
+      "OutForDelivery",
+      "Delivered",
+      "Cancelled"
+    ];
+
+    if (!allowedStatuses.includes(status))
+      return res.status(400).json({ success: false, message: "Invalid status" });
 
     const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
+    if (!order)
+      return res.status(404).json({ success: false, message: "Order not found" });
+
+    if (status === "Cancelled" && order.status !== "Cancelled") {
+      for (const item of order.items) {
+        const product = await Product.findById(item.product);
+        if (!product) continue;
+
+        if (item.variantId && product.variants?.length) {
+          const variant = product.variants.id(item.variantId);
+          if (variant) variant.stock += item.qty;
+        } else {
+          product.stock += item.qty;
+        }
+
+        await product.save();
+      }
+    }
+
+    order.status = status;
+    await order.save();
+
+    if (global.io) {
+      global.io.to(order._id.toString()).emit("order-updated", {
+        orderId: order._id.toString(),
+        status,
       });
     }
 
-    // ✅ Update status
-    order.status = status;
-    await order.save();
-    const user = await User.findById(order.user);
-
-    if (status === "Delivered") {
-  const rewardPoints = Math.floor(order.total * 0.05); // 5% reward
-
-  await User.findByIdAndUpdate(order.user, {
-    $inc: { loyaltyPoints: rewardPoints },
-  });
-}
-
-// 🔥 REALTIME: Notify admin & app about status update
-global.io
-  .to(order._id.toString())   // 🔥 send only to this order room
-  .emit("order-updated", {
-    orderId: order._id.toString(),
-    status,
-  });
-
-
-    // ✅ Respond immediately (IMPORTANT)
-    res.json({
-      success: true,
-      message: "Order status updated",
-      order,
-    });
-
-    // 🔔 SEND PUSH IN BACKGROUND (NON-BLOCKING)
-    try {
-
-      if (user?.expoPushToken) {
-        let title = "Order Update";
-        let body = "";
-
-        switch (status) {
-          case "Placed":
-            body = "🛒 Your order has been placed";
-            break;
-          case "Packed":
-            body = "📦 Your order is packed";
-            break;
-          case "OutForDelivery":
-            body = "🚚 Your order is on the way";
-            break;
-          case "Delivered":
-            body = "✅ Order delivered successfully";
-            break;
-          case "Cancelled":
-            body = "❌ Your order was cancelled";
-            break;
-          default:
-            body = `Order status updated to ${status}`;
-        }
-
-        sendPush({
-          expoPushToken: user.expoPushToken,
-          title,
-          body,
-          data: {
-            type: "ORDER_STATUS",
-            orderId: order._id.toString(),
-            status,
-          },
-        });
-      }
-    } catch (pushErr) {
-      console.error("PUSH ERROR (IGNORED):", pushErr.message);
-    }
-    // 📲 WHATSAPP (NON-BLOCKING)
-try {
-
-  if (user?.phone) {
-    const map = {
-      Packed: "order_packed",
-      OutForDelivery: "order_out_for_delivery",
-      Delivered: "order_delivered",
-      Cancelled: "order_cancelled",
-    };
-if (map[status]) {
-  await sendWhatsAppTemplate(
-    user.phone.replace("+", ""),
-    map[status],
-    [
-      user.name || "Customer",      // {{1}}
-      order._id.toString()          // {{2}}
-    ]
-  );
-}
-  }
-} catch (waErr) {
-  console.error("WA ERROR:", waErr.message);
-}
+    res.json({ success: true, message: "Order status updated", order });
 
   } catch (error) {
-    console.error("UPDATE ORDER STATUS ERROR:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update order status",
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
-  
 };
