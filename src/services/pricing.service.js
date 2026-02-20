@@ -2,7 +2,6 @@ const Product = require("../models/Product");
 const { getConfig } = require("./config.service");
 const { applyCoupon } = require("./coupon.service");
 const Campaign = require("../models/Campaign");
-
 exports.calculateOrder = async (items, session = null, couponCode = null) => {
   let itemsTotal = 0;
   const validatedItems = [];
@@ -14,15 +13,13 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       throw new Error("Product not available");
     }
 
-    // ✅ FIX: check variantId first, then selectedVariant._id, then fallback to default
     const variantId = item.variantId || item.selectedVariant?._id;
+
     const variant = variantId
       ? product.variants.id(variantId)
       : product.variants.find(v => v.isDefault) || product.variants[0];
 
-    if (!variant) {
-      throw new Error("Invalid variant selected");
-    }
+    if (!variant) throw new Error("Invalid variant selected");
 
     if (variant.stock < item.qty) {
       throw new Error(`${product.name} out of stock`);
@@ -55,10 +52,15 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   const config = await getConfig();
 
-  let deliveryFee = itemsTotal >= config.freeDeliveryLimit ? 0 : config.deliveryFee;
+  let deliveryFee =
+    itemsTotal >= config.freeDeliveryLimit
+      ? 0
+      : config.deliveryFee;
+
   let grandTotal = itemsTotal + deliveryFee + config.handlingFee;
 
-  // ✅ Campaign discount
+  /* ================= CAMPAIGN ================= */
+
   const campaign = await Campaign.findOne({
     isActive: true,
     startDate: { $lte: new Date() },
@@ -66,24 +68,36 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   });
 
   let campaignDiscount = 0;
+
   if (campaign && itemsTotal >= campaign.minCartValue) {
     campaignDiscount = campaign.discountAmount;
     grandTotal -= campaignDiscount;
   }
 
-  // ✅ Coupon discount
+  /* ================= COUPON ================= */
+
   let couponDiscount = 0;
+
   if (couponCode) {
-    couponDiscount = await applyCoupon(couponCode, itemsTotal);
+    // 🔥 FIXED PARAM ORDER
+    couponDiscount = await applyCoupon(itemsTotal, couponCode);
     grandTotal -= couponDiscount;
   }
 
-  // ✅ Surge
+  /* ================= SURGE ================= */
+
   if (config.surgeEnabled) {
     grandTotal *= config.surgeMultiplier;
   }
 
   if (grandTotal < 0) grandTotal = 0;
+
+  /* ================= AVAILABLE COUPONS ================= */
+
+  const availableCoupons = await Coupon.find({
+    isActive: true,
+    expiryDate: { $gt: new Date() },
+  }).select("code discountType discountValue minOrderAmount");
 
   return {
     validatedItems,
@@ -94,5 +108,6 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     campaignDiscount: Math.round(campaignDiscount),
     totalSavings: Math.round(couponDiscount + campaignDiscount),
     grandTotal: Math.round(grandTotal),
+    availableCoupons,   // ✅ IMPORTANT
   };
 };

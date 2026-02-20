@@ -389,7 +389,6 @@ router.post("/categories", adminAuth, async (req, res) => {
   }
 });
 
-
 // UPDATE CATEGORY
 router.put("/categories/:id", adminAuth, async (req, res) => {
   const { title, slug, isActive } = req.body;
@@ -416,5 +415,56 @@ router.delete("/categories/:id", adminAuth, async (req, res) => {
   await Category.findByIdAndDelete(req.params.id);
   res.json({ success: true });
 });
+router.put("/coupons/:id", adminAuth, async (req, res) => {
+  try {
+    const updated = await Coupon.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
 
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Coupon not found",
+      });
+    }
+
+    res.json({ success: true, data: updated });
+
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+router.post("/coupons", adminAuth, async (req, res) => {
+  try {
+    const coupon = await Coupon.create(req.body);
+    res.json({ success: true, data: coupon });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+router.get("/coupons", adminAuth, async (req, res) => {
+  try {
+    const coupons = await Coupon.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: coupons });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to load coupons" });
+  }
+});
+router.patch("/coupons/:id/status", adminAuth, async (req, res) => {
+  const coupon = await Coupon.findById(req.params.id);
+  coupon.isActive = !coupon.isActive;
+  await coupon.save();
+  res.json({ success: true });
+});
+router.patch("/coupons/:id/status", adminAuth, async (req, res) => {
+  const coupon = await Coupon.findById(req.params.id);
+  coupon.isActive = !coupon.isActive;
+  await coupon.save();
+  res.json({ success: true });
+});
 module.exports = router;
