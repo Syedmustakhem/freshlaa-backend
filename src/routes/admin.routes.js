@@ -12,7 +12,7 @@ const adminAuth = require("../middlewares/adminAuth");
 const User = require("../models/User");
 const Address = require("../models/Address");
 const Order = require("../models/Order");
-
+const Coupon = require("../models/Coupon");
 
 /* ================= ADMIN SETUP ================= */
 
@@ -441,10 +441,35 @@ router.put("/coupons/:id", adminAuth, async (req, res) => {
 });
 router.post("/coupons", adminAuth, async (req, res) => {
   try {
-    const coupon = await Coupon.create(req.body);
+    const {
+      code,
+      discountType,
+      discountValue,
+      minOrderAmount,
+      maxDiscount,
+      usageLimit,
+      expiryDate,
+      isActive,
+    } = req.body;
+
+    const coupon = await Coupon.create({
+      code,
+      discountType,
+      discountValue,
+      minOrderAmount,
+      maxDiscount,
+      usageLimit,
+      expiryDate,
+      isActive,
+    });
+
     res.json({ success: true, data: coupon });
+
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 router.get("/coupons", adminAuth, async (req, res) => {
@@ -452,19 +477,23 @@ router.get("/coupons", adminAuth, async (req, res) => {
     const coupons = await Coupon.find().sort({ createdAt: -1 });
     res.json({ success: true, data: coupons });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to load coupons" });
+    console.error("ADMIN COUPONS ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load coupons",
+    });
   }
 });
 router.patch("/coupons/:id/status", adminAuth, async (req, res) => {
   const coupon = await Coupon.findById(req.params.id);
+
+  if (!coupon) {
+    return res.status(404).json({ success: false });
+  }
+
   coupon.isActive = !coupon.isActive;
   await coupon.save();
-  res.json({ success: true });
-});
-router.patch("/coupons/:id/status", adminAuth, async (req, res) => {
-  const coupon = await Coupon.findById(req.params.id);
-  coupon.isActive = !coupon.isActive;
-  await coupon.save();
+
   res.json({ success: true });
 });
 module.exports = router;
