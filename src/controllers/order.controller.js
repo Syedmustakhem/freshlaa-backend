@@ -30,7 +30,36 @@ try {
 } catch (err) {
   console.error("VAPID Config Error:", err.message);
 }
+/* ================= PREVIEW CHECKOUT ================= */
+exports.previewCheckout = async (req, res) => {
+  try {
+    const { items, couponCode } = req.body;
 
+    if (!Array.isArray(items) || !items.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No items provided",
+      });
+    }
+
+    const result = await calculateOrder(
+      items,
+      null,            // no transaction session needed
+      couponCode || null
+    );
+
+    res.json({
+      success: true,
+      ...result,
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 /* ================= CREATE ORDER ================= */
 exports.createOrder = async (req, res) => {
   const session = await mongoose.startSession();
