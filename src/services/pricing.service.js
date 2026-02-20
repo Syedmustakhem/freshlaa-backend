@@ -14,7 +14,11 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       throw new Error("Product not available");
     }
 
-    const variant = product.variants.id(item.selectedVariant?._id);
+    // ✅ FIX: check variantId first, then selectedVariant._id, then fallback to default
+    const variantId = item.variantId || item.selectedVariant?._id;
+    const variant = variantId
+      ? product.variants.id(variantId)
+      : product.variants.find(v => v.isDefault) || product.variants[0];
 
     if (!variant) {
       throw new Error("Invalid variant selected");
@@ -51,28 +55,30 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   const config = await getConfig();
 
-  let deliveryFee =
-    itemsTotal >= config.freeDeliveryLimit
-      ? 0
-      : config.deliveryFee;
-
+  let deliveryFee = itemsTotal >= config.freeDeliveryLimit ? 0 : config.deliveryFee;
   let grandTotal = itemsTotal + deliveryFee + config.handlingFee;
 
+  // ✅ Campaign discount
   const campaign = await Campaign.findOne({
     isActive: true,
     startDate: { $lte: new Date() },
     endDate: { $gte: new Date() },
   });
 
+  let campaignDiscount = 0;
   if (campaign && itemsTotal >= campaign.minCartValue) {
-    grandTotal -= campaign.discountAmount;
+    campaignDiscount = campaign.discountAmount;
+    grandTotal -= campaignDiscount;
   }
 
+  // ✅ Coupon discount
+  let couponDiscount = 0;
   if (couponCode) {
-    const discount = await applyCoupon(couponCode, itemsTotal);
-    grandTotal -= discount;
+    couponDiscount = await applyCoupon(couponCode, itemsTotal);
+    grandTotal -= couponDiscount;
   }
 
+  // ✅ Surge
   if (config.surgeEnabled) {
     grandTotal *= config.surgeMultiplier;
   }
@@ -81,9 +87,12 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   return {
     validatedItems,
-    itemsTotal,
+    itemsTotal: Math.round(itemsTotal),
     deliveryFee,
     handlingFee: config.handlingFee,
-    grandTotal,
+    couponDiscount: Math.round(couponDiscount),
+    campaignDiscount: Math.round(campaignDiscount),
+    totalSavings: Math.round(couponDiscount + campaignDiscount),
+    grandTotal: Math.round(grandTotal),
   };
 };
