@@ -2,6 +2,7 @@ const Product = require("../models/Product");
 const { getConfig } = require("./config.service");
 const { applyCoupon } = require("./coupon.service");
 const Campaign = require("../models/Campaign");
+const Coupon = require("../models/Coupon"); // ✅ ADD THIS
 exports.calculateOrder = async (items, session = null, couponCode = null) => {
   let itemsTotal = 0;
   const validatedItems = [];
