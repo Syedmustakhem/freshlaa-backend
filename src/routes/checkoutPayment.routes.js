@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middleware/auth.middleware");
+const { protect } = require("../middlewares/auth.middleware");
 const checkoutPaymentService = require("../services/checkoutPayment.service");
 
 router.get("/config", protect, async (req, res) => {
