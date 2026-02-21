@@ -85,8 +85,7 @@ app.use("/api/admin/push", adminPushRoutes);
 app.use("/api", homeSectionRoutes);
 app.use("/api", categoryBannerRoutes);
 app.use("/api", offerRoutes);
-app.use("/api", checkoutPaymentRoutes);
-/* ================= HEALTH ================= */
+app.use("/api/checkout-payment", checkoutPaymentRoutes);/* ================= HEALTH ================= */
 
 app.get("/", (req, res) => {
   res.json({
