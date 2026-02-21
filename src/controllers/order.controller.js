@@ -9,7 +9,7 @@ const Razorpay = require("razorpay");
 const { calculateOrder } = require("../services/pricing.service");
 const AdminPush = require("../models/AdminPush");
 const webpush = require("web-push");
-
+const checkoutService = require("../services/checkoutPayment.service");
 /* ================= ENV SAFETY ================= */
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -80,7 +80,21 @@ exports.createOrder = async (req, res) => {
       throw new Error("Invalid payment method");
 
     const result = await calculateOrder(items, session, couponCode);
+/* 🔥 SERVER-DRIVEN PAYMENT VALIDATION */
+const methods = await checkoutService.getCheckoutPaymentOptions({
+  userId: req.user._id,
+  amount: result?.grandTotal || 0,
+});
 
+const selectedMethod = methods.find(
+  (m) => m.id === (paymentMethod || "COD")
+);
+
+if (!selectedMethod || !selectedMethod.enabled) {
+  throw new Error(
+    selectedMethod?.reason || "Selected payment method not allowed"
+  );
+}
     let paymentStatus = "Pending";
     let razorpayData = null;
 
