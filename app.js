@@ -35,7 +35,9 @@ const offerRoutes = require(
   path.join(routesPath, "offer.routes")
 );
 
-
+const checkoutPaymentRoutes = require(
+  path.join(routesPath, "checkoutPayment.routes")
+);
 /* ================= MIDDLEWARE ================= */
 
 /* ================= MIDDLEWARE ================= */
@@ -83,7 +85,7 @@ app.use("/api/admin/push", adminPushRoutes);
 app.use("/api", homeSectionRoutes);
 app.use("/api", categoryBannerRoutes);
 app.use("/api", offerRoutes);
-
+app.use("/api", checkoutPaymentRoutes);
 /* ================= HEALTH ================= */
 
 app.get("/", (req, res) => {
