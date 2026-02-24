@@ -7,11 +7,11 @@ const Product = require("../src/models/Product");
     await mongoose.connect(process.env.MONGO_URI);
 
     const result = await Product.updateMany(
-      { category: "maggi-noodles-vermicelli" },
+      { category: "maggi-noodles-papad-fryums" },
       {
         $set: {
           sectionId: new mongoose.Types.ObjectId(
-            "6992a19d7aeb7c43f7a5d836"
+            "6992dff9d81d5080ef7a1746"
           ),
         },
       }
