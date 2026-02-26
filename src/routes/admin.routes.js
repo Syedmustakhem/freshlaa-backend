@@ -13,7 +13,7 @@ const User = require("../models/User");
 const Address = require("../models/Address");
 const Order = require("../models/Order");
 const Coupon = require("../models/Coupon");
-
+const Product = require("../models/Product");
 /* ================= ADMIN SETUP ================= */
 
 /* TEMP – USE ONCE */
