@@ -155,7 +155,6 @@ router.get("/users/:id/cart", adminAuth, async (req, res) => {
     });
   }
 });
-
 router.get("/orders", adminAuth, async (req, res) => {
   try {
 
@@ -175,32 +174,62 @@ router.get("/orders", adminAuth, async (req, res) => {
 
           (order.items || []).map(async (i) => {
 
-            /* ✅ If already has image */
-            if (i.image && i.name) {
+            // ✅ Already has name + image (NEW ORDERS)
+            if (i.name && i.image) {
               return i;
             }
 
-            /* ✅ Fetch product if missing */
 
-            if (i.productId) {
+            // ✅ Fetch product if valid ObjectId (OLD ORDERS)
+            if (
+              i.productId &&
+              typeof i.productId === "string" &&
+              i.productId.length === 24
+            ) {
 
-              const product = await Product.findById(i.productId)
-                .select("name image")
-                .lean();
+              try {
 
-              return {
+                const product = await Product.findById(i.productId)
+                  .select("name image")
+                  .lean();
 
-                ...i,
+                return {
 
-                name: product?.name || "Product",
+                  ...i,
 
-                image: product?.image || ""
+                  name: product?.name || "Product",
 
-              };
+                  image: product?.image || ""
+
+                };
+
+              } catch (err) {
+
+                return {
+
+                  ...i,
+
+                  name: i.name || "Product",
+
+                  image: i.image || ""
+
+                };
+
+              }
 
             }
 
-            return i;
+
+            // ✅ Fallback safe (Broken Old Orders)
+            return {
+
+              ...i,
+
+              name: i.name || "Product",
+
+              image: i.image || ""
+
+            };
 
           })
 
@@ -222,18 +251,19 @@ router.get("/orders", adminAuth, async (req, res) => {
   }
   catch(err){
 
-    console.error("ADMIN GLOBAL ORDERS ERROR:",err);
+    console.error("ADMIN GLOBAL ORDERS ERROR:", err);
 
     res.status(500).json({
 
-      success:false,
+      success: false,
 
-      message:"Failed to load orders"
+      message: "Failed to load orders"
 
     });
 
   }
 });
+
 router.get("/users", adminAuth, async (req, res) => {
   try {
     const { search = "", status } = req.query;
