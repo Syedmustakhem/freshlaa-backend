@@ -174,24 +174,26 @@ router.get("/orders", adminAuth, async (req, res) => {
 
           (order.items || []).map(async (i) => {
 
-            // ✅ Already has name + image (NEW ORDERS)
+            // ✅ If already has data
             if (i.name && i.image) {
               return i;
             }
 
 
-            // ✅ Fetch product if valid ObjectId (OLD ORDERS)
+            // ✅ Only fetch if VALID ObjectId
             if (
               i.productId &&
-              typeof i.productId === "string" &&
-              i.productId.length === 24
+              mongoose.Types.ObjectId.isValid(i.productId)
             ) {
 
               try {
 
-                const product = await Product.findById(i.productId)
-                  .select("name image")
-                  .lean();
+                const product = await Product.findOne({
+                  _id: i.productId
+                })
+                .select("name image")
+                .lean();
+
 
                 return {
 
@@ -203,7 +205,7 @@ router.get("/orders", adminAuth, async (req, res) => {
 
                 };
 
-              } catch (err) {
+              } catch {
 
                 return {
 
@@ -220,7 +222,7 @@ router.get("/orders", adminAuth, async (req, res) => {
             }
 
 
-            // ✅ Fallback safe (Broken Old Orders)
+            // ✅ Broken old orders safe fallback
             return {
 
               ...i,
@@ -241,11 +243,8 @@ router.get("/orders", adminAuth, async (req, res) => {
 
 
     res.json({
-
       success: true,
-
       data: formattedOrders
-
     });
 
   }
@@ -254,11 +253,8 @@ router.get("/orders", adminAuth, async (req, res) => {
     console.error("ADMIN GLOBAL ORDERS ERROR:", err);
 
     res.status(500).json({
-
-      success: false,
-
-      message: "Failed to load orders"
-
+      success:false,
+      message:"Failed to load orders"
     });
 
   }
