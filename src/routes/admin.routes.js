@@ -163,13 +163,8 @@ router.get("/orders", adminAuth, async (req, res) => {
   try {
 
     const orders = await Order.find()
-
       .populate("user", "name phone")
-
-      .populate("items.product", "name image")
-
       .sort({ createdAt: -1 })
-
       .lean();
 
 
@@ -177,17 +172,17 @@ router.get("/orders", adminAuth, async (req, res) => {
 
       ...order,
 
-      items: order.items.map(i => ({
+      items: order.items?.map(i => ({
 
-        name: i.product?.name || "Product",
+        name: i.name || "Product",
 
-        image: i.product?.image || "",
+        image: i.image || "",
 
         qty: i.qty,
 
         price: i.price
 
-      }))
+      })) || []
 
     }));
 
@@ -213,7 +208,6 @@ router.get("/orders", adminAuth, async (req, res) => {
     });
 
   }
-
 });
 router.get("/users", adminAuth, async (req, res) => {
   try {
