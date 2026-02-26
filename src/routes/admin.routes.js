@@ -161,24 +161,60 @@ router.get("/users/:id/cart", adminAuth, async (req, res) => {
  */
 router.get("/orders", adminAuth, async (req, res) => {
   try {
+
     const orders = await Order.find()
+
       .populate("user", "name phone")
+
+      .populate("items.product", "name image")
+
       .sort({ createdAt: -1 })
+
       .lean();
 
-    res.json({
-      success: true,
-      data: orders,
-    });
-  } catch (err) {
-    console.error("ADMIN GLOBAL ORDERS ERROR:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to load orders",
-    });
-  }
-});
 
+    const formattedOrders = orders.map(order => ({
+
+      ...order,
+
+      items: order.items.map(i => ({
+
+        name: i.product?.name || "Product",
+
+        image: i.product?.image || "",
+
+        qty: i.qty,
+
+        price: i.price
+
+      }))
+
+    }));
+
+
+    res.json({
+
+      success: true,
+
+      data: formattedOrders
+
+    });
+
+  } catch (err) {
+
+    console.error("ADMIN GLOBAL ORDERS ERROR:", err);
+
+    res.status(500).json({
+
+      success: false,
+
+      message: "Failed to load orders",
+
+    });
+
+  }
+
+});
 router.get("/users", adminAuth, async (req, res) => {
   try {
     const { search = "", status } = req.query;

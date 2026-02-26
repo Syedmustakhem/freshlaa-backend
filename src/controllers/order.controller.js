@@ -351,6 +351,7 @@ exports.getActiveOrders = async (req, res) => {
 /* ================= ADMIN UPDATE STATUS ================= */
 exports.updateOrderStatus = async (req, res) => {
   try {
+
     const { orderId, status } = req.body;
 
     const allowedStatuses = [
@@ -362,41 +363,112 @@ exports.updateOrderStatus = async (req, res) => {
     ];
 
     if (!allowedStatuses.includes(status))
-      return res.status(400).json({ success: false, message: "Invalid status" });
+      return res.status(400).json({
+        success:false,
+        message:"Invalid status"
+      });
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId)
+    .populate("user");
+
     if (!order)
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res.status(404).json({
+        success:false,
+        message:"Order not found"
+      });
 
-    if (status === "Cancelled" && order.status !== "Cancelled") {
-      for (const item of order.items) {
-        const product = await Product.findById(item.product);
-        if (!product) continue;
-
-        if (item.variantId && product.variants?.length) {
-          const variant = product.variants.id(item.variantId);
-          if (variant) variant.stock += item.qty;
-        } else {
-          product.stock += item.qty;
-        }
-
-        await product.save();
-      }
-    }
 
     order.status = status;
+
     await order.save();
 
-    if (global.io) {
-      global.io.to(order._id.toString()).emit("order-updated", {
-        orderId: order._id.toString(),
-        status,
+
+    /* SOCKET UPDATE */
+    if(global.io){
+
+      global.io.emit("order-updated",{
+
+        orderId:order._id.toString(),
+
+        status
+
       });
+
     }
 
-    res.json({ success: true, message: "Order status updated", order });
 
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    /* USER PUSH */
+
+    if(order.user?.expoPushToken){
+
+      await sendPush({
+
+        expoPushToken:order.user.expoPushToken,
+
+        title:"Order Update",
+
+        body:`Your order is ${status}`,
+
+        data:{orderId:order._id.toString()}
+
+      });
+
+    }
+
+
+    /* WHATSAPP UPDATE */
+
+    if(order.user?.phone){
+
+      try{
+
+        await sendWhatsAppTemplate(
+
+          order.user.phone.replace("+",""),
+
+          "order_status",
+
+          [
+
+            order.user.name || "Customer",
+
+            order._id.toString(),
+
+            status
+
+          ]
+
+        );
+
+      }catch(err){
+
+        console.log("WhatsApp error",err.message)
+
+      }
+
+    }
+
+
+    res.json({
+
+      success:true,
+
+      message:"Order updated",
+
+      order
+
+    });
+
+  }
+  catch(error){
+
+    res.status(500).json({
+
+      success:false,
+
+      message:error.message
+
+    });
+
   }
 };
