@@ -119,20 +119,55 @@ if (!selectedMethod || !selectedMethod.enabled) {
       razorpayData = payment;
     }
 
-    const orderDoc = await Order.create(
-      [{
-        user: req.user._id,
-        items: result.validatedItems,
-        address,
-        paymentMethod: paymentMethod || "COD",
-        paymentStatus,
-        paymentDetails: razorpayData,
-        total: result.grandTotal,
-        breakdown: result,
-        status: "Placed",
-      }],
-      { session }
-    );
+    // 🔥 ADD PRODUCT NAME + IMAGE
+
+const formattedItems = await Promise.all(
+
+  result.validatedItems.map(async (i) => {
+
+    const product = await Product.findById(i.product).lean();
+
+    return {
+
+      product: i.product,
+
+      name: product?.name || "Product",
+
+      image: product?.image || "",
+
+      qty: i.qty,
+
+      price: i.price
+
+    };
+
+  })
+
+);
+
+
+const orderDoc = await Order.create(
+  [{
+    user: req.user._id,
+
+    items: formattedItems,  // 🔥 FIXED
+
+    address,
+
+    paymentMethod: paymentMethod || "COD",
+
+    paymentStatus,
+
+    paymentDetails: razorpayData,
+
+    total: result.grandTotal,
+
+    breakdown: result,
+
+    status: "Placed",
+  }],
+  { session }
+);
 
     const order = orderDoc[0];
 

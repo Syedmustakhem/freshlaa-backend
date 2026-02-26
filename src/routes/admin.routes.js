@@ -168,42 +168,84 @@ router.get("/orders", adminAuth, async (req, res) => {
       .lean();
 
 
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = await Promise.all(
 
-      ...order,
+      orders.map(async (order) => ({
 
-      items: order.items?.map(i => ({
+        ...order,
 
-        name: i.name || "Product",
+        items: await Promise.all(
 
-        image: i.image || "",
+          (order.items || []).map(async (i) => {
 
-        qty: i.qty,
+            // ✅ If already has name & image
+            if (i.name && i.image) {
 
-        price: i.price
+              return i;
 
-      })) || []
+            }
 
-    }));
+            // ✅ Fetch from Product table (OLD ORDERS)
+
+            if (i.product) {
+
+              const product = await Product.findById(i.product)
+              .select("name image")
+              .lean();
+
+              return {
+
+                name: product?.name || "Product",
+
+                image: product?.image || "",
+
+                qty: i.qty,
+
+                price: i.price
+
+              };
+
+            }
+
+            return {
+
+              name: "Product",
+
+              image: "",
+
+              qty: i.qty,
+
+              price: i.price
+
+            };
+
+          })
+
+        )
+
+      }))
+
+    );
 
 
     res.json({
 
-      success: true,
+      success:true,
 
-      data: formattedOrders
+      data:formattedOrders
 
     });
 
-  } catch (err) {
+  }
+  catch(err){
 
-    console.error("ADMIN GLOBAL ORDERS ERROR:", err);
+    console.error("ADMIN GLOBAL ORDERS ERROR:",err);
 
     res.status(500).json({
 
-      success: false,
+      success:false,
 
-      message: "Failed to load orders",
+      message:"Failed to load orders"
 
     });
 
