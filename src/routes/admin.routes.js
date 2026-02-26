@@ -155,10 +155,7 @@ router.get("/users/:id/cart", adminAuth, async (req, res) => {
     });
   }
 });
-/**
- * GET /api/admin/orders
- * Get all orders (global)
- */
+
 router.get("/orders", adminAuth, async (req, res) => {
   try {
 
@@ -178,46 +175,32 @@ router.get("/orders", adminAuth, async (req, res) => {
 
           (order.items || []).map(async (i) => {
 
-            // ✅ If already has name & image
-            if (i.name && i.image) {
-
+            /* ✅ If already has image */
+            if (i.image && i.name) {
               return i;
-
             }
 
-            // ✅ Fetch from Product table (OLD ORDERS)
+            /* ✅ Fetch product if missing */
 
-            if (i.product) {
+            if (i.productId) {
 
-              const product = await Product.findById(i.product)
-              .select("name image")
-              .lean();
+              const product = await Product.findById(i.productId)
+                .select("name image")
+                .lean();
 
               return {
 
+                ...i,
+
                 name: product?.name || "Product",
 
-                image: product?.image || "",
-
-                qty: i.qty,
-
-                price: i.price
+                image: product?.image || ""
 
               };
 
             }
 
-            return {
-
-              name: "Product",
-
-              image: "",
-
-              qty: i.qty,
-
-              price: i.price
-
-            };
+            return i;
 
           })
 
@@ -230,9 +213,9 @@ router.get("/orders", adminAuth, async (req, res) => {
 
     res.json({
 
-      success:true,
+      success: true,
 
-      data:formattedOrders
+      data: formattedOrders
 
     });
 
