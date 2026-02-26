@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 
 const { adminLogin } = require("../controllers/admin/Adminauth.controller");
 const { createInitialAdmin } = require("../controllers/admin/initAdmin.controller");
