@@ -68,7 +68,12 @@ app.use(express.urlencoded({ extended: true }));
 /* ================= ROUTES ================= */
 /* ================= STATIC INVOICES ================= */
 
-app.use("/invoices", express.static(path.join(__dirname, "invoices")));
+app.use(
+  "/invoices",
+  express.static(
+    path.join(__dirname, "../freshlaa-backend/invoices")
+  )
+);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
