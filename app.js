@@ -66,7 +66,9 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 /* ================= ROUTES ================= */
-app.use("/invoices", express.static("invoices"));
+/* ================= STATIC INVOICES ================= */
+
+app.use("/invoices", express.static(path.join(__dirname, "invoices")));
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
