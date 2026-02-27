@@ -406,6 +406,7 @@ success:false,
 message:"Invalid status"
 });
 
+
 const order=await Order.findById(orderId)
 .populate("user");
 
@@ -428,12 +429,11 @@ order
 
 }
 
-
 order.status=status;
 await order.save();
 
 
-/* ================= SOCKET ================= */
+/* SOCKET */
 
 if(global.io){
 
@@ -468,99 +468,126 @@ data:{orderId:order._id.toString()}
 
 const phone = order.user?.phone?.replace("+","");
 
-if(phone){
 
-try{
+/* ✅ ORDER PLACED */
 
-/* ✅ ORDER PLACED (4 VARIABLES) */
-
-if(status==="Placed"){
+if(status==="Placed" && phone){
 
 await sendWhatsAppTemplate(
+
 phone,
+
 "order_placed",
+
 [
 order.user.name || "Customer",
 "Freshlaa",
 order._id.toString(),
 `₹${order.total}`
 ]
+
 );
 
 }
 
 
-/* ✅ ORDER CANCELLED (3 VARIABLES) */
+/* ✅ ORDER CANCELLED */
 
-if(status==="Cancelled"){
+if(status==="Cancelled" && phone){
 
 await sendWhatsAppTemplate(
+
 phone,
+
 "order_cancelled",
+
 [
 order.user.name || "Customer",
 "Freshlaa",
 order._id.toString()
 ]
+
 );
 
 }
 
 
-/* ✅ ORDER DELIVERED (3 VARIABLES + PDF) */
+/* ✅ ORDER DELIVERED + INVOICE */
 
-if(status==="Delivered"){
+if(status==="Delivered" && phone){
+
+try{
 
 const user=order.user;
 
+
+/* CREATE PDF */
+
 await generateInvoice(order,user);
 
+
+/* SEND TEMPLATE */
+
 await sendWhatsAppTemplate(
+
 phone,
+
 "order_delivered",
+
 [
 user.name || "Customer",
 order._id.toString(),
 `₹${order.total}`
 ]
+
 );
 
-const invoiceUrl =
+
+/* SEND PDF */
+
+const invoiceUrl=
 `https://api.freshlaa.com/invoices/invoice-${order._id}.pdf`;
 
+
 await sendWhatsAppDocument(
+
 phone,
+
 invoiceUrl,
+
 `Invoice-${order._id}.pdf`
+
 );
 
 console.log("✅ Invoice sent:",invoiceUrl);
 
 }
+catch(err){
 
-}catch(err){
-
-console.log("WhatsApp error:",err.message);
-
-}
+console.log("Invoice send error",err.message)
 
 }
 
+}
 
-/* ================= RESPONSE ================= */
 
 res.json({
+
 success:true,
 message:"Order updated",
 order
+
 });
 
 }
+
 catch(error){
 
 res.status(500).json({
+
 success:false,
 message:error.message
+
 });
 
 }
