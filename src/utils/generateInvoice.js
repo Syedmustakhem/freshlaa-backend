@@ -1,38 +1,39 @@
-const PDFDocument = require("pdfkit");
-const fs = require("fs");
-const path = require("path");
+const PDFDocument=require("pdfkit");
+const fs=require("fs");
+const path=require("path");
+const QRCode=require("qrcode");
 
-module.exports = async function generateInvoice(order, user) {
+module.exports=async function generateInvoice(order,user){
 
-const fileName = `invoice-${order._id}.pdf`;
+const fileName=`invoice-${order._id}.pdf`;
 
-/* ✅ SAFE FOLDER PATH */
+const filePath=path.join(
+__dirname,
+`../../invoices/${fileName}`
+);
 
-const invoicesDir = path.join(process.cwd(), "invoices");
+const logoPath=path.join(
+__dirname,
+"../assets/logo.png"
+);
 
-if (!fs.existsSync(invoicesDir)) {
-fs.mkdirSync(invoicesDir);
-}
-
-/* ✅ FILE PATH */
-
-const filePath = path.join(invoicesDir, fileName);
-
-/* ✅ CREATE PDF */
-
-const doc = new PDFDocument({ margin: 40 });
+const doc=new PDFDocument({margin:40});
 
 doc.pipe(fs.createWriteStream(filePath));
 
 /* ================= HEADER ================= */
 
-doc.fontSize(24).text("Freshlaa", { align: "center" });
+if(fs.existsSync(logoPath)){
+doc.image(logoPath,40,40,{width:60});
+}
 
-doc.moveDown(0.5);
+doc.fontSize(24)
+.text("Freshlaa",120,50);
 
-doc.fontSize(16).text("TAX INVOICE", { align: "center" });
+doc.fontSize(12)
+.text("Tax Invoice",{align:"right"});
 
-doc.moveDown();
+doc.moveDown(2);
 
 
 /* ================= ORDER INFO ================= */
@@ -49,80 +50,142 @@ doc.moveDown();
 
 /* ================= CUSTOMER ================= */
 
-doc.fontSize(14).text("Customer Details");
-
-doc.moveDown(0.5);
+doc.fontSize(14)
+.text("Bill To:");
 
 doc.fontSize(12);
 
 doc.text(user.name || "Customer");
-doc.text(user.phone || "-");
+
+doc.text(user.phone);
+
+if(order.address){
+
+doc.text(order.address.line1 || "");
+
+doc.text(order.address.city || "");
+
+doc.text(order.address.pincode || "");
+
+}
 
 doc.moveDown();
 
 
-/* ================= ITEMS TABLE ================= */
-
-doc.fontSize(14).text("Items");
-
-doc.moveDown(0.5);
+/* ================= TABLE HEADER ================= */
 
 doc.fontSize(12);
 
-order.items.forEach((item) => {
+doc.text("Product",40,300);
 
-const total = item.qty * item.price;
+doc.text("Qty",300,300);
+
+doc.text("Price",350,300);
+
+doc.text("Total",450,300);
+
+doc.moveTo(40,320)
+.lineTo(550,320)
+.stroke();
+
+
+/* ================= ITEMS ================= */
+
+let y=340;
+
+let subtotal=0;
+
+order.items.forEach(item=>{
+
+const total=item.qty*item.price;
+
+subtotal+=total;
+
+doc.text(item.name,40,y,{width:240});
+
+doc.text(item.qty,300,y);
+
+doc.text(`₹${item.price}`,350,y);
+
+doc.text(`₹${total}`,450,y);
+
+y+=25;
+
+});
+
+
+/* ================= TOTALS ================= */
+
+doc.moveDown(4);
 
 doc.text(
-`${item.name}`
+`Subtotal: ₹${subtotal}`,
+{
+align:"right"
+}
 );
 
 doc.text(
-`Qty: ${item.qty}   Price: ₹${item.price}   Total: ₹${total}`
+`Delivery: ₹${order.breakdown?.deliveryFee || 0}`,
+{
+align:"right"
+}
 );
 
-if(item.variant?.label){
-doc.text(`Variant: ${item.variant.label}`);
+doc.text(
+`Discount: ₹${order.breakdown?.discount || 0}`,
+{
+align:"right"
 }
+);
 
-if(item.selectedAddons?.length){
-doc.text("Addons:");
-
-item.selectedAddons.forEach(a=>{
-doc.text(`${a.name} ₹${a.price}`);
-});
-}
 
 doc.moveDown();
 
-});
 
+doc.fontSize(16);
 
-/* ================= BILL ================= */
-
-doc.text("--------------------------------");
-
-doc.moveDown();
-
-doc.fontSize(16).text(
+doc.text(
 `Grand Total: ₹${order.total}`,
-{ align: "right" }
+{
+align:"right"
+}
 );
 
-doc.moveDown(2);
+
+/* ================= QR CODE ================= */
+
+const qrData=
+`Order:${order._id}
+Total:${order.total}
+Freshlaa`;
+
+const qrImage=await QRCode.toDataURL(qrData);
+
+doc.image(
+Buffer.from(
+qrImage.replace(/^data:image\/png;base64,/,""),
+"base64"
+),
+40,
+650,
+{width:100}
+);
 
 
 /* ================= FOOTER ================= */
 
-doc.fontSize(12).text(
-"Thank you for shopping with Freshlaa ❤️",
-{ align: "center" }
+doc.fontSize(10);
+
+doc.text(
+"Thank you for shopping with Freshlaa",
+0,
+750,
+{align:"center"}
 );
 
 doc.end();
 
-/* ✅ RETURN PUBLIC URL */
-
-return `${process.env.SERVER_URL}/invoices/${fileName}`;
+return `/invoices/${fileName}`;
 
 };
