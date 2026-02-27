@@ -175,62 +175,63 @@ router.get("/orders", adminAuth, async (req, res) => {
 
           (order.items || []).map(async (i) => {
 
-            // ✅ If already has data
-            if (i.name && i.image) {
-              return i;
+            /* ✅ FIX CLOUDINARY URL */
+            const fixImage = (img) => {
+              if (!img) return "";
+              if (img.startsWith("http")) return img;
+              if (img.includes("cloudinary"))
+                return `https://${img}`;
+              return img;
+            };
+
+
+            /* ✅ Already has Cloudinary image */
+            if (i.image) {
+
+              return {
+
+                ...i,
+
+                name: i.name || "Product",
+
+                image: fixImage(i.image)
+
+              };
+
             }
 
 
-            // ✅ Only fetch if VALID ObjectId
+            /* ✅ Fetch product image if missing */
             if (
               i.productId &&
               mongoose.Types.ObjectId.isValid(i.productId)
             ) {
 
-              try {
-
-                const product = await Product.findOne({
-                  _id: i.productId
-                })
+              const product = await Product.findById(i.productId)
                 .select("name image")
                 .lean();
 
+              return {
 
-                return {
+                ...i,
 
-                  ...i,
+                name: product?.name || i.name || "Product",
 
-                  name: product?.name || "Product",
+                image: fixImage(product?.image)
 
-                  image: product?.image || ""
-
-                };
-
-              } catch {
-
-                return {
-
-                  ...i,
-
-                  name: i.name || "Product",
-
-                  image: i.image || ""
-
-                };
-
-              }
+              };
 
             }
 
 
-            // ✅ Broken old orders safe fallback
+            /* ✅ Safe fallback */
             return {
 
               ...i,
 
               name: i.name || "Product",
 
-              image: i.image || ""
+              image: ""
 
             };
 
