@@ -392,71 +392,60 @@ try{
 
 const {orderId,status}=req.body;
 
-
 const allowedStatuses=[
-
 "Placed",
-
 "Packed",
-
 "OutForDelivery",
-
 "Delivered",
-
 "Cancelled"
-
 ];
 
-
 if(!allowedStatuses.includes(status))
-
 return res.status(400).json({
-
 success:false,
-
 message:"Invalid status"
-
 });
-
 
 const order=await Order.findById(orderId)
-
 .populate("user");
 
-
 if(!order)
-
 return res.status(404).json({
-
 success:false,
-
 message:"Order not found"
-
 });
 
 
-order.status=status;
+/* ✅ Prevent duplicate messages */
 
-await order.save();
+if(order.status===status){
 
-
-
-/* SOCKET */
-
-if(global.io){
-
-global.io.emit("order-updated",{
-
-orderId:order._id.toString(),
-
-status
-
+return res.json({
+success:true,
+message:"Status already updated",
+order
 });
 
 }
 
 
-/* PUSH */
+order.status=status;
+await order.save();
+
+
+/* ================= SOCKET ================= */
+
+if(global.io){
+
+global.io.emit("order-updated",{
+orderId:order._id.toString(),
+status
+});
+
+}
+
+
+/* ================= EXPO PUSH (ALL STATUSES) ================= */
 
 if(order.user?.expoPushToken){
 
@@ -475,114 +464,103 @@ data:{orderId:order._id.toString()}
 }
 
 
-/* WHATSAPP NORMAL STATUS */
+/* ================= WHATSAPP ================= */
 
-/* WHATSAPP TEMPLATE */
+const phone = order.user?.phone?.replace("+","");
 
-if(order.user?.phone){
+if(phone){
+
+try{
+
+/* ✅ ORDER PLACED (4 VARIABLES) */
+
+if(status==="Placed"){
 
 await sendWhatsAppTemplate(
-
-order.user.phone.replace("+",""),
-
-"order_delivered",
-
+phone,
+"order_placed",
 [
-
 order.user.name || "Customer",
-
+"Freshlaa",
 order._id.toString(),
-
 `₹${order.total}`
-
 ]
-
 );
 
 }
 
-/* 🔥 AUTO INVOICE WHEN DELIVERED */
-/* 🔥 AUTO INVOICE WHEN DELIVERED */
+
+/* ✅ ORDER CANCELLED (3 VARIABLES) */
+
+if(status==="Cancelled"){
+
+await sendWhatsAppTemplate(
+phone,
+"order_cancelled",
+[
+order.user.name || "Customer",
+"Freshlaa",
+order._id.toString()
+]
+);
+
+}
+
+
+/* ✅ ORDER DELIVERED (3 VARIABLES + PDF) */
 
 if(status==="Delivered"){
 
-try{
-
 const user=order.user;
 
-
-/* CREATE PDF */
-
-const invoicePath=await generateInvoice(order,user);
-
-
-/* TEMPLATE MESSAGE */
+await generateInvoice(order,user);
 
 await sendWhatsAppTemplate(
-
-user.phone.replace("+",""),
-
+phone,
 "order_delivered",
-
 [
-
 user.name || "Customer",
-
 order._id.toString(),
-
 `₹${order.total}`
-
 ]
-
 );
 
-
-/* PDF DOCUMENT */
-
-const invoiceUrl=
+const invoiceUrl =
 `https://api.freshlaa.com/invoices/invoice-${order._id}.pdf`;
 
-
 await sendWhatsAppDocument(
-
-user.phone.replace("+",""),
-
+phone,
 invoiceUrl,
-
 `Invoice-${order._id}.pdf`
-
 );
 
 console.log("✅ Invoice sent:",invoiceUrl);
 
+}
 
 }catch(err){
 
-console.log("Invoice send error",err.message)
+console.log("WhatsApp error:",err.message);
 
 }
 
 }
+
+
+/* ================= RESPONSE ================= */
+
 res.json({
-
 success:true,
-
 message:"Order updated",
-
 order
-
 });
 
 }
-
 catch(error){
 
 res.status(500).json({
-
 success:false,
-
 message:error.message
-
 });
 
 }
