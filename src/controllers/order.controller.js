@@ -475,23 +475,21 @@ data:{orderId:order._id.toString()}
 }
 
 
-/* WHATSAPP NORMAL */
+/* WHATSAPP NORMAL STATUS */
 
-if(order.user?.phone){
+if(order.user?.phone && status !== "Delivered"){
 
 await sendWhatsAppTemplate(
 
 order.user.phone.replace("+",""),
 
-"order_status",
+"order_delivered",
 
 [
 
 order.user.name || "Customer",
 
-order._id.toString(),
-
-status
+"Freshlaa"
 
 ]
 
@@ -503,7 +501,9 @@ status
 
 /* 🔥 AUTO INVOICE WHEN DELIVERED */
 
-if(status==="Delivered"){
+/* 🔥 AUTO INVOICE WHEN DELIVERED */
+
+if(status==="Delivered" && order.user?.phone){
 
 try{
 
@@ -513,15 +513,18 @@ const user=order.user;
 /* CREATE PDF */
 
 const invoicePath=await generateInvoice(
-
 order,
-
 user
-
 );
 
 
-/* TEMPLATE */
+/* PUBLIC URL */
+
+const invoiceUrl=
+`https://api.freshlaa.com${invoicePath}`;
+
+
+/* DELIVERY MESSAGE */
 
 await sendWhatsAppTemplate(
 
@@ -530,30 +533,27 @@ user.phone.replace("+",""),
 "order_delivered",
 
 [
-
 user.name || "Customer",
-
-order._id.toString(),
-
-`₹${order.total}`
-
+"Freshlaa"
 ]
 
 );
 
 
-/* PDF DOCUMENT */
+/* SEND PDF */
 
 await sendWhatsAppDocument(
 
 user.phone.replace("+",""),
 
-`https://api.freshlaa.com${invoicePath}`,
+invoiceUrl,
 
 `Invoice-${order._id}.pdf`
 
 );
 
+
+console.log("✅ Invoice sent:",invoiceUrl);
 
 }catch(err){
 
@@ -562,7 +562,6 @@ console.log("Invoice send error",err.message)
 }
 
 }
-
 
 res.json({
 
