@@ -10,6 +10,8 @@ const { calculateOrder } = require("../services/pricing.service");
 const AdminPush = require("../models/AdminPush");
 const webpush = require("web-push");
 const checkoutService = require("../services/checkoutPayment.service");
+const generateInvoice=require("../utils/generateInvoice");
+const {sendWhatsAppDocument}=require("../services/whatsapp.service");
 /* ================= ENV SAFETY ================= */
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -384,126 +386,206 @@ exports.getActiveOrders = async (req, res) => {
   }
 };
 /* ================= ADMIN UPDATE STATUS ================= */
-exports.updateOrderStatus = async (req, res) => {
-  try {
+exports.updateOrderStatus = async (req,res)=>{
 
-    const { orderId, status } = req.body;
+try{
 
-    const allowedStatuses = [
-      "Placed",
-      "Packed",
-      "OutForDelivery",
-      "Delivered",
-      "Cancelled"
-    ];
-
-    if (!allowedStatuses.includes(status))
-      return res.status(400).json({
-        success:false,
-        message:"Invalid status"
-      });
-
-    const order = await Order.findById(orderId)
-    .populate("user");
-
-    if (!order)
-      return res.status(404).json({
-        success:false,
-        message:"Order not found"
-      });
+const {orderId,status}=req.body;
 
 
-    order.status = status;
+const allowedStatuses=[
 
-    await order.save();
+"Placed",
 
+"Packed",
 
-    /* SOCKET UPDATE */
-    if(global.io){
+"OutForDelivery",
 
-      global.io.emit("order-updated",{
+"Delivered",
 
-        orderId:order._id.toString(),
+"Cancelled"
 
-        status
-
-      });
-
-    }
+];
 
 
-    /* USER PUSH */
+if(!allowedStatuses.includes(status))
 
-    if(order.user?.expoPushToken){
+return res.status(400).json({
 
-      await sendPush({
+success:false,
 
-        expoPushToken:order.user.expoPushToken,
+message:"Invalid status"
 
-        title:"Order Update",
-
-        body:`Your order is ${status}`,
-
-        data:{orderId:order._id.toString()}
-
-      });
-
-    }
+});
 
 
-    /* WHATSAPP UPDATE */
+const order=await Order.findById(orderId)
 
-    if(order.user?.phone){
-
-      try{
-
-        await sendWhatsAppTemplate(
-
-          order.user.phone.replace("+",""),
-
-          "order_status",
-
-          [
-
-            order.user.name || "Customer",
-
-            order._id.toString(),
-
-            status
-
-          ]
-
-        );
-
-      }catch(err){
-
-        console.log("WhatsApp error",err.message)
-
-      }
-
-    }
+.populate("user");
 
 
-    res.json({
+if(!order)
 
-      success:true,
+return res.status(404).json({
 
-      message:"Order updated",
+success:false,
 
-      order
+message:"Order not found"
 
-    });
+});
 
-  }
-  catch(error){
 
-    res.status(500).json({
+order.status=status;
 
-      success:false,
+await order.save();
 
-      message:error.message
 
-    });
 
-  }
+/* SOCKET */
+
+if(global.io){
+
+global.io.emit("order-updated",{
+
+orderId:order._id.toString(),
+
+status
+
+});
+
+}
+
+
+/* PUSH */
+
+if(order.user?.expoPushToken){
+
+await sendPush({
+
+expoPushToken:order.user.expoPushToken,
+
+title:"Order Update",
+
+body:`Your order is ${status}`,
+
+data:{orderId:order._id.toString()}
+
+});
+
+}
+
+
+/* WHATSAPP NORMAL */
+
+if(order.user?.phone){
+
+await sendWhatsAppTemplate(
+
+order.user.phone.replace("+",""),
+
+"order_status",
+
+[
+
+order.user.name || "Customer",
+
+order._id.toString(),
+
+status
+
+]
+
+);
+
+}
+
+
+
+/* 🔥 AUTO INVOICE WHEN DELIVERED */
+
+if(status==="Delivered"){
+
+try{
+
+const user=order.user;
+
+
+/* CREATE PDF */
+
+const invoicePath=await generateInvoice(
+
+order,
+
+user
+
+);
+
+
+/* TEMPLATE */
+
+await sendWhatsAppTemplate(
+
+user.phone.replace("+",""),
+
+"order_delivered",
+
+[
+
+user.name || "Customer",
+
+order._id.toString(),
+
+`₹${order.total}`
+
+]
+
+);
+
+
+/* PDF DOCUMENT */
+
+await sendWhatsAppDocument(
+
+user.phone.replace("+",""),
+
+`https://api.freshlaa.com${invoicePath}`,
+
+`Invoice-${order._id}.pdf`
+
+);
+
+
+}catch(err){
+
+console.log("Invoice send error",err.message)
+
+}
+
+}
+
+
+res.json({
+
+success:true,
+
+message:"Order updated",
+
+order
+
+});
+
+}
+
+catch(error){
+
+res.status(500).json({
+
+success:false,
+
+message:error.message
+
+});
+
+}
+
 };
