@@ -7,6 +7,7 @@ const HomeSectionSchema = new mongoose.Schema({
     enum: [
       "HEADER",
       "ACTIVE_ORDER",
+        "QUICK_FILTERS",
       "RAMADAN_SPECIAL",    // 👈 NEW - Add Ramadan section
       "BANNERS",
       "SPONSORED",

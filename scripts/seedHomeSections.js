@@ -291,10 +291,58 @@ mongoose.connect(process.env.MONGO_URI);
           sortBy: "featured",
         },
       },
+{
+  type: "QUICK_FILTERS",
+  order: 4,
+  data: {
 
+    title:"Quick Picks",
+
+    filters:[
+
+{
+id:"all",
+title:"All",
+icon:"https://cdn-icons-png.flaticon.com/512/1170/1170678.png"
+},
+
+{
+id:"ramadan",
+title:"Ramadan",
+icon:"https://cdn-icons-png.flaticon.com/512/833/833314.png"
+},
+
+{
+id:"fruits",
+title:"Fruits",
+icon:"https://cdn-icons-png.flaticon.com/512/415/415733.png"
+},
+
+{
+id:"vegetables",
+title:"Veggies",
+icon:"https://cdn-icons-png.flaticon.com/512/2909/2909766.png"
+},
+
+{
+id:"deals",
+title:"Deals",
+icon:"https://cdn-icons-png.flaticon.com/512/3523/3523887.png"
+},
+
+{
+id:"snacks",
+title:"Snacks",
+icon:"https://cdn-icons-png.flaticon.com/512/2553/2553691.png"
+}
+
+]
+
+  }
+},
       {
         type: "BANNERS",
-        order: 4,
+        order: 5,
         data: {
           image: [
             "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg",
@@ -307,7 +355,7 @@ mongoose.connect(process.env.MONGO_URI);
 
       {
         type: "SPONSORED",
-        order: 5,
+        order: 6,
         data: {
           schemaVersion: 1,           // ✅ moved inside data (not a top-level field)
           layout: "SPLIT_50",
@@ -335,27 +383,27 @@ mongoose.connect(process.env.MONGO_URI);
         },
       },
 
-      { type: "CATEGORIES",       order: 6, data: {} },
+      { type: "CATEGORIES",       order: 7, data: {} },
 
       {
         type: "ZEPTO_CATEGORIES",
-        order: 7,
+        order: 8,
         data: { title: "Explore Categories" },
       },
 
       // ✅ CATEGORY_CAROUSEL — comma fixed, unique order
      
 
-      { type: "DAILY_NEEDS",    order: 8,  data: {} },  // ✅ order fixed from 8 → 9
-      { type: "QUICK_REORDER",  order: 9, data: {} },
-      { type: "ZOMATO",         order: 10, data: {} },
-      { type: "TRENDING",       order: 11, data: {} },
+      { type: "DAILY_NEEDS",    order: 9,  data: {} },  // ✅ order fixed from 8 → 9
+      { type: "QUICK_REORDER",  order: 10, data: {} },
+      { type: "ZOMATO",         order: 11, data: {} },
+      { type: "TRENDING",       order: 12, data: {} },
        {
         type: "CATEGORY_CAROUSEL",
-        order: 12,
+        order: 13,
         data: {},
       },
-      { type: "FOOTER",         order: 13, data: {} },
+      { type: "FOOTER",         order: 14, data: {} },
     ]);
 
     console.log("✅ HomeSection seeded successfully");
