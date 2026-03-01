@@ -4,24 +4,41 @@ const jwt = require("jsonwebtoken");
 
 const adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+
+    const { email, password, expoPushToken } = req.body;
 
     const admin = await Admin.findOne({ email, isActive: true });
+
     if (!admin) {
       return res.status(404).json({ message: "Admin not found" });
     }
 
     const isMatch = await bcrypt.compare(password, admin.password);
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-  { id: admin._id },
-  process.env.ADMIN_JWT_SECRET,
-  { expiresIn: "7d" }
-);
+    // ✅ SAVE MOBILE TOKEN
+    if (expoPushToken) {
 
+      if (!admin.expoPushTokens.includes(expoPushToken)) {
+
+        admin.expoPushTokens.push(expoPushToken);
+
+        await admin.save();
+
+        console.log("✅ Expo token saved:", expoPushToken);
+
+      }
+
+    }
+
+    const token = jwt.sign(
+      { id: admin._id },
+      process.env.ADMIN_JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     res.json({
       success: true,
@@ -32,9 +49,13 @@ const adminLogin = async (req, res) => {
         email: admin.email,
       },
     });
+
   } catch (err) {
+
     console.error("ADMIN LOGIN ERROR:", err);
+
     res.status(500).json({ message: "Admin login failed" });
+
   }
 };
 
