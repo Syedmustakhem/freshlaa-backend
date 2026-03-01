@@ -43,8 +43,7 @@ mongoose.connect(process.env.MONGO_URI);
         order: 2,
         data: {},
       },
-
- {
+{
 type:"QUICK_FILTERS",
 order:3,
 data:{
@@ -52,6 +51,8 @@ data:{
 title:"Quick Picks",
 
 filters:[
+
+/* ALL */
 
 {
 id:"all",
@@ -66,21 +67,43 @@ type:"DEFAULT_HOME"
 
 },
 
+/* FESTIVAL FILTER (CHANGE ANYTIME) */
+
 {
-id:"ramadan",
-title:"Ramadan",
+id:"festival",
+title:"Festival",
 icon:"https://img.icons8.com/?size=100&id=F8DOpjoXdb4i&format=png&color=000000",
 
 layout:[
 
+/* Animation */
+
 {
-type:"RAMADAN_SPECIAL"
+type:"ANIMATION",
+data:{
+lottie:"https://assets10.lottiefiles.com/packages/lf20_jcikwtux.json",
+height:180
+}
 },
+
+/* Festival Banners */
+
+{
+type:"BANNERS",
+data:{
+image:[
+"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg",
+"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg"
+]
+}
+},
+
+/* Festival Products */
 
 {
 type:"PRODUCTS",
 query:{
-quickFilter:"ramadan"
+quickFilter:"festival"
 }
 }
 
@@ -88,12 +111,23 @@ quickFilter:"ramadan"
 
 },
 
+/* DRY FRUITS */
+
 {
 id:"dry-fruits-pan",
-title:"DryFruitsPan",
+title:"DryFruits",
 icon:"https://cdn-icons-png.flaticon.com/512/415/415733.png",
 
 layout:[
+
+{
+type:"BANNERS",
+data:{
+image:[
+"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg"
+]
+}
+},
 
 {
 type:"PRODUCTS",
@@ -105,6 +139,8 @@ category:"dry-fruits"
 ]
 
 },
+
+/* VEGETABLES */
 
 {
 id:"vegetables",
@@ -124,12 +160,31 @@ quickFilter:"vegetables"
 
 },
 
+/* DEALS */
+
 {
 id:"deals",
 title:"Deals",
 icon:"https://cdn-icons-png.flaticon.com/512/3523/3523887.png",
 
 layout:[
+
+{
+type:"ANIMATION",
+data:{
+lottie:"https://assets1.lottiefiles.com/packages/lf20_qp1q7mct.json",
+height:160
+}
+},
+
+{
+type:"BANNERS",
+data:{
+image:[
+"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg"
+]
+}
+},
 
 {
 type:"PRODUCTS",
@@ -141,6 +196,8 @@ quickFilter:"deals"
 ]
 
 },
+
+/* SNACKS */
 
 {
 id:"snacks",
@@ -164,6 +221,7 @@ quickFilter:"snacks"
 
 }
 },
+ 
       {
         type: "BANNERS",
         order: 4,
