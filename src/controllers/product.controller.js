@@ -39,19 +39,59 @@ const normalizeVariants = (variants) => {
 /* ================= GET ALL PRODUCTS ================= */
 exports.getAllProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, category } = req.query;
+
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      category,
+      quickFilter   // ⭐ NEW
+    } = req.query;
 
     const query = {
       isActive: true,
       stock: { $gt: 0 },
     };
 
+    /* SEARCH */
+
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
 
+    /* CATEGORY */
+
     if (category) {
       query.category = category.toLowerCase();
+    }
+
+    /* QUICK FILTER SUPPORT */
+
+    if (quickFilter) {
+
+      switch (quickFilter) {
+
+        case "all":
+          break;
+
+        case "ramadan":
+          query.category = "ramadan";
+          break;
+
+        case "vegetables":
+          query.category = "vegetables";
+          break;
+
+        case "snacks":
+          query.category = "snacks";
+          break;
+
+        case "deals":
+          query.offerPercentage = { $gt: 0 };
+          break;
+
+      }
+
     }
 
     const products = await Product.find(query)
@@ -68,11 +108,14 @@ exports.getAllProducts = async (req, res) => {
       success: true,
       data: products,
     });
+
   } catch (err) {
+
     res.status(500).json({
       success: false,
       message: "Failed to fetch products",
     });
+
   }
 };
 exports.getTrendingProducts = async (req, res) => {
