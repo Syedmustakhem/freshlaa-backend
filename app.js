@@ -9,6 +9,7 @@ const app = express();
 /* ================= ROUTE IMPORTS (PM2 SAFE) ================= */
 
 const routesPath = path.join(__dirname, "src", "routes");
+const brandRoutes = require(path.join(routesPath, "brand.routes"));
 
 const adminRoutes = require(path.join(routesPath, "admin.routes"));
 const authRoutes = require(path.join(routesPath, "auth.routes"));
@@ -93,6 +94,7 @@ app.use("/api", homeSectionRoutes);
 app.use("/api", categoryBannerRoutes);
 app.use("/api", offerRoutes);
 app.use("/api/checkout-payment", checkoutPaymentRoutes);/* ================= HEALTH ================= */
+app.use("/api/brand", brandRoutes);
 
 app.get("/", (req, res) => {
   res.json({
