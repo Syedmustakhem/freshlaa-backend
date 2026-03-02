@@ -67,9 +67,11 @@ exports.getAllProducts = async (req, res) => {
 
     /* QUICK FILTER SUPPORT (SERVER DRIVEN) */
 
+/* QUICK FILTER SUPPORT (SERVER DRIVEN) */
+
 if (quickFilter && quickFilter !== "all") {
 
-query.quickFilter = quickFilter;
+query.category = quickFilter.toLowerCase();
 
 }
 
