@@ -65,34 +65,13 @@ exports.getAllProducts = async (req, res) => {
       query.category = category.toLowerCase();
     }
 
-    /* QUICK FILTER SUPPORT */
+    /* QUICK FILTER SUPPORT (SERVER DRIVEN) */
 
-    if (quickFilter) {
+if (quickFilter && quickFilter !== "all") {
 
-      switch (quickFilter) {
+query.quickFilter = quickFilter;
 
-        case "all":
-          break;
-
-        case "ramadan":
-          query.category = "ramadan";
-          break;
-
-        case "vegetables":
-          query.category = "vegetables";
-          break;
-
-        case "snacks":
-          query.category = "snacks";
-          break;
-
-        case "deals":
-          query.offerPercentage = { $gt: 0 };
-          break;
-
-      }
-
-    }
+}
 
     const products = await Product.find(query)
       .sort({ createdAt: -1 })

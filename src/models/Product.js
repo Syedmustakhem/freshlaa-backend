@@ -10,77 +10,100 @@ const variantSchema = new mongoose.Schema({
   isDefault: { type: Boolean, default: false },
 });
 
+
 const productSchema = new mongoose.Schema(
-  {
-    /* ================= CORE INFO ================= */
-    name: { type: String, required: true, trim: true },
-    description: { type: String, default: "" },
+{
+  /* ================= CORE INFO ================= */
 
-    /* ================= NEW (IMPORTANT) ================= */
-   sectionId: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "CategorySection",
-  default: null,
-  index: true,
-},
+  name:{ type:String,required:true,trim:true },
+  description:{ type:String,default:"" },
 
 
-    subCategory: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
-    },
+  /* ================= NEW (IMPORTANT) ================= */
 
-    /* ================= OLD CATEGORY (KEEP FOR BACKWARD COMPATIBILITY) ================= */
-    category: {
-      type: String,
-      required: true,
-      lowercase: true,
-      index: true,
-    },
-
-    /* ================= MEDIA ================= */
-    images: {
-      type: [String],
-      required: true,
-      validate: v => Array.isArray(v) && v.length > 0,
-    },
-
-    /* ================= STOCK ================= */
-    stock: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
-    },
-
-    variants: {
-      type: [variantSchema],
-      required: true,
-      validate: v => Array.isArray(v) && v.length > 0,
-    },
-
-    /* ================= FLAGS ================= */
-    isFeatured: { type: Boolean, default: false },
-    isTrending: { type: Boolean, default: false },
-
-    offerPercentage: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true },
-
-    /* ================= META ================= */
-    source: {
-      type: String,
-      enum: ["manual"],
-      default: "manual",
-    },
-
-    allowShopifySync: {
-      type: Boolean,
-      default: false,
-    },
+  sectionId:{
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"CategorySection",
+    default:null,
+    index:true
   },
-  { timestamps: true }
-);
 
+
+  subCategory:{
+    type:String,
+    required:true,
+    trim:true,
+    index:true
+  },
+
+
+  category:{
+    type:String,
+    required:true,
+    lowercase:true,
+    index:true
+  },
+
+
+  /* ⭐ QUICK FILTER SUPPORT (NEW) */
+
+  quickFilter:{
+    type:String,
+    default:null,
+    index:true
+  },
+
+
+  /* ================= MEDIA ================= */
+
+  images:{
+    type:[String],
+    required:true,
+    validate:v=>Array.isArray(v)&&v.length>0
+  },
+
+
+  /* ================= STOCK ================= */
+
+  stock:{
+    type:Number,
+    required:true,
+    min:0,
+    default:0
+  },
+
+
+  variants:{
+    type:[variantSchema],
+    required:true,
+    validate:v=>Array.isArray(v)&&v.length>0
+  },
+
+
+  /* ================= FLAGS ================= */
+
+  isFeatured:{ type:Boolean,default:false },
+  isTrending:{ type:Boolean,default:false },
+
+  offerPercentage:{ type:Number,default:0 },
+
+  isActive:{ type:Boolean,default:true },
+
+
+  /* ================= META ================= */
+
+  source:{
+    type:String,
+    enum:["manual"],
+    default:"manual"
+  },
+
+  allowShopifySync:{
+    type:Boolean,
+    default:false
+  }
+
+},
+{ timestamps:true }
+);
 module.exports = mongoose.model("Product", productSchema);
