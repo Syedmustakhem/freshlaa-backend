@@ -70,9 +70,10 @@ exports.getAllProducts = async (req, res) => {
 /* QUICK FILTER SUPPORT (SERVER DRIVEN) */
 
 if (quickFilter && quickFilter !== "all") {
-
-query.category = quickFilter.toLowerCase();
-
+  query.$or = [
+    { category: quickFilter.toLowerCase() },
+    { subCategory: quickFilter.toLowerCase() }
+  ];
 }
 
     const products = await Product.find(query)
