@@ -45,12 +45,12 @@ exports.getAllProducts = async (req, res) => {
       limit = 20,
       search,
       category,
-      quickFilter   // ⭐ NEW
+      quickFilter
     } = req.query;
 
     const query = {
       isActive: true,
-      stock: { $gt: 0 },
+      "variants.stock": { $gt: 0 }   // ✅ correct stock check
     };
 
     /* SEARCH */
@@ -65,37 +65,61 @@ exports.getAllProducts = async (req, res) => {
       query.category = category.toLowerCase();
     }
 
-    /* QUICK FILTER SUPPORT (SERVER DRIVEN) */
+    /* QUICK FILTER */
 
-/* QUICK FILTER SUPPORT (SERVER DRIVEN) */
+    if (quickFilter && quickFilter !== "all") {
 
-if (quickFilter && quickFilter !== "all") {
-  query.$or = [
-    { category: quickFilter.toLowerCase() },
-    { subCategory: quickFilter.toLowerCase() }
-  ];
-}
+      const filter = quickFilter.toLowerCase();
 
-    const products = await Product.find(query)
+      query.$or = [
+        { quickFilter: filter },
+        { category: filter },
+        { subCategory: filter }
+      ];
+
+    }
+
+    let products = await Product.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
       .lean();
 
+    /* REMOVE OUT OF STOCK VARIANTS */
+
     products.forEach(p => {
       p.variants = p.variants.filter(v => v.stock > 0);
     });
 
+    /* FALLBACK IF EMPTY (PREVENT UI SPACE ISSUE) */
+
+    if (products.length === 0) {
+
+      products = await Product.find({
+        isActive: true,
+        "variants.stock": { $gt: 0 }
+      })
+      .limit(10)
+      .lean();
+
+      products.forEach(p => {
+        p.variants = p.variants.filter(v => v.stock > 0);
+      });
+
+    }
+
     res.json({
       success: true,
-      data: products,
+      data: products
     });
 
   } catch (err) {
 
+    console.error("getAllProducts error:", err);
+
     res.status(500).json({
       success: false,
-      message: "Failed to fetch products",
+      message: "Failed to fetch products"
     });
 
   }
