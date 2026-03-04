@@ -45,38 +45,21 @@ exports.getAllProducts = async (req, res) => {
       limit = 20,
       search,
       category,
-      quickFilter
     } = req.query;
 
     const query = {
       isActive: true,
-      "variants.stock": { $gt: 0 }   // ✅ correct stock check
+      "variants.stock": { $gt: 0 }
     };
 
     /* SEARCH */
-
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
 
     /* CATEGORY */
-
     if (category) {
       query.category = category.toLowerCase();
-    }
-
-    /* QUICK FILTER */
-
-    if (quickFilter && quickFilter !== "all") {
-
-      const filter = quickFilter.toLowerCase();
-
-      query.$or = [
-        { quickFilter: filter },
-        { category: filter },
-        { subCategory: filter }
-      ];
-
     }
 
     let products = await Product.find(query)
@@ -86,15 +69,12 @@ exports.getAllProducts = async (req, res) => {
       .lean();
 
     /* REMOVE OUT OF STOCK VARIANTS */
-
     products.forEach(p => {
       p.variants = p.variants.filter(v => v.stock > 0);
     });
 
     /* FALLBACK IF EMPTY (PREVENT UI SPACE ISSUE) */
-
     if (products.length === 0) {
-
       products = await Product.find({
         isActive: true,
         "variants.stock": { $gt: 0 }
@@ -105,7 +85,6 @@ exports.getAllProducts = async (req, res) => {
       products.forEach(p => {
         p.variants = p.variants.filter(v => v.stock > 0);
       });
-
     }
 
     res.json({
@@ -114,14 +93,11 @@ exports.getAllProducts = async (req, res) => {
     });
 
   } catch (err) {
-
     console.error("getAllProducts error:", err);
-
     res.status(500).json({
       success: false,
       message: "Failed to fetch products"
     });
-
   }
 };
 exports.getTrendingProducts = async (req, res) => {
@@ -535,6 +511,49 @@ exports.toggleProductStatus = async (req, res) => {
     });
   }
 };
+/* ================= ADD THIS NEW FUNCTION ================= */
+// Fetches products by an array of IDs (for pinned products in Quick Filters)
+exports.getProductsByIds = async (req, res) => {
+  try {
+    const { ids } = req.body; // expects { ids: ["id1", "id2", ...] }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    let products = await Product.find({
+      _id: { $in: ids },
+      isActive: true,
+    }).lean();
+
+    // Remove out-of-stock variants (same pattern as rest of controller)
+    products.forEach(p => {
+      p.variants = p.variants.filter(v => v.stock > 0);
+    });
+
+    // Return in the same order as ids array
+    const sorted = ids
+      .map(id => products.find(p => p._id.toString() === id))
+      .filter(Boolean);
+
+    res.json({ success: true, data: sorted });
+  } catch (err) {
+    console.error("getProductsByIds error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch products by IDs" });
+  }
+};
+
+
+/* ================= UPDATE getAllProducts — ADD productIds support ================= */
+// In your existing getAllProducts, add this block AFTER the quickFilter block:
+//
+//   /* PINNED PRODUCT IDs (Quick Filters) */
+//   if (req.query.productIds) {
+//     const ids = req.query.productIds.split(",");
+//     query._id = { $in: ids };
+//   }
+//
+// That's the only change needed in getAllProducts.
 /* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
 exports.getProductsBySection = async (req, res) => {
   try {
