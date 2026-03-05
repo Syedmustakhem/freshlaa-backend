@@ -31,19 +31,16 @@ router.post("/campaign", async (req, res) => {
 
     for (const user of users) {
       if (!Expo.isExpoPushToken(user.expoPushToken)) continue;
-
-      messages.push({
-        to: user.expoPushToken,
-        sound: "default",
-        title: title,
-        body: message,
-        data: data || {},
-        richContent: imageUrl
-          ? {
-              image: imageUrl,
-            }
-          : undefined,
-      });
+messages.push({
+  to: user.expoPushToken,
+  sound: "default",
+  title,
+  body: message,
+  data: {
+    screen: "campaign",
+    banner: imageUrl
+  }
+});
 
       await Notification.create({
         user: user._id,
