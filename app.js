@@ -129,6 +129,12 @@ app.post("/webhook", (req, res) => {
   res.sendStatus(200);
 });
 
+/* ================= HEALTH ================= */
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 /* ================= 404 ================= */
 
 app.use((req, res) => {
@@ -137,7 +143,6 @@ app.use((req, res) => {
     message: "API route not found",
   });
 });
-
 /* ================= ERROR ================= */
 
 app.use((err, req, res, next) => {
