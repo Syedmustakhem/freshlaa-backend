@@ -37,6 +37,7 @@ const normalizeVariants = (variants) => {
 };
 
 /* ================= GET ALL PRODUCTS ================= */
+/* ================= GET ALL PRODUCTS ================= */
 exports.getAllProducts = async (req, res) => {
   try {
     const {
@@ -45,52 +46,69 @@ exports.getAllProducts = async (req, res) => {
       search,
       category,
       quickFilter,
+      featured,
     } = req.query;
 
     const query = {
       isActive: true,
-      "variants.stock": { $gt: 0 }
+      "variants.stock": { $gt: 0 },
     };
 
+    // ── Text search ──
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
 
+    // ── Category filter ──
     if (category) {
       query.category = category.toLowerCase();
     }
 
-    // ✅ ADD THIS — handle quickFilter tag
+    // ── Quick filter tag ──
     if (quickFilter) {
       query.quickFilter = quickFilter.toLowerCase();
     }
 
-    // ✅ Must have at least one real filter, otherwise return empty
-    const hasFilter = search || category || quickFilter;
-    if (!hasFilter) {
+    // ── Featured flag ──
+    if (featured === "true") {
+      query.isFeatured = true;
+    }
+
+    // ── Guard: block requests that are ONLY trying to fetch with
+    //    quickFilter but passed an empty string (the original bug).
+    //    Do NOT block plain /products calls — those are used by
+    //    Explore, Search initial load, and the admin panel.
+    //    Only block if quickFilter was explicitly passed but is empty.
+    if (
+      req.query.hasOwnProperty("quickFilter") &&
+      !quickFilter
+    ) {
       return res.json({ success: true, data: [] });
     }
 
     let products = await Product.find(query)
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
+      .skip((page - 1) * Number(limit))
       .limit(Number(limit))
       .lean();
 
+    // Strip out-of-stock variants from each product
     products.forEach(p => {
       p.variants = p.variants.filter(v => v.stock > 0);
     });
 
-    // ✅ REMOVE the fallback — it was the main culprit loading random products
-    // No fallback = empty section instead of wrong products
-
-    res.json({ success: true, data: products });
+    res.json({
+      success: true,
+      data: products,
+      page: Number(page),
+      limit: Number(limit),
+    });
 
   } catch (err) {
     console.error("getAllProducts error:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch products"
+      message: "Failed to fetch products",
     });
   }
 };
