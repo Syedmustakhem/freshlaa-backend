@@ -13,7 +13,7 @@ SEND PUSH CAMPAIGN TO ALL APP USERS
 
 router.post("/campaign", async (req, res) => {
   try {
-    const { title, message, data } = req.body;
+    const { title, message, data, imageUrl } = req.body;
 
     if (!title || !message) {
       return res.status(400).json({
@@ -32,16 +32,18 @@ router.post("/campaign", async (req, res) => {
     for (const user of users) {
       if (!Expo.isExpoPushToken(user.expoPushToken)) continue;
 
-    messages.push({
-  to: user.expoPushToken,
-  sound: "default",
-  title: title,
-  body: message,
-  data: data || {},
-  richContent: {
-    image: imageUrl
-  }
-});
+      messages.push({
+        to: user.expoPushToken,
+        sound: "default",
+        title: title,
+        body: message,
+        data: data || {},
+        richContent: imageUrl
+          ? {
+              image: imageUrl,
+            }
+          : undefined,
+      });
 
       await Notification.create({
         user: user._id,
