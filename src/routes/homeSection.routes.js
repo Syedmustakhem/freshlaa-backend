@@ -77,13 +77,24 @@ router.put(
   "/admin/home-section/:id",
   adminAuth,
   async (req, res) => {
-    const section = await HomeSection.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    try {
+      const { type, order, data } = req.body; // ← destructure, don't save whole body
 
-    res.json({ success: true, section });
+      const section = await HomeSection.findByIdAndUpdate(
+        req.params.id,
+        { type, order, data },  // ← only save valid fields
+        { new: true }
+      );
+
+      if (!section) {
+        return res.status(404).json({ success: false, message: "Section not found" });
+      }
+
+      res.json({ success: true, section });
+    } catch (err) {
+      console.error("Update section error:", err);
+      res.status(500).json({ success: false, message: "Update failed" });
+    }
   }
 );
 

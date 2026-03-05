@@ -39,12 +39,12 @@ const normalizeVariants = (variants) => {
 /* ================= GET ALL PRODUCTS ================= */
 exports.getAllProducts = async (req, res) => {
   try {
-
     const {
       page = 1,
       limit = 20,
       search,
       category,
+      quickFilter,
     } = req.query;
 
     const query = {
@@ -52,14 +52,23 @@ exports.getAllProducts = async (req, res) => {
       "variants.stock": { $gt: 0 }
     };
 
-    /* SEARCH */
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
 
-    /* CATEGORY */
     if (category) {
       query.category = category.toLowerCase();
+    }
+
+    // ✅ ADD THIS — handle quickFilter tag
+    if (quickFilter) {
+      query.quickFilter = quickFilter.toLowerCase();
+    }
+
+    // ✅ Must have at least one real filter, otherwise return empty
+    const hasFilter = search || category || quickFilter;
+    if (!hasFilter) {
+      return res.json({ success: true, data: [] });
     }
 
     let products = await Product.find(query)
@@ -68,29 +77,14 @@ exports.getAllProducts = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
-    /* REMOVE OUT OF STOCK VARIANTS */
     products.forEach(p => {
       p.variants = p.variants.filter(v => v.stock > 0);
     });
 
-    /* FALLBACK IF EMPTY (PREVENT UI SPACE ISSUE) */
-    if (products.length === 0) {
-      products = await Product.find({
-        isActive: true,
-        "variants.stock": { $gt: 0 }
-      })
-      .limit(10)
-      .lean();
+    // ✅ REMOVE the fallback — it was the main culprit loading random products
+    // No fallback = empty section instead of wrong products
 
-      products.forEach(p => {
-        p.variants = p.variants.filter(v => v.stock > 0);
-      });
-    }
-
-    res.json({
-      success: true,
-      data: products
-    });
+    res.json({ success: true, data: products });
 
   } catch (err) {
     console.error("getAllProducts error:", err);
@@ -374,7 +368,9 @@ exports.updateProduct = async (req, res) => {
     if (typeof data.description === "string") {
       product.description = data.description;
     }
-
+ if (typeof data.quickFilter !== "undefined") {
+  product.quickFilter = data.quickFilter || null;
+}
     // CATEGORY (SAFE)
     if (data.category) {
       product.category = data.category.toLowerCase();
