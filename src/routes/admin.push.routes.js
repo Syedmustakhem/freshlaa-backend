@@ -1,3 +1,6 @@
+const express = require("express");
+const router = express.Router();
+
 const { Expo } = require("expo-server-sdk");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
@@ -67,3 +70,5 @@ router.post("/campaign", async (req, res) => {
     });
   }
 });
+
+module.exports = router;
