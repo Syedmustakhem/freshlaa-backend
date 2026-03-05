@@ -6,7 +6,9 @@ const { Server } = require("socket.io");
 
 const app = require("./app");
 const connectDB = require("./src/config/db");
-
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 connectDB();
 
 const PORT = process.env.PORT || 5000;
