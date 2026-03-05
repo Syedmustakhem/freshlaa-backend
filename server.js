@@ -1,6 +1,6 @@
 const dotenv = require("dotenv");
 dotenv.config();
-
+const redisClient = require("./redisClient");
 const http = require("http");
 const { Server } = require("socket.io");
 
