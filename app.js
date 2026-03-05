@@ -6,6 +6,10 @@ const path = require("path");
 
 const app = express();
 
+/* HEALTH CHECK */
+app.get("/health", (req, res) => {
+  return res.status(200).send("OK");
+});
 /* ================= ROUTE IMPORTS (PM2 SAFE) ================= */
 
 const routesPath = path.join(__dirname, "src", "routes");
@@ -129,11 +133,6 @@ app.post("/webhook", (req, res) => {
   res.sendStatus(200);
 });
 
-/* ================= HEALTH ================= */
-
-app.get("/health", (req, res) => {
-  res.status(200).send("OK");
-});
 
 /* ================= 404 ================= */
 
