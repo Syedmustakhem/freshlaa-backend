@@ -15,34 +15,43 @@ router.post("/campaign", async (req, res) => {
 
     const { title, message, imageUrl } = req.body;
 
+    if (!title || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and message required"
+      });
+    }
+
     const users = await User.find({
-      fcmToken: { $ne: null },
+      fcmToken: { $exists: true, $ne: null, $ne: "" },
       isBlocked: false
     }).select("_id fcmToken");
 
-    for (const user of users) {
+    await Promise.all(
+      users.map(async (user) => {
 
-      await sendPushNotification(
-        user.fcmToken,
-        title,
-        message,
-        imageUrl,
-        {
-          screen: "campaign",
-          banner: imageUrl
-        }
-      );
+        await sendPushNotification(
+          user.fcmToken,
+          title,
+          message,
+          imageUrl,
+          {
+            screen: "campaign",
+            banner: imageUrl
+          }
+        );
 
-      await Notification.create({
-        user: user._id,
-        type: "MARKETING",
-        channel: "PUSH",
-        template: "CAMPAIGN",
-        payload: { title, message },
-        status: "SENT",
-      });
+        await Notification.create({
+          user: user._id,
+          type: "MARKETING",
+          channel: "PUSH",
+          template: "CAMPAIGN",
+          payload: { title, message },
+          status: "SENT",
+        });
 
-    }
+      })
+    );
 
     res.json({
       success: true,
