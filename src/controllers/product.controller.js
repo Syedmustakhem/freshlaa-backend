@@ -79,12 +79,12 @@ exports.getAllProducts = async (req, res) => {
     //    Do NOT block plain /products calls — those are used by
     //    Explore, Search initial load, and the admin panel.
     //    Only block if quickFilter was explicitly passed but is empty.
-    if (
-      req.query.hasOwnProperty("quickFilter") &&
-      !quickFilter
-    ) {
-      return res.json({ success: true, data: [] });
-    }
+   if (
+  Object.prototype.hasOwnProperty.call(req.query, "quickFilter") &&
+  !quickFilter
+) {
+  return res.json({ success: true, data: [] });
+}
 
     let products = await Product.find(query)
       .sort({ createdAt: -1 })

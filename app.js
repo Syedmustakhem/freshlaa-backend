@@ -44,7 +44,7 @@ const offerRoutes = require(
 const checkoutPaymentRoutes = require(
   path.join(routesPath, "checkoutPayment.routes")
 );
-/* ================= MIDDLEWARE ================= */
+
 
 /* ================= MIDDLEWARE ================= */
 
