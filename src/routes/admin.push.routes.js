@@ -1,76 +1,49 @@
 const express = require("express");
 const router = express.Router();
 
-const { Expo } = require("expo-server-sdk");
 const User = require("../models/User");
-const Notification = require("../models/Notification");
-
-const expo = new Expo();
-
-/* =====================================
-SEND PUSH CAMPAIGN TO ALL APP USERS
-===================================== */
+const { sendPushNotification } = require("../services/push.service");
 
 router.post("/campaign", async (req, res) => {
-  try {
-    const { title, message, data, imageUrl } = req.body;
 
-    if (!title || !message) {
-      return res.status(400).json({
-        success: false,
-        message: "Title and message required",
-      });
-    }
+  try {
+
+    const { title, message, imageUrl } = req.body;
 
     const users = await User.find({
-      expoPushToken: { $ne: null },
-      isBlocked: false,
-    }).select("_id expoPushToken");
-
-    const messages = [];
+      fcmToken: { $ne: null }
+    });
 
     for (const user of users) {
-      if (!Expo.isExpoPushToken(user.expoPushToken)) continue;
-messages.push({
-  to: user.expoPushToken,
-  sound: "default",
-  title,
-  body: message,
-  data: {
-    screen: "campaign",
-    banner: imageUrl
-  }
-});
 
-      await Notification.create({
-        user: user._id,
-        type: "MARKETING",
-        channel: "PUSH",
-        template: "CAMPAIGN",
-        payload: { title, message },
-        status: "SENT",
-      });
-    }
+      await sendPushNotification(
+        user.fcmToken,
+        title,
+        message,
+        imageUrl,
+        {
+          screen: "campaign",
+          banner: imageUrl
+        }
+      );
 
-    const chunks = expo.chunkPushNotifications(messages);
-
-    for (const chunk of chunks) {
-      await expo.sendPushNotificationsAsync(chunk);
     }
 
     res.json({
       success: true,
-      totalUsers: users.length,
-      sent: messages.length,
+      totalUsers: users.length
     });
+
   } catch (err) {
-    console.error("Push Campaign Error:", err);
+
+    console.error(err);
 
     res.status(500).json({
-      success: false,
-      message: "Campaign failed",
+      success: false
     });
+
   }
+
 });
 
 module.exports = router;
