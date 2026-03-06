@@ -60,22 +60,39 @@ exports.getLoyaltyPoints = async (req, res) => {
 };
 
 /* SAVE EXPO PUSH TOKEN */
+/* SAVE PUSH TOKENS */
 exports.savePushToken = async (req, res) => {
   try {
-    const { expoPushToken } = req.body;
 
-    if (!expoPushToken) {
-      return res.json({ success: true });
+    const { expoPushToken, fcmToken } = req.body;
+
+    const update = {
+      lastLogin: new Date()
+    };
+
+    if (expoPushToken) {
+      update.expoPushToken = expoPushToken;
     }
 
-    await User.findByIdAndUpdate(req.user._id, {
-      expoPushToken,
-      lastLogin: new Date(),
-    });
+    if (fcmToken) {
+      update.fcmToken = fcmToken;
+    }
+
+    await User.findByIdAndUpdate(
+      req.user._id,
+      update,
+      { new: true }
+    );
 
     res.json({ success: true });
+
   } catch (err) {
+
     console.error("Save push token error:", err);
-    res.status(500).json({ message: "Failed to save push token" });
+
+    res.status(500).json({
+      message: "Failed to save push token"
+    });
+
   }
 };
