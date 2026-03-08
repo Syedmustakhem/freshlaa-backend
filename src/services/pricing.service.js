@@ -96,9 +96,9 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   /* ================= AVAILABLE COUPONS ================= */
 
   const availableCoupons = await Coupon.find({
-    isActive: true,
-    expiryDate: { $gt: new Date() },
-  }).select("code discountType discountValue minOrderAmount");
+  isActive: true,
+  expiryDate: { $gt: new Date() },
+}).select("code discountType discountValue minOrderAmount maxDiscount");
 
   return {
     validatedItems,
