@@ -206,19 +206,55 @@ mongoose.connect(process.env.MONGO_URI);
     ]
   }
 },
- 
+ {
+  "type": "BANNERS",
+  "order": 4,
+  "isActive": true,
+  "data": {
+    "image": [
       {
-        type: "BANNERS",
-        order: 4,
-        data: {
-          image: [
-            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg",
-            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg",
-            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg",
-            "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449821/banner3_kwatkg.jpg",
-          ],
-        },
+        "url": "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg",
+        "title": "",
+        "subtitle": "",
+        "productIds": [],
+        "action": {
+          "type": "navigate",
+          "screen": "LandingScreen"
+        }
       },
+      {
+        "url": "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg",
+        "title": "",
+        "subtitle": "",
+        "productIds": [],
+        "action": {
+          "type": "navigate",
+          "screen": "LandingScreen"
+        }
+      },
+      {
+        "url": "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg",
+        "title": "",
+        "subtitle": "",
+        "productIds": [],
+        "action": {
+          "type": "navigate",
+          "screen": "LandingScreen"
+        }
+      },
+      {
+        "url": "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449821/banner3_kwatkg.jpg",
+        "title": "",
+        "subtitle": "",
+        "productIds": [],
+        "action": {
+          "type": "navigate",
+          "screen": "LandingScreen"
+        }
+      }
+    ]
+  }
+},
 
       {
         type: "SPONSORED",
