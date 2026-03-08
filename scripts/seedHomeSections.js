@@ -44,182 +44,167 @@ mongoose.connect(process.env.MONGO_URI);
         data: {},
       },
 {
-type:"QUICK_FILTERS",
-order:3,
-data:{
+  "type": "QUICK_FILTERS",
+  "order": 3,
+  "data": {
+    "title": "Quick Picks",
+    "filters": [
+      {
+        "id": "all",
+        "title": "All",
+        "icon": "https://img.icons8.com/?size=100&id=FGjwLQZaL7Eh&format=png&color=000000",
+        "layout": [
+          { "type": "DEFAULT_HOME" }
+        ]
+      },
 
-title:"Quick Picks",
+      {
+        "id": "festival",
+        "title": "Festival Special",
+        "icon": "https://img.icons8.com/?size=100&id=F8DOpjoXdb4i&format=png&color=000000",
+        "layout": [
+          {
+            "type": "ANIMATION",
+            "data": {
+              "lottie": "https://assets10.lottiefiles.com/packages/lf20_jcikwtux.json",
+              "height": 170
+            }
+          },
+          {
+            "type": "BANNERS",
+            "data": {
+              "image": [
+                "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg",
+                "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg"
+              ]
+            }
+          },
+          {
+            "type": "PRODUCTS",
+            "data": {
+              "query": { "quickFilter": "festival", "limit": 5 }
+            }
+          }
+        ]
+      },
 
-filters:[
+      {
+        "id": "dry-fruits-pan",
+        "title": "DryFruits",
+        "icon": "https://cdn-icons-png.flaticon.com/512/415/415733.png",
+        "layout": [
+          {
+            "type": "ANIMATION",
+            "data": {
+              "lottie": "https://assets10.lottiefiles.com/packages/lf20_dyq7dxyr.json",
+              "height": 170
+            }
+          },
+          {
+            "type": "BANNERS",
+            "data": {
+              "image": [
+                "https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg"
+              ]
+            }
+          },
+          {
+            "type": "PRODUCTS",
+            "data": {
+              "query": { "category": "dry-fruits", "limit": 5 }
+            }
+          }
+        ]
+      },
 
-/* ALL */
+      {
+        "id": "vegetables",
+        "title": "Veggies",
+        "icon": "https://img.icons8.com/?size=100&id=RjZXjgtbZhcv&format=png&color=000000",
+        "layout": [
+          {
+            "type": "ANIMATION",
+            "data": {
+              "lottie": "https://assets3.lottiefiles.com/packages/lf20_fyye8szy.json",
+              "height": 170
+            }
+          },
+          {
+            "type": "BANNERS",
+            "data": {
+              "image": [
+                "https://images.unsplash.com/photo-1542838132-92c53300491e"
+              ]
+            }
+          },
+          {
+            "type": "PRODUCTS",
+            "data": {
+              "query": { "quickFilter": "vegetables", "limit": 5 }
+            }
+          }
+        ]
+      },
 
-{
-id:"all",
-title:"All",
-icon:"https://img.icons8.com/?size=100&id=Ypj9RsvB5YHH&format=png&color=000000",
+      {
+        "id": "deals",
+        "title": "Deals",
+        "icon": "https://cdn-icons-png.flaticon.com/512/3523/3523887.png",
+        "layout": [
+          {
+            "type": "ANIMATION",
+            "data": {
+              "lottie": "https://assets1.lottiefiles.com/packages/lf20_qp1q7mct.json",
+              "height": 170
+            }
+          },
+          {
+            "type": "BANNERS",
+            "data": {
+              "image": [
+                "https://images.unsplash.com/photo-1607083206968-13611e3d76db"
+              ]
+            }
+          },
+          {
+            "type": "PRODUCTS",
+            "data": {
+              "query": { "quickFilter": "deals", "limit": 5 }
+            }
+          }
+        ]
+      },
 
-layout:[
-{
-type:"DEFAULT_HOME"
-}
-]
-
-},
-
-/* FESTIVAL FILTER (CHANGE ANYTIME) */
-
-{
-id:"festival",
-title:"Festival",
-icon:"https://img.icons8.com/?size=100&id=F8DOpjoXdb4i&format=png&color=000000",
-
-layout:[
-
-/* Animation */
-
-{
-type:"ANIMATION",
-data:{
-lottie:"https://assets10.lottiefiles.com/packages/lf20_jcikwtux.json",
-height:180
-}
-},
-
-/* Festival Banners */
-
-{
-type:"BANNERS",
-data:{
-image:[
-"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg",
-"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449807/banner4_yxz1bk.jpg"
-]
-}
-},
-
-/* Festival Products */
-
-{
-type:"PRODUCTS",
-query:{
-quickFilter:"festival"
-}
-}
-
-]
-
-},
-
-/* DRY FRUITS */
-
-{
-id:"dry-fruits-pan",
-title:"DryFruits",
-icon:"https://cdn-icons-png.flaticon.com/512/415/415733.png",
-
-layout:[
-
-{
-type:"BANNERS",
-data:{
-image:[
-"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769449776/banner_2_pnyllu.jpg"
-]
-}
-},
-
-{
-type:"PRODUCTS",
-query:{
-category:"dry-fruits"
-}
-}
-
-]
-
-},
-
-/* VEGETABLES */
-
-{
-id:"vegetables",
-title:"Veggies",
-icon:"https://img.icons8.com/?size=100&id=RjZXjgtbZhcv&format=png&color=000000",
-
-layout:[
-
-{
-type:"PRODUCTS",
-query:{
-quickFilter:"vegetables"
-}
-}
-
-]
-
-},
-
-/* DEALS */
-
-{
-id:"deals",
-title:"Deals",
-icon:"https://cdn-icons-png.flaticon.com/512/3523/3523887.png",
-
-layout:[
-
-{
-type:"ANIMATION",
-data:{
-lottie:"https://assets1.lottiefiles.com/packages/lf20_qp1q7mct.json",
-height:160
-}
-},
-
-{
-type:"BANNERS",
-data:{
-image:[
-"https://res.cloudinary.com/dxiujfq7i/image/upload/v1769879421/combo_qlfc2t.jpg"
-]
-}
-},
-
-{
-type:"PRODUCTS",
-query:{
-quickFilter:"deals"
-}
-}
-
-]
-
-},
-
-/* SNACKS */
-
-{
-id:"snacks",
-title:"Snacks",
-icon:"https://cdn-icons-png.flaticon.com/512/2553/2553691.png",
-
-layout:[
-
-{
-type:"PRODUCTS",
-query:{
-quickFilter:"snacks"
-}
-}
-
-]
-
-}
-
-]
-
-}
+      {
+        "id": "snacks",
+        "title": "Snacks",
+        "icon": "https://cdn-icons-png.flaticon.com/512/2553/2553691.png",
+        "layout": [
+          {
+            "type": "ANIMATION",
+            "data": {
+              "lottie": "https://assets9.lottiefiles.com/packages/lf20_khzniaya.json",
+              "height": 170
+            }
+          },
+          {
+            "type": "BANNERS",
+            "data": {
+              "image": [
+                "https://images.unsplash.com/photo-1621939514649-280e2ee25f60"
+              ]
+            }
+          },
+          {
+            "type": "PRODUCTS",
+            "data": {
+              "query": { "quickFilter": "snacks", "limit": 5 }
+            }
+          }
+        ]
+      }
+    ]
+  }
 },
  
       {
