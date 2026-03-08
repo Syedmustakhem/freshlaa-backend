@@ -1,43 +1,58 @@
 const express = require("express");
-const router = express.Router();
+const router  = express.Router();
 
 const HomeSection = require("../models/HomeSection");
-const OffersPage  = require("../models/OffersPage");
+const OfferPage   = require("../models/OfferPage");       // ← your existing model
 const adminAuth   = require("../middlewares/adminAuth");
 const Product     = require("../models/Product");
 
 /* =====================================================
-   HELPER — resolve productIds → full product objects
+   HELPER — resolve productIds → full Product documents
+   Keeps admin-defined pin order, falls back to embedded
+   products if no productIds are set (backwards compat)
 ===================================================== */
 async function enrichSections(sections = []) {
   return Promise.all(
     sections.map(async (sec) => {
-      if (!sec.productIds?.length) return { ...sec, products: [] };
+      // ── NEW FLOW: productIds pinned via admin editor ──
+      if (sec.productIds?.length) {
+        const docs = await Product.find({
+          _id:    { $in: sec.productIds },
+          active: true,
+        })
+          .select("name images variants category brand rating reviewCount")
+          .lean();
 
-      const products = await Product.find({
-        _id:    { $in: sec.productIds },
-        active: true,
-      })
-        .select("name images variants category brand rating reviewCount")
-        .lean();
+        // Preserve admin-defined order
+        const map     = Object.fromEntries(docs.map((p) => [String(p._id), p]));
+        const ordered = sec.productIds
+          .map((id) => map[String(id)])
+          .filter(Boolean);
 
-      // Keep admin-defined pin order
-      const map     = Object.fromEntries(products.map((p) => [String(p._id), p]));
-      const ordered = sec.productIds.map((id) => map[String(id)]).filter(Boolean);
+        return {
+          title:    sec.title    || "",
+          subtitle: sec.subtitle || "",
+          badge:    sec.badge    || "",
+          products: ordered,
+        };
+      }
 
+      // ── LEGACY FLOW: embedded static products ──
       return {
         title:    sec.title    || "",
         subtitle: sec.subtitle || "",
         badge:    sec.badge    || "",
-        products: ordered,
+        products: sec.products || [],
       };
     })
   );
 }
 
-/* =====================================================
-   PUBLIC API — GET /api/home-layout
-===================================================== */
+/* ╔═════════════════════════════════════════════════════╗
+   ║              HOME SECTION ROUTES                   ║
+   ╚═════════════════════════════════════════════════════╝ */
+
+/* ─── PUBLIC — GET /api/home-layout ─────────────────── */
 router.get("/home-layout", async (req, res) => {
   try {
     const sections = await HomeSection.find({ isActive: true })
@@ -46,19 +61,17 @@ router.get("/home-layout", async (req, res) => {
 
     for (const section of sections) {
       if (section.type === "CATEGORY" && section.data?.categorySlug) {
-        const products = await Product.find({
+        section.data.products = await Product.find({
           categorySlug: section.data.categorySlug,
           active: true,
         })
           .limit(6)
           .select("name price mrp images");
-
-        section.data.products = products;
       }
     }
 
     return res.json({
-      success: true,
+      success:  true,
       sections: sections.map((s) => ({
         id:   s._id,
         type: s.type,
@@ -71,14 +84,12 @@ router.get("/home-layout", async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — GET /api/home-layout/admin/home-layout
-===================================================== */
+/* ─── ADMIN — GET all sections ──────────────────────── */
 router.get("/admin/home-layout", adminAuth, async (req, res) => {
   try {
     const sections = await HomeSection.find().sort({ order: 1 }).lean();
     return res.json({
-      success: true,
+      success:  true,
       sections: sections.map((s) => ({
         id:       s._id,
         type:     s.type,
@@ -91,9 +102,7 @@ router.get("/admin/home-layout", adminAuth, async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — POST /api/home-layout/admin/home-section
-===================================================== */
+/* ─── ADMIN — CREATE section ────────────────────────── */
 router.post("/admin/home-section", adminAuth, async (req, res) => {
   try {
     const { type, order, data } = req.body;
@@ -104,9 +113,7 @@ router.post("/admin/home-section", adminAuth, async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — PUT /api/home-layout/admin/home-section/:id
-===================================================== */
+/* ─── ADMIN — UPDATE section ────────────────────────── */
 router.put("/admin/home-section/:id", adminAuth, async (req, res) => {
   try {
     const { type, order, data } = req.body;
@@ -115,9 +122,7 @@ router.put("/admin/home-section/:id", adminAuth, async (req, res) => {
       { type, order, data },
       { new: true }
     );
-    if (!section) {
-      return res.status(404).json({ success: false, message: "Section not found" });
-    }
+    if (!section) return res.status(404).json({ success: false, message: "Section not found" });
     return res.json({ success: true, section });
   } catch (err) {
     console.error("Update section error:", err);
@@ -125,9 +130,7 @@ router.put("/admin/home-section/:id", adminAuth, async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — PATCH /api/home-layout/admin/home-section/:id/toggle
-===================================================== */
+/* ─── ADMIN — TOGGLE section ────────────────────────── */
 router.patch("/admin/home-section/:id/toggle", adminAuth, async (req, res) => {
   try {
     const section = await HomeSection.findById(req.params.id);
@@ -140,17 +143,12 @@ router.patch("/admin/home-section/:id/toggle", adminAuth, async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — PUT /api/home-layout/admin/home-section/reorder
-===================================================== */
+/* ─── ADMIN — REORDER sections ──────────────────────── */
 router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
   try {
     const { order } = req.body;
     const bulk = order.map((item) => ({
-      updateOne: {
-        filter: { _id: item.id },
-        update: { order: item.order },
-      },
+      updateOne: { filter: { _id: item.id }, update: { order: item.order } },
     }));
     await HomeSection.bulkWrite(bulk);
     return res.json({ success: true });
@@ -160,18 +158,18 @@ router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
 });
 
 
-/* ┌─────────────────────────────────────────────────────┐
-   │            OFFERS PAGE ROUTES                       │
-   │  Mounted on the same router — no new file needed    │
-   └─────────────────────────────────────────────────────┘ */
+/* ╔═════════════════════════════════════════════════════╗
+   ║         OFFER PAGE ROUTES  (/offer-page)           ║
+   ║  Uses your existing OfferPage model                ║
+   ╚═════════════════════════════════════════════════════╝ */
 
-/* =====================================================
-   PUBLIC — GET /api/home-layout/offers-page/:slug
+/* ─────────────────────────────────────────────────────
+   PUBLIC — GET /api/home-layout/offer-page/:slug
    Called by the mobile OffersScreen
-===================================================== */
-router.get("/offers-page/:slug", async (req, res) => {
+───────────────────────────────────────────────────── */
+router.get("/offer-page/:slug", async (req, res) => {
   try {
-    const page = await OffersPage.findOne({
+    const page = await OfferPage.findOne({
       slug:     req.params.slug.toLowerCase().trim(),
       isActive: true,
     }).lean();
@@ -180,6 +178,7 @@ router.get("/offers-page/:slug", async (req, res) => {
       return res.status(404).json({ success: false, message: "Offer not found" });
     }
 
+    // Enrich: resolve productIds → full products (or pass embedded ones)
     const sections = await enrichSections(page.sections);
 
     return res.json({
@@ -187,45 +186,51 @@ router.get("/offers-page/:slug", async (req, res) => {
       slug:           page.slug,
       banner:         page.banner,
       title:          page.title,
-      subtitle:       page.subtitle,
-      countdownHours: page.countdownHours,
+      subtitle:       page.subtitle       || "",
+      countdownHours: page.countdownHours || 6,
       sections,
     });
   } catch (err) {
-    console.error("OffersPage GET error:", err);
+    console.error("OfferPage GET error:", err);
     return res.status(500).json({ success: false, message: "Failed to load offer page" });
   }
 });
 
-/* =====================================================
-   ADMIN — GET /api/home-layout/admin/offers-page/all
-   List all offer pages
-===================================================== */
-router.get("/admin/offers-page/all", adminAuth, async (req, res) => {
+/* ─────────────────────────────────────────────────────
+   ADMIN — GET /api/home-layout/admin/offer-page/all
+   List all offer pages (for editor sidebar / switcher)
+───────────────────────────────────────────────────── */
+router.get("/admin/offer-page/all", adminAuth, async (req, res) => {
   try {
-    const pages = await OffersPage.find().sort({ createdAt: -1 }).lean();
+    const pages = await OfferPage.find()
+      .sort({ createdAt: -1 })
+      .select("slug title banner isActive countdownHours createdAt")
+      .lean();
     return res.json({ success: true, pages });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Failed to fetch pages" });
   }
 });
 
-/* =====================================================
-   ADMIN — GET /api/home-layout/admin/offers-page/:slug
-   Load raw page for editor (productIds, not enriched)
-===================================================== */
-router.get("/admin/offers-page/:slug", adminAuth, async (req, res) => {
+/* ─────────────────────────────────────────────────────
+   ADMIN — GET /api/home-layout/admin/offer-page/:slug
+   Load one page for the editor
+   Returns raw productIds (not enriched) so the editor
+   can display the picker with selections ticked
+───────────────────────────────────────────────────── */
+router.get("/admin/offer-page/:slug", adminAuth, async (req, res) => {
   try {
-    const page = await OffersPage.findOne({
+    const page = await OfferPage.findOne({
       slug: req.params.slug.toLowerCase().trim(),
     }).lean();
 
     if (!page) {
-      // Return empty scaffold — editor will upsert on save
+      // Page doesn't exist yet → return empty scaffold
+      // Editor will create it on first PUT (upsert)
       return res.json({
         success: true,
         page: {
-          slug:           req.params.slug,
+          slug:           req.params.slug.toLowerCase().trim(),
           banner:         "",
           title:          "",
           subtitle:       "",
@@ -242,23 +247,36 @@ router.get("/admin/offers-page/:slug", adminAuth, async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — PUT /api/home-layout/admin/offers-page/:slug
+/* ─────────────────────────────────────────────────────
+   ADMIN — PUT /api/home-layout/admin/offer-page/:slug
    Create or update (upsert) an offer page
-===================================================== */
-router.put("/admin/offers-page/:slug", adminAuth, async (req, res) => {
+   Accepts sections with productIds (new) or embedded
+   products array (legacy)
+───────────────────────────────────────────────────── */
+router.put("/admin/offer-page/:slug", adminAuth, async (req, res) => {
   try {
     const slug = req.params.slug.toLowerCase().trim();
-    const { banner, title, subtitle, countdownHours, isActive, sections } = req.body;
+    const {
+      banner,
+      title,
+      subtitle,
+      countdownHours,
+      isActive,
+      sections,
+    } = req.body;
 
+    // Sanitise sections — support both productIds (new) and embedded products (legacy)
     const cleanSections = (sections || []).map((sec) => ({
       title:      sec.title      || "",
       subtitle:   sec.subtitle   || "",
       badge:      sec.badge      || "",
+      // New flow: admin pins real product IDs
       productIds: (sec.productIds || []).filter(Boolean),
+      // Legacy flow: embedded static product objects
+      products:   (sec.products  || []),
     }));
 
-    const page = await OffersPage.findOneAndUpdate(
+    const page = await OfferPage.findOneAndUpdate(
       { slug },
       {
         slug,
@@ -274,17 +292,19 @@ router.put("/admin/offers-page/:slug", adminAuth, async (req, res) => {
 
     return res.json({ success: true, page });
   } catch (err) {
-    console.error("OffersPage PUT error:", err);
+    console.error("OfferPage PUT error:", err);
     return res.status(500).json({ success: false, message: "Save failed", error: err.message });
   }
 });
 
-/* =====================================================
-   ADMIN — PATCH /api/home-layout/admin/offers-page/:slug/toggle
-===================================================== */
-router.patch("/admin/offers-page/:slug/toggle", adminAuth, async (req, res) => {
+/* ─────────────────────────────────────────────────────
+   ADMIN — PATCH /api/home-layout/admin/offer-page/:slug/toggle
+───────────────────────────────────────────────────── */
+router.patch("/admin/offer-page/:slug/toggle", adminAuth, async (req, res) => {
   try {
-    const page = await OffersPage.findOne({ slug: req.params.slug.toLowerCase().trim() });
+    const page = await OfferPage.findOne({
+      slug: req.params.slug.toLowerCase().trim(),
+    });
     if (!page) return res.status(404).json({ success: false, message: "Not found" });
     page.isActive = !page.isActive;
     await page.save();
@@ -294,12 +314,14 @@ router.patch("/admin/offers-page/:slug/toggle", adminAuth, async (req, res) => {
   }
 });
 
-/* =====================================================
-   ADMIN — DELETE /api/home-layout/admin/offers-page/:slug
-===================================================== */
-router.delete("/admin/offers-page/:slug", adminAuth, async (req, res) => {
+/* ─────────────────────────────────────────────────────
+   ADMIN — DELETE /api/home-layout/admin/offer-page/:slug
+───────────────────────────────────────────────────── */
+router.delete("/admin/offer-page/:slug", adminAuth, async (req, res) => {
   try {
-    await OffersPage.findOneAndDelete({ slug: req.params.slug.toLowerCase().trim() });
+    await OfferPage.findOneAndDelete({
+      slug: req.params.slug.toLowerCase().trim(),
+    });
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Delete failed" });
