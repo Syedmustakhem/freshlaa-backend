@@ -1,8 +1,10 @@
 const Product = require("../models/Product");
-const { getConfig } = require("./config.service");
-const { applyCoupon } = require("./coupon.service");
+const HotelMenuItem = require("../models/HotelMenuItem");
 const Campaign = require("../models/Campaign");
 const Coupon = require("../models/Coupon");
+
+const { getConfig } = require("./config.service");
+const { applyCoupon } = require("./coupon.service");
 
 exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
@@ -13,26 +15,25 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
     console.log("🧾 CHECKOUT ITEM:", item);
 
-    let product;
+    /* ================= LOAD ITEM ================= */
 
-    /* 🔥 LOAD ITEM MODEL */
+    let product = await Product.findById(item.productId).session(session);
+    let itemModel = "Product";
 
-    if (item.itemModel === "HotelItem") {
-      const HotelItem = require("../models/HotelItem");
-      product = await HotelItem.findById(item.productId).session(session);
-    } else {
-      product = await Product.findById(item.productId).session(session);
+    if (!product) {
+      product = await HotelMenuItem.findById(item.productId).session(session);
+itemModel = "HotelMenuItem";
     }
 
     if (!product) {
       throw new Error(`Item not found: ${item.productId}`);
     }
 
-    if (product.isActive === false) {
+    if (product.isAvailable === false) {
       throw new Error(`${product.name} is not available`);
     }
 
-    /* 🔥 VARIANT + NON-VARIANT SUPPORT */
+    /* ================= VARIANT / PRICE ================= */
 
     let variant = null;
     let price = 0;
@@ -57,9 +58,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
     } else {
 
-      /* HOTEL ITEMS OR PRODUCTS WITHOUT VARIANTS */
-
-      price = product.price;
+      price = product.basePrice;
 
       if (!price) {
         throw new Error(`Price missing for ${product.name}`);
@@ -67,7 +66,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
     }
 
-    /* 🔥 PRODUCT OFFER */
+    /* ================= PRODUCT OFFER ================= */
 
     if (product.offerPercentage > 0) {
       price -= (price * product.offerPercentage) / 100;
@@ -78,7 +77,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
     validatedItems.push({
       product: product._id,
-      itemModel: item.itemModel || "Product",
+      itemModel,
       name: product.name,
       variantId: variant?._id || null,
       variantLabel: variant?.label || null,
@@ -87,7 +86,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       total: itemTotal,
     });
 
-    /* 🔥 STOCK UPDATE ONLY WHEN VARIANT EXISTS */
+    /* ================= STOCK UPDATE ================= */
 
     if (session && variant && variant.stock !== undefined) {
       variant.stock -= item.qty;
@@ -99,7 +98,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   const config = await getConfig();
 
-  let deliveryFee =
+  const deliveryFee =
     itemsTotal >= config.freeDeliveryLimit
       ? 0
       : config.deliveryFee;
@@ -131,11 +130,10 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       grandTotal -= couponDiscount;
     } catch (err) {
       console.log("⚠️ Coupon skipped:", err.message);
-      couponDiscount = 0;
     }
   }
 
-  /* ================= SURGE ================= */
+  /* ================= SURGE PRICING ================= */
 
   if (config.surgeEnabled) {
     grandTotal *= config.surgeMultiplier;
@@ -147,8 +145,10 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   const availableCoupons = await Coupon.find({
     isActive: true,
-    expiryDate: { $gte: new Date().setHours(0,0,0,0) }
+    expiryDate: { $gt: new Date() }
   }).select("code discountType discountValue minOrderAmount maxDiscount");
+
+  /* ================= FINAL RESPONSE ================= */
 
   return {
     validatedItems,
