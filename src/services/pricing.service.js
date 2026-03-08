@@ -2,55 +2,72 @@ const Product = require("../models/Product");
 const { getConfig } = require("./config.service");
 const { applyCoupon } = require("./coupon.service");
 const Campaign = require("../models/Campaign");
-const Coupon = require("../models/Coupon"); // ✅ ADD THIS
+const Coupon = require("../models/Coupon");
+
 exports.calculateOrder = async (items, session = null, couponCode = null) => {
+
   let itemsTotal = 0;
   const validatedItems = [];
 
   for (const item of items) {
-let product;
 
-if (item.itemModel === "HotelItem") {
-  const HotelItem = require("../models/HotelItem");
-  product = await HotelItem.findById(item.productId).session(session);
-} else {
-  product = await Product.findById(item.productId).session(session);
-}
-    if (!product || !product.isActive) {
-      throw new Error("Product not available");
+    console.log("🧾 CHECKOUT ITEM:", item);
+
+    let product;
+
+    /* 🔥 LOAD ITEM MODEL */
+
+    if (item.itemModel === "HotelItem") {
+      const HotelItem = require("../models/HotelItem");
+      product = await HotelItem.findById(item.productId).session(session);
+    } else {
+      product = await Product.findById(item.productId).session(session);
     }
 
+    if (!product) {
+      throw new Error(`Item not found: ${item.productId}`);
+    }
+
+    if (product.isActive === false) {
+      throw new Error(`${product.name} is not available`);
+    }
+
+    /* 🔥 VARIANT + NON-VARIANT SUPPORT */
+
     let variant = null;
-let price = 0;
+    let price = 0;
 
-if (product.variants && product.variants.length > 0) {
+    if (product.variants && product.variants.length > 0) {
 
-  const variantId = item.variantId || item.selectedVariant?._id;
+      const variantId = item.variantId || item.selectedVariant?._id;
 
-  variant = variantId
-    ? product.variants.id(variantId)
-    : product.variants.find(v => v.isDefault) || product.variants[0];
+      variant = variantId
+        ? product.variants.id(variantId)
+        : product.variants.find(v => v.isDefault) || product.variants[0];
 
-  if (!variant) {
-    throw new Error(`Invalid variant for ${product.name}`);
-  }
+      if (!variant) {
+        throw new Error(`Invalid variant for ${product.name}`);
+      }
 
-  if (variant.stock < item.qty) {
-    throw new Error(`${product.name} out of stock`);
-  }
+      if (variant.stock !== undefined && variant.stock < item.qty) {
+        throw new Error(`${product.name} out of stock`);
+      }
 
-  price = variant.price;
+      price = variant.price;
 
-} else {
+    } else {
 
-  // For hotel items without variants
-  price = product.price;
+      /* HOTEL ITEMS OR PRODUCTS WITHOUT VARIANTS */
 
-  if (!price) {
-    throw new Error(`Price missing for ${product.name}`);
-  }
+      price = product.price;
 
-}
+      if (!price) {
+        throw new Error(`Price missing for ${product.name}`);
+      }
+
+    }
+
+    /* 🔥 PRODUCT OFFER */
 
     if (product.offerPercentage > 0) {
       price -= (price * product.offerPercentage) / 100;
@@ -59,22 +76,26 @@ if (product.variants && product.variants.length > 0) {
     const itemTotal = price * item.qty;
     itemsTotal += itemTotal;
 
-   validatedItems.push({
-  product: product._id,
-  itemModel: item.itemModel || "Product",
-  name: product.name,
-  variantId: variant?._id || null,
-  variantLabel: variant?.label || null,
-  price,
-  qty: item.qty,
-  total: itemTotal,
-});
+    validatedItems.push({
+      product: product._id,
+      itemModel: item.itemModel || "Product",
+      name: product.name,
+      variantId: variant?._id || null,
+      variantLabel: variant?.label || null,
+      price,
+      qty: item.qty,
+      total: itemTotal,
+    });
 
-    if (session) {
+    /* 🔥 STOCK UPDATE ONLY WHEN VARIANT EXISTS */
+
+    if (session && variant && variant.stock !== undefined) {
       variant.stock -= item.qty;
       await product.save({ session });
     }
   }
+
+  /* ================= CONFIG ================= */
 
   const config = await getConfig();
 
@@ -105,9 +126,13 @@ if (product.variants && product.variants.length > 0) {
   let couponDiscount = 0;
 
   if (couponCode) {
-    // 🔥 FIXED PARAM ORDER
-    couponDiscount = await applyCoupon(itemsTotal, couponCode);
-    grandTotal -= couponDiscount;
+    try {
+      couponDiscount = await applyCoupon(itemsTotal, couponCode);
+      grandTotal -= couponDiscount;
+    } catch (err) {
+      console.log("⚠️ Coupon skipped:", err.message);
+      couponDiscount = 0;
+    }
   }
 
   /* ================= SURGE ================= */
@@ -121,9 +146,9 @@ if (product.variants && product.variants.length > 0) {
   /* ================= AVAILABLE COUPONS ================= */
 
   const availableCoupons = await Coupon.find({
-  isActive: true,
-  expiryDate: { $gt: new Date() },
-}).select("code discountType discountValue minOrderAmount maxDiscount");
+    isActive: true,
+    expiryDate: { $gte: new Date().setHours(0,0,0,0) }
+  }).select("code discountType discountValue minOrderAmount maxDiscount");
 
   return {
     validatedItems,
@@ -134,6 +159,6 @@ if (product.variants && product.variants.length > 0) {
     campaignDiscount: Math.round(campaignDiscount),
     totalSavings: Math.round(couponDiscount + campaignDiscount),
     grandTotal: Math.round(grandTotal),
-    availableCoupons,   // ✅ IMPORTANT
+    availableCoupons
   };
 };
