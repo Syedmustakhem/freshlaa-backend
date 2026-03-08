@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const APP_CONFIG = {
-  min_version_android: "1.1.0",
+  min_version_android: "1.2.0",
   min_version_ios: "1.0.0",
 
   force_update_message:
