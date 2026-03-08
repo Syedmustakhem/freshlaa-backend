@@ -8,25 +8,49 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   const validatedItems = [];
 
   for (const item of items) {
-    const product = await Product.findById(item.productId).session(session);
+let product;
 
+if (item.itemModel === "HotelItem") {
+  const HotelItem = require("../models/HotelItem");
+  product = await HotelItem.findById(item.productId).session(session);
+} else {
+  product = await Product.findById(item.productId).session(session);
+}
     if (!product || !product.isActive) {
       throw new Error("Product not available");
     }
 
-    const variantId = item.variantId || item.selectedVariant?._id;
+    let variant = null;
+let price = 0;
 
-    const variant = variantId
-      ? product.variants.id(variantId)
-      : product.variants.find(v => v.isDefault) || product.variants[0];
+if (product.variants && product.variants.length > 0) {
 
-    if (!variant) throw new Error("Invalid variant selected");
+  const variantId = item.variantId || item.selectedVariant?._id;
 
-    if (variant.stock < item.qty) {
-      throw new Error(`${product.name} out of stock`);
-    }
+  variant = variantId
+    ? product.variants.id(variantId)
+    : product.variants.find(v => v.isDefault) || product.variants[0];
 
-    let price = variant.price;
+  if (!variant) {
+    throw new Error(`Invalid variant for ${product.name}`);
+  }
+
+  if (variant.stock < item.qty) {
+    throw new Error(`${product.name} out of stock`);
+  }
+
+  price = variant.price;
+
+} else {
+
+  // For hotel items without variants
+  price = product.price;
+
+  if (!price) {
+    throw new Error(`Price missing for ${product.name}`);
+  }
+
+}
 
     if (product.offerPercentage > 0) {
       price -= (price * product.offerPercentage) / 100;
@@ -35,15 +59,16 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     const itemTotal = price * item.qty;
     itemsTotal += itemTotal;
 
-    validatedItems.push({
-      product: product._id,
-      name: product.name,
-      variantId: variant._id,
-      variantLabel: variant.label,
-      price,
-      qty: item.qty,
-      total: itemTotal,
-    });
+   validatedItems.push({
+  product: product._id,
+  itemModel: item.itemModel || "Product",
+  name: product.name,
+  variantId: variant?._id || null,
+  variantLabel: variant?.label || null,
+  price,
+  qty: item.qty,
+  total: itemTotal,
+});
 
     if (session) {
       variant.stock -= item.qty;

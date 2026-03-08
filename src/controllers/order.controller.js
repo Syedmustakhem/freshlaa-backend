@@ -127,8 +127,14 @@ const formattedItems = await Promise.all(
 
   result.validatedItems.map(async (i) => {
 
-    const product = await Product.findById(i.product).lean();
+let product;
 
+if (i.itemModel === "HotelItem") {
+  const HotelItem = require("../models/HotelItem");
+  product = await HotelItem.findById(i.product).lean();
+} else {
+  product = await Product.findById(i.product).lean();
+}
     return {
 
       product: i.product,
