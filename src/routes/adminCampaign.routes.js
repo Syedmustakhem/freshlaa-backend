@@ -1,10 +1,26 @@
-const express = require("express");
-const router = express.Router();
+const express=require("express");
+const router=express.Router();
 
-const {
-createCampaign
-} = require("../controllers/adminCampaign.controller");
+const adminCampaign=require("../controllers/adminCampaign.controller");
 
-router.post("/create",createCampaign);
+/* CREATE */
 
-module.exports = router;
+router.post("/",adminCampaign.createCampaign);
+
+/* LIST */
+
+router.get("/",adminCampaign.getCampaigns);
+
+/* UPDATE */
+
+router.put("/:id",adminCampaign.updateCampaign);
+
+/* DELETE */
+
+router.delete("/:id",adminCampaign.deleteCampaign);
+
+/* TOGGLE ACTIVE */
+
+router.patch("/:id/toggle",adminCampaign.toggleCampaign);
+
+module.exports=router;
