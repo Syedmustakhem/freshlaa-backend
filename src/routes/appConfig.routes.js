@@ -30,7 +30,7 @@ const APP_CONFIG = {
      duration_ms = how long splash shows before going to Home
   ───────────────────────────────────────────────────── */
   splash: {
-    type: "lottie",                      // "lottie" | "image" | "none"
+    type: "image",                      // "lottie" | "image" | "none"
     lottie_url: "https://assets10.lottiefiles.com/packages/lf20_xlmz9xwm.json",
     image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1773170384/66a99aa1-8287-4b4d-8093-37686f06c738_a7p89s.jpg",
     bg_color: "#ffffff",
