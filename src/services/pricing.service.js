@@ -124,6 +124,7 @@ let grandTotal = itemsTotal + deliveryFee + config.handlingFee;
 
 const campaigns = await Campaign.find({
 isActive: true,
+type: { $in: ["CART_PROGRESS", "CART"] },
 startDate: { $lte: new Date() },
 endDate: { $gte: new Date() }
 }).lean();
@@ -202,7 +203,7 @@ grandTotal -= campaignDiscount;
 let nextCampaign = null;
 
 const sortedCampaigns = campaigns
-.filter(c => c.minCartValue)
+.filter(c => c.type === "CART_PROGRESS" && c.minCartValue)
 .sort((a,b)=>a.minCartValue-b.minCartValue);
 
 for(const c of sortedCampaigns){
@@ -222,8 +223,9 @@ cartProgress = {
 currentCart: itemsTotal,
 target: nextCampaign.minCartValue,
 remaining: nextCampaign.minCartValue - itemsTotal,
-rewardName: nextCampaign.name
-};
+rewardName: nextCampaign.discountType === "UNLOCK_PRODUCT"
+  ? `Special Product ₹${nextCampaign.campaignPrice}`
+  : nextCampaign.name};
 
 }
 
