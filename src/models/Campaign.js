@@ -12,7 +12,7 @@ trim:true
 
 type:{
 type:String,
-enum:["CATEGORY","PRODUCT","GLOBAL","CART"],
+enum:["CATEGORY","PRODUCT","GLOBAL","CART","CART_PROGRESS"],
 required:true
 },
 
@@ -20,7 +20,7 @@ required:true
 
 discountType:{
 type:String,
-enum:["PERCENT","FLAT","UNLOCK_PRODUCT"],
+enum:["PERCENT","FLAT","UNLOCK_PRODUCT","FREE_DELIVERY"],
 required:true
 },
 
@@ -34,6 +34,13 @@ default:0
 minCartValue:{
 type:Number,
 default:0
+},
+
+/* PROGRESS TIER */
+
+tier:{
+type:Number,
+default:1
 },
 
 /* CATEGORY CAMPAIGN */
@@ -62,6 +69,29 @@ ref:"Product"
 campaignPrice:{
 type:Number,
 default:0
+},
+
+/* CAMPAIGN PRIORITY */
+
+priority:{
+type:Number,
+default:1
+},
+
+/* LOCATION TARGETING */
+
+locations:[
+{
+type:String
+}
+],
+
+/* USER TARGETING */
+
+userType:{
+type:String,
+enum:["ALL","NEW_USER","RETURNING"],
+default:"ALL"
 },
 
 /* DATE CONTROL */
