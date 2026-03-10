@@ -23,10 +23,6 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       throw new Error("Max quantity exceeded");
     }
 
-    console.log("🧾 CHECKOUT ITEM:", item);
-
-    /* ================= LOAD ITEM ================= */
-
     let query = Product.findById(item.productId);
     if (session) query = query.session(session);
 
@@ -34,7 +30,6 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     let itemModel = "Product";
 
     if (!product) {
-
       let hotelQuery = HotelMenuItem.findById(item.productId);
       if (session) hotelQuery = hotelQuery.session(session);
 
@@ -130,33 +125,54 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   const campaigns = await Campaign.find({
     isActive: true,
     startDate: { $lte: new Date() },
-    endDate: { $gte: new Date() },
-  });
+    endDate: { $gte: new Date() }
+  }).lean();
 
   let campaignDiscount = 0;
   let campaignProducts = [];
 
   for (const campaign of campaigns) {
 
-    if (itemsTotal >= campaign.minCartValue) {
+    const minCart = campaign.minCartValue || 0;
 
-      campaignDiscount += campaign.discountAmount || 0;
+    if (itemsTotal >= minCart) {
+
+      /* DISCOUNT CAMPAIGNS */
+
+      if (campaign.discountType === "PERCENT") {
+        campaignDiscount += (itemsTotal * campaign.discountValue) / 100;
+      }
+
+      if (campaign.discountType === "FLAT") {
+        campaignDiscount += campaign.discountValue;
+      }
+
+      /* PRODUCT UNLOCK CAMPAIGN */
 
       if (campaign.product) {
 
-        campaignProducts.push({
-          id: campaign.product,
-          name: campaign.productName,
-          price: campaign.originalPrice,
-          campaignPrice: campaign.offerPrice,
-          image: campaign.image
-        });
+        const product = await Product.findById(campaign.product).lean();
+
+        if (
+          product &&
+          !campaignProducts.some(p => p.id.toString() === product._id.toString())
+        ) {
+          campaignProducts.push({
+            id: product._id,
+            name: product.name,
+            price: product.basePrice || product.price,
+            campaignPrice: campaign.offerPrice || 1,
+            image: product.image
+          });
+        }
 
       }
 
     }
 
   }
+
+  campaignDiscount = Math.min(campaignDiscount, itemsTotal);
 
   grandTotal -= campaignDiscount;
 
@@ -165,12 +181,19 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   let couponDiscount = 0;
 
   if (couponCode) {
+
     try {
+
       couponDiscount = await applyCoupon(itemsTotal, couponCode);
+
       grandTotal -= couponDiscount;
+
     } catch (err) {
+
       console.log("⚠️ Coupon skipped:", err.message);
+
     }
+
   }
 
   /* ================= SURGE PRICING ================= */
@@ -186,21 +209,34 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   const availableCoupons = await Coupon.find({
     isActive: true,
     expiryDate: { $gt: new Date() }
-  }).select("code discountType discountValue minOrderAmount maxDiscount");
+  })
+    .select("code discountType discountValue minOrderAmount maxDiscount")
+    .lean();
 
   /* ================= FINAL RESPONSE ================= */
 
   return {
+
     validatedItems,
+
     itemsTotal: Math.round(itemsTotal),
+
     deliveryFee,
+
     handlingFee: config.handlingFee,
+
     couponDiscount: Math.round(couponDiscount),
+
     campaignDiscount: Math.round(campaignDiscount),
+
     campaignProducts,
+
     totalSavings: Math.round(couponDiscount + campaignDiscount),
+
     grandTotal: Math.round(grandTotal),
+
     availableCoupons
+
   };
 
 };

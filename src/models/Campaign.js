@@ -1,58 +1,88 @@
 const mongoose = require("mongoose");
 
 const campaignSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+{
+name:{
+type:String,
+required:true,
+trim:true
+},
 
-    type: {
-      type: String,
-      enum: ["CATEGORY", "PRODUCT", "GLOBAL"],
-      required: true,
-    },
+/* CAMPAIGN TARGET */
 
-    discountType: {
-      type: String,
-      enum: ["PERCENT", "FLAT"],
-      required: true,
-    },
+type:{
+type:String,
+enum:["CATEGORY","PRODUCT","GLOBAL","CART"],
+required:true
+},
 
-    discountValue: {
-      type: Number,
-      required: true,
-    },
+/* DISCOUNT TYPE */
 
-    category: {
-      type: String,
-      default: null,
-    },
+discountType:{
+type:String,
+enum:["PERCENT","FLAT","UNLOCK_PRODUCT"],
+required:true
+},
 
-    productIds: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-      },
-    ],
+discountValue:{
+type:Number,
+default:0
+},
 
-    startDate: {
-      type: Date,
-      required: true,
-    },
+/* CART CONDITION */
 
-    endDate: {
-      type: Date,
-      required: true,
-    },
+minCartValue:{
+type:Number,
+default:0
+},
 
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  { timestamps: true }
+/* CATEGORY CAMPAIGN */
+
+category:{
+type:String,
+default:null
+},
+
+/* PRODUCT CAMPAIGN */
+
+productIds:[
+{
+type:mongoose.Schema.Types.ObjectId,
+ref:"Product"
+}
+],
+
+/* UNLOCK PRODUCT */
+
+campaignProduct:{
+type:mongoose.Schema.Types.ObjectId,
+ref:"Product"
+},
+
+campaignPrice:{
+type:Number,
+default:0
+},
+
+/* DATE CONTROL */
+
+startDate:{
+type:Date,
+required:true
+},
+
+endDate:{
+type:Date,
+required:true
+},
+
+isActive:{
+type:Boolean,
+default:true
+}
+
+},
+{timestamps:true}
 );
 
-module.exports = mongoose.model("Campaign", campaignSchema);
+module.exports = mongoose.model("Campaign",campaignSchema);
