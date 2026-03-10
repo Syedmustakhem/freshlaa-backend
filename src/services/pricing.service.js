@@ -11,18 +11,35 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   let itemsTotal = 0;
   const validatedItems = [];
 
+  /* ================= ITEM VALIDATION ================= */
+
   for (const item of items) {
+
+    if (!item.qty || item.qty <= 0) {
+      throw new Error("Invalid item quantity");
+    }
+
+    if (item.qty > 20) {
+      throw new Error("Max quantity exceeded");
+    }
 
     console.log("🧾 CHECKOUT ITEM:", item);
 
     /* ================= LOAD ITEM ================= */
 
-    let product = await Product.findById(item.productId).session(session);
+    let query = Product.findById(item.productId);
+    if (session) query = query.session(session);
+
+    let product = await query;
     let itemModel = "Product";
 
     if (!product) {
-      product = await HotelMenuItem.findById(item.productId).session(session);
-itemModel = "HotelMenuItem";
+
+      let hotelQuery = HotelMenuItem.findById(item.productId);
+      if (session) hotelQuery = hotelQuery.session(session);
+
+      product = await hotelQuery;
+      itemModel = "HotelMenuItem";
     }
 
     if (!product) {
@@ -58,7 +75,7 @@ itemModel = "HotelMenuItem";
 
     } else {
 
-      price = product.basePrice;
+      price = product.basePrice || product.price;
 
       if (!price) {
         throw new Error(`Price missing for ${product.name}`);
@@ -71,6 +88,8 @@ itemModel = "HotelMenuItem";
     if (product.offerPercentage > 0) {
       price -= (price * product.offerPercentage) / 100;
     }
+
+    price = Math.round(price);
 
     const itemTotal = price * item.qty;
     itemsTotal += itemTotal;
@@ -92,6 +111,7 @@ itemModel = "HotelMenuItem";
       variant.stock -= item.qty;
       await product.save({ session });
     }
+
   }
 
   /* ================= CONFIG ================= */
@@ -105,20 +125,40 @@ itemModel = "HotelMenuItem";
 
   let grandTotal = itemsTotal + deliveryFee + config.handlingFee;
 
-  /* ================= CAMPAIGN ================= */
+  /* ================= CAMPAIGNS ================= */
 
-  const campaign = await Campaign.findOne({
+  const campaigns = await Campaign.find({
     isActive: true,
     startDate: { $lte: new Date() },
     endDate: { $gte: new Date() },
   });
 
   let campaignDiscount = 0;
+  let campaignProducts = [];
 
-  if (campaign && itemsTotal >= campaign.minCartValue) {
-    campaignDiscount = campaign.discountAmount;
-    grandTotal -= campaignDiscount;
+  for (const campaign of campaigns) {
+
+    if (itemsTotal >= campaign.minCartValue) {
+
+      campaignDiscount += campaign.discountAmount || 0;
+
+      if (campaign.product) {
+
+        campaignProducts.push({
+          id: campaign.product,
+          name: campaign.productName,
+          price: campaign.originalPrice,
+          campaignPrice: campaign.offerPrice,
+          image: campaign.image
+        });
+
+      }
+
+    }
+
   }
+
+  grandTotal -= campaignDiscount;
 
   /* ================= COUPON ================= */
 
@@ -136,7 +176,7 @@ itemModel = "HotelMenuItem";
   /* ================= SURGE PRICING ================= */
 
   if (config.surgeEnabled) {
-    grandTotal *= config.surgeMultiplier;
+    grandTotal = Math.round(grandTotal * config.surgeMultiplier);
   }
 
   if (grandTotal < 0) grandTotal = 0;
@@ -157,8 +197,10 @@ itemModel = "HotelMenuItem";
     handlingFee: config.handlingFee,
     couponDiscount: Math.round(couponDiscount),
     campaignDiscount: Math.round(campaignDiscount),
+    campaignProducts,
     totalSavings: Math.round(couponDiscount + campaignDiscount),
     grandTotal: Math.round(grandTotal),
     availableCoupons
   };
+
 };

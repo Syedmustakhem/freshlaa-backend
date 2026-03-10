@@ -12,6 +12,7 @@ const webpush = require("web-push");
 const checkoutService = require("../services/checkoutPayment.service");
 const generateInvoice=require("../utils/generateInvoice");
 const {sendWhatsAppDocument}=require("../services/whatsapp.service");
+const HotelMenuItem = require("../models/HotelMenuItem");
 /* ================= ENV SAFETY ================= */
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -31,6 +32,33 @@ try {
   );
 } catch (err) {
   console.error("VAPID Config Error:", err.message);
+}
+
+function calculateScheduledTime(slot) {
+
+  const now = new Date();
+
+  switch (slot) {
+
+    case "30m":
+      return new Date(now.getTime() + 30 * 60 * 1000);
+
+    case "1h":
+      return new Date(now.getTime() + 60 * 60 * 1000);
+
+    case "5h":
+      return new Date(now.getTime() + 5 * 60 * 60 * 1000);
+
+    case "12h":
+      return new Date(now.getTime() + 12 * 60 * 60 * 1000);
+
+    case "1d":
+      return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    default:
+      return null;
+  }
+
 }
 /* ================= PREVIEW CHECKOUT ================= */
 exports.previewCheckout = async (req, res) => {
@@ -69,8 +97,38 @@ exports.createOrder = async (req, res) => {
   try {
     session.startTransaction();
 
-    const { items, address, paymentMethod, payment, couponCode } = req.body;
+const {
+  items,
+  address,
+  paymentMethod,
+  payment,
+  couponCode,
+  deliveryType,
+  deliverySlot
+} = req.body;
+const allowedSlots = ["30m", "1h", "5h", "12h", "1d"];
 
+/* ================= DELIVERY VALIDATION ================= */
+
+let scheduledTime = null;
+
+if (deliveryType === "scheduled") {
+
+  if (!allowedSlots.includes(deliverySlot)) {
+    throw new Error("Invalid delivery slot");
+  }
+
+  scheduledTime = calculateScheduledTime(deliverySlot);
+
+  if (!scheduledTime) {
+    throw new Error("Invalid delivery slot");
+  }
+
+  if (scheduledTime < new Date()) {
+    throw new Error("Scheduled time cannot be in the past");
+  }
+
+}
     if (!Array.isArray(items) || !items.length)
       throw new Error("No items in order");
 
@@ -99,28 +157,35 @@ if (!selectedMethod || !selectedMethod.enabled) {
 }
     let paymentStatus = "Pending";
     let razorpayData = null;
-
     if (paymentMethod === "ONLINE") {
-      if (
-        !payment?.razorpay_order_id ||
-        !payment?.razorpay_payment_id ||
-        !payment?.razorpay_signature
-      ) {
-        throw new Error("Payment data missing");
-      }
 
-      const expectedSignature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
-        .digest("hex");
+  if (
+    !payment?.razorpay_order_id ||
+    !payment?.razorpay_payment_id ||
+    !payment?.razorpay_signature
+  ) {
+    throw new Error("Payment data missing");
+  }
 
-      if (expectedSignature !== payment.razorpay_signature)
-        throw new Error("Payment verification failed");
+  const existingOrder = await Order.findOne({
+    "paymentDetails.razorpay_payment_id": payment.razorpay_payment_id
+  });
 
-      paymentStatus = "Paid";
-      razorpayData = payment;
-    }
+  if (existingOrder) {
+    throw new Error("Duplicate order detected");
+  }
 
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(payment.razorpay_order_id + "|" + payment.razorpay_payment_id)
+    .digest("hex");
+
+  if (expectedSignature !== payment.razorpay_signature)
+    throw new Error("Payment verification failed");
+
+  paymentStatus = "Paid";
+  razorpayData = payment;
+}
     // 🔥 ADD PRODUCT NAME + IMAGE
 
 const formattedItems = await Promise.all(
@@ -129,53 +194,52 @@ const formattedItems = await Promise.all(
 
 let product;
 
-if (i.itemModel === "HotelItem") {
-  const HotelItem = require("../models/HotelItem");
-  product = await HotelItem.findById(i.product).lean();
+if (i.itemModel === "HotelMenuItem") {
+  product = await HotelMenuItem.findById(i.product).lean();
 } else {
   product = await Product.findById(i.product).lean();
 }
     return {
-
-      product: i.product,
-
-      name: product?.name || "Product",
-
-      image: product?.image || "",
-
-      qty: i.qty,
-
-      price: i.price
-
-    };
+  product: i.product,
+  name: product?.name || "Product",
+  image: product?.image || "",
+  variantId: i.variantId || null,
+  qty: i.qty,
+  price: i.price
+};
 
   })
 
 );
 
 
-const orderDoc = await Order.create(
-  [{
-    user: req.user._id,
+const orderDoc = await Order.create([
+{
+  user: req.user._id,
 
-    items: formattedItems,  // 🔥 FIXED
+  items: formattedItems,
 
-    address,
+  address,
 
-    paymentMethod: paymentMethod || "COD",
+  deliveryType: deliveryType || "instant",
 
-    paymentStatus,
+  deliverySlot: deliverySlot || null,
 
-    paymentDetails: razorpayData,
+  scheduledTime,
 
-    total: result.grandTotal,
+  paymentMethod: paymentMethod || "COD",
 
-    breakdown: result,
+  paymentStatus,
 
-    status: "Placed",
-  }],
-  { session }
-);
+  paymentDetails: razorpayData,
+
+  total: result.grandTotal,
+
+  breakdown: result,
+
+  status: "Placed",
+}
+], { session });
 
     const order = orderDoc[0];
 
@@ -185,10 +249,11 @@ const orderDoc = await Order.create(
     const user = await User.findById(req.user._id).lean();
 
     if (global.io) {
-      global.io.emit("new-order", {
-        orderId: order._id.toString(),
-        total: order.total,
-      });
+     global.io.emit("new-order", {
+  orderId: order._id.toString(),
+  total: order.total,
+  items: order.items.length
+});
     }
 
     /* ADMIN PUSH */
@@ -292,9 +357,13 @@ exports.cancelOrder = async (req, res) => {
 
     /* RESTORE STOCK */
     for (const item of order.items) {
-      const product = await Product.findById(item.product).session(session);
-      if (!product) continue;
+let product = await Product.findById(item.product).session(session);
 
+if (!product) {
+  product = await HotelMenuItem.findById(item.product).session(session);
+}
+
+if (!product) continue;
       if (item.variantId && product.variants?.length) {
         const variant = product.variants.id(item.variantId);
         if (variant) variant.stock += item.qty;

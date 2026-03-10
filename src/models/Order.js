@@ -66,7 +66,22 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+deliveryType: {
+  type: String,
+  enum: ["instant", "scheduled"],
+  default: "instant"
+},
 
+deliverySlot: {
+  type: String,
+  enum: ["30m", "1h", "5h", "12h", "1d"],
+  default: null
+},
+
+scheduledTime: {
+  type: Date,
+  default: null
+},
     /* ================= PAYMENT ================= */
 
     paymentMethod: {
