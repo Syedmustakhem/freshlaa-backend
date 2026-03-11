@@ -1,7 +1,43 @@
 // src/routes/appConfig.routes.js
 const express = require("express");
-const router = express.Router();
+const router  = express.Router();
 
+/* ─── Delivery Config ─── */
+const KADIRI_PINCODE = "516214";
+const NIGHT_START    = 21; // 9 PM
+const NIGHT_END      = 8;  // 8 AM
+
+router.get("/delivery-config", (req, res) => {
+  try {
+    const { pincode } = req.query;
+
+    const now      = new Date();
+    const istHour  = (now.getUTCHours() + 5) % 24 + (now.getUTCMinutes() >= 30 ? 1 : 0);
+    const isNight  = istHour >= NIGHT_START || istHour < NIGHT_END;
+    const isKadiri = pincode?.trim() === KADIRI_PINCODE;
+
+    if (isNight) {
+      return res.json({
+        success:          true,
+        instantAvailable: false,
+        estimatedTime:    null,
+        nightMessage:     "⏰ Instant delivery is not available right now. Please select a scheduled slot.",
+      });
+    }
+
+    return res.json({
+      success:          true,
+      instantAvailable: true,
+      estimatedTime:    isKadiri ? "20-25 mins" : "40 mins",
+      nightMessage:     null,
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/* ─── App Config ─── */
 const APP_CONFIG = {
   min_version_android: "1.1.0",
   min_version_ios: "1.0.0",
@@ -13,24 +49,8 @@ const APP_CONFIG = {
   maintenance_message:
     "FreshLaa is currently under maintenance. Please try again later.",
 
-  /* ─────────────────────────────────────────────────────
-     SPLASH SCREEN — change these values anytime
-     type: "lottie" | "image" | "none"
-
-     For LOTTIE:
-       set type = "lottie"
-       set lottie_url to any LottieFiles CDN URL
-       leave image_url as ""
-
-     For IMAGE:
-       set type = "image"
-       set image_url to any Cloudinary/CDN URL
-       leave lottie_url as ""
-
-     duration_ms = how long splash shows before going to Home
-  ───────────────────────────────────────────────────── */
   splash: {
-    type: "image",                      // "lottie" | "image" | "none"
+    type: "image",
     lottie_url: "https://assets10.lottiefiles.com/packages/lf20_xlmz9xwm.json",
     image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1773170384/66a99aa1-8287-4b4d-8093-37686f06c738_a7p89s.jpg",
     bg_color: "#ffffff",
@@ -41,10 +61,7 @@ const APP_CONFIG = {
 };
 
 router.get("/app-config", (req, res) => {
-  res.json({
-    success: true,
-    ...APP_CONFIG,
-  });
+  res.json({ success: true, ...APP_CONFIG });
 });
 
 module.exports = router;
