@@ -3,7 +3,7 @@ const express = require("express");
 const router  = express.Router();
 
 /* ─── Delivery Config ─── */
-const KADIRI_PINCODE = "516214";
+const KADIRI_PINCODE = "515591";
 const NIGHT_START    = 21; // 9 PM
 const NIGHT_END      = 8;  // 8 AM
 
