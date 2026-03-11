@@ -1,33 +1,39 @@
 const express = require("express");
 const router = express.Router();
-
 const protect = require("../middlewares/auth.middleware");
 const User = require("../models/User");
 
-/* SAVE PUSH TOKEN */
-router.post("/save-token", protect, async (req, res) => {
+/* SAVE PUSH TOKENS (Expo + FCM) */
+router.post("/save-push-token", protect, async (req, res) => {
   try {
-    const { pushToken } = req.body;
+    const { expoPushToken, fcmToken } = req.body;
 
-    if (!pushToken) {
+    // At least one token must be provided
+    if (!expoPushToken && !fcmToken) {
       return res.status(400).json({
         success: false,
-        message: "Push token required",
+        message: "At least one token required",
       });
     }
 
-    await User.findByIdAndUpdate(req.user._id, {
-      pushToken,
-    });
+    // Only update fields that are provided
+    const update = {};
+    if (expoPushToken) update.expoPushToken = expoPushToken;
+    if (fcmToken) update.fcmToken = fcmToken;
+
+    await User.findByIdAndUpdate(req.user._id, update);
+
+    console.log(`✅ Tokens saved for user ${req.user._id}:`, update);
 
     res.json({
       success: true,
-      message: "Push token saved",
+      message: "Tokens saved successfully",
     });
   } catch (err) {
+    console.error("❌ Token save error:", err.message);
     res.status(500).json({
       success: false,
-      message: "Failed to save push token",
+      message: "Failed to save tokens",
     });
   }
 });

@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const User = require("../models/User");
-const sendPush = require("../utils/sendPush");
+const { notifyUser } = require("../services/notification.service");
 const { sendWhatsAppTemplate } = require("../services/whatsapp.service");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
@@ -278,15 +278,16 @@ const orderDoc = await Order.create([
       console.error("Admin Push Error:", err.message);
     }
 
-    if (user?.expoPushToken) {
-      sendPush({
-        expoPushToken: user.expoPushToken,
-        title: "Order Placed",
-        body: `Your order of ₹${order.total} has been placed`,
-        data: { orderId: order._id.toString() },
-      });
-    }
-
+    await notifyUser({
+  userId: user._id,
+  type: "ORDER",
+  pushData: {
+    title: "Order Placed 🛒",
+    body: `Your order of ₹${order.total} has been placed`,
+    imageUrl: "https://api.freshlaa.com/assets/order-placed.png", // your image
+    data: { screen: "OrderTracking", orderId: order._id.toString() },
+  },
+});
     if (user?.phone) {
       try {
         await sendWhatsAppTemplate(
@@ -522,20 +523,26 @@ status
 
 /* ================= EXPO PUSH (ALL STATUSES) ================= */
 
-if(order.user?.expoPushToken){
+const statusMessages = {
+  Placed:        { title: "Order Confirmed 🛒",     body: "Your order has been confirmed!",         imageUrl: "https://api.freshlaa.com/assets/order-placed.png" },
+  Packed:        { title: "Order Packed 📦",         body: "Your order is packed and ready!",        imageUrl: "https://api.freshlaa.com/assets/order-packed.png" },
+  OutForDelivery:{ title: "Out for Delivery 🛵",    body: "Your order is on the way!",              imageUrl: "https://api.freshlaa.com/assets/order-delivery.png" },
+  Delivered:     { title: "Order Delivered 🎉",     body: "Enjoy your order! Rate us ⭐",           imageUrl: "https://api.freshlaa.com/assets/order-delivered.png" },
+  Cancelled:     { title: "Order Cancelled ❌",     body: "Your order has been cancelled.",         imageUrl: "https://api.freshlaa.com/assets/order-cancelled.png" },
+};
 
-await sendPush({
-
-expoPushToken:order.user.expoPushToken,
-
-title:"Order Update",
-
-body:`Your order is ${status}`,
-
-data:{orderId:order._id.toString()}
-
-});
-
+const msg = statusMessages[status];
+if (msg) {
+  await notifyUser({
+    userId: order.user._id,
+    type: "ORDER",
+    pushData: {
+      title: msg.title,
+      body: msg.body,
+      imageUrl: msg.imageUrl,
+      data: { screen: "OrderTracking", orderId: order._id.toString() },
+    },
+  });
 }
 
 
