@@ -1,17 +1,14 @@
-const Product = require("../models/Product");
+const Product       = require("../models/Product");
 const HotelMenuItem = require("../models/HotelMenuItem");
-const Campaign = require("../models/Campaign");
-const Coupon = require("../models/Coupon");
+const Campaign      = require("../models/Campaign");
+const Coupon        = require("../models/Coupon");
 
-const { getConfig } = require("./config.service");
-const { applyCoupon } = require("./coupon.service");
+const { getConfig }    = require("./config.service");
+const { applyCoupon }  = require("./coupon.service");
 
-/* ═══════════════════════════════════════════════════════════════
-   CONFIG CACHE
-   ✅ FIX 10: cache config for 1 minute instead of hitting DB
-   on every single previewCheckout call
-═══════════════════════════════════════════════════════════════ */
-
+/* ─── CONFIG CACHE ──────────────────────────────────────────────────────────
+   Busted by calling invalidateConfigCache() from your admin config-update route
+──────────────────────────────────────────────────────────────────────────── */
 let _configCache    = null;
 let _configCachedAt = 0;
 const CONFIG_TTL_MS = 60_000; // 1 minute
@@ -25,7 +22,6 @@ async function getConfigCached() {
   return _configCache;
 }
 
-// Call this from your admin config update route to bust the cache immediately
 exports.invalidateConfigCache = () => {
   _configCache    = null;
   _configCachedAt = 0;
@@ -37,13 +33,12 @@ exports.invalidateConfigCache = () => {
 
 exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
-  /* ── ✅ FIX 9: batch fetch all products in two queries instead of N+1 ── */
   const allProductIds = items.map((i) => i.productId).filter(Boolean);
 
+  /* ── Batch fetch all read-only (lean) docs + campaigns in parallel ── */
   const [allProducts, allHotelItems, activeCampaigns] = await Promise.all([
     Product.find({ _id: { $in: allProductIds } }).lean(),
     HotelMenuItem.find({ _id: { $in: allProductIds } }).lean(),
-    // ✅ FIX 2: fetch campaigns early so we can verify campaign products server-side
     Campaign.find({
       isActive:  true,
       type:      { $in: ["CART_PROGRESS", "CART"] },
@@ -52,24 +47,31 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     }).lean(),
   ]);
 
-  // Build immutable lookup maps (lean docs — for reads)
+  // Unified lookup map: productId → { doc, model }
   const productMap = {};
   for (const p of allProducts)   productMap[p._id.toString()] = { doc: p, model: "Product" };
   for (const p of allHotelItems) productMap[p._id.toString()] = { doc: p, model: "HotelMenuItem" };
 
-  // ✅ FIX 2: campaign product map keyed by productId for server-side price verification
+  // Campaign product map: productId → campaign (for server-side price verification)
   const campaignProductMap = {};
   for (const c of activeCampaigns) {
-    if (c.campaignProduct) {
-      campaignProductMap[c.campaignProduct.toString()] = c;
-    }
+    if (c.campaignProduct) campaignProductMap[c.campaignProduct.toString()] = c;
   }
 
-  /* ── Mutable Mongoose docs for stock saves (only needed in transactions) ── */
-  const mutableProductDocMap = {};
+  /* ── Mutable Mongoose docs for stock deduction (transaction only) ──────────
+     FIX: fetch BOTH Product AND HotelMenuItem mutable docs.
+     Previously only Product was fetched, so hotel item stock was never deducted.
+  ────────────────────────────────────────────────────────────────────────── */
+  const mutableDocMap = {};
+
   if (session && allProductIds.length) {
-    const mutableDocs = await Product.find({ _id: { $in: allProductIds } }).session(session);
-    for (const p of mutableDocs) mutableProductDocMap[p._id.toString()] = p;
+    const [mutableProducts, mutableHotelItems] = await Promise.all([
+      Product.find({ _id: { $in: allProductIds } }).session(session),
+      HotelMenuItem.find({ _id: { $in: allProductIds } }).session(session),
+    ]);
+
+    for (const p of mutableProducts)   mutableDocMap[p._id.toString()] = p;
+    for (const p of mutableHotelItems) mutableDocMap[p._id.toString()] = p;
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -81,7 +83,6 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   for (const item of items) {
 
-    /* ── Basic qty validation ── */
     if (!item.qty || item.qty <= 0) throw new Error("Invalid item quantity");
     if (item.qty > 20)              throw new Error("Max quantity per item is 20");
 
@@ -95,37 +96,25 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     if (product.isAvailable === false)
       throw new Error(`${product.name} is not available`);
 
-    /* ───────────────────────────────────────────────────────
-       ✅ FIX 2 + 3: CAMPAIGN PRODUCT
-       Price always read from DB campaign record.
-       Client finalPrice is completely ignored.
-       Stock checked and deducted like any other product.
-    ─────────────────────────────────────────────────────── */
+    /* ── Campaign product ─────────────────────────────────────────────────── */
     if (item.isCampaignProduct) {
       const campaign = campaignProductMap[pid];
       if (!campaign) throw new Error(`No active campaign found for product: ${pid}`);
 
-      // ✅ FIX 2: campaign price from DB only
       const price     = campaign.campaignPrice ?? 1;
       const itemTotal = price * item.qty;
 
-      // ✅ FIX 3: stock check + deduction for campaign products in transaction
       if (session) {
-        const mutableDoc = mutableProductDocMap[pid];
-        if (mutableDoc) {
-          if (mutableDoc.stock !== undefined && mutableDoc.stock < item.qty) {
-            throw new Error(`${product.name} is out of stock`);
-          }
-          if (mutableDoc.stock !== undefined) {
-            mutableDoc.stock -= item.qty;
-            await mutableDoc.save({ session });
-          }
+        const mutableDoc = mutableDocMap[pid];
+        if (mutableDoc?.stock !== undefined) {
+          if (mutableDoc.stock < item.qty) throw new Error(`${product.name} is out of stock`);
+          mutableDoc.stock -= item.qty;
+          await mutableDoc.save({ session });
         }
       }
 
       itemsTotal += itemTotal;
 
-      // ✅ FIX 1: productId field name — matches controller's buildFormattedItems
       validatedItems.push({
         productId:         product._id,
         itemModel:         "Product",
@@ -138,15 +127,16 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
         qty:               item.qty,
         total:             itemTotal,
         isCampaignProduct: true,
+        // FIX: pass-through fields consumed by buildFormattedItems in order.controller
+        hotelId:        item.hotelId        || null,
+        selectedAddons: item.selectedAddons || [],
+        customizations: item.customizations || {},
       });
 
       continue;
     }
 
-    /* ───────────────────────────────────────────────────────
-       NORMAL PRODUCT — variant resolution + offer price
-    ─────────────────────────────────────────────────────── */
-
+    /* ── Normal product — variant resolution + offer price ───────────────── */
     let variant = null;
     let price   = 0;
 
@@ -160,9 +150,8 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
       if (!variant) throw new Error(`Invalid variant for ${product.name}`);
 
-      if (variant.stock !== undefined && variant.stock < item.qty) {
+      if (variant.stock !== undefined && variant.stock < item.qty)
         throw new Error(`${product.name} (${variant.label}) is out of stock`);
-      }
 
       price = variant.price;
 
@@ -170,15 +159,12 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       price = product.basePrice || product.price;
       if (!price) throw new Error(`Price missing for ${product.name}`);
 
-      // ✅ FIX 4: check base-product stock
-      if (product.stock !== undefined && product.stock < item.qty) {
+      if (product.stock !== undefined && product.stock < item.qty)
         throw new Error(`${product.name} is out of stock`);
-      }
     }
 
     const originalPrice = price;
 
-    /* ── Offer discount ── */
     if (product.offerPercentage > 0) {
       price = price - (price * product.offerPercentage) / 100;
     }
@@ -188,30 +174,25 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     const itemTotal = price * item.qty;
     itemsTotal     += itemTotal;
 
-    /* ── ✅ FIX 4: deduct stock for base products + variants in transaction ── */
+    /* ── Stock deduction (transaction) ───────────────────────────────────── */
     if (session) {
-      const mutableDoc = mutableProductDocMap[pid];
+      const mutableDoc = mutableDocMap[pid];
       if (mutableDoc) {
         if (variant) {
           const mutableVariant = mutableDoc.variants?.id
             ? mutableDoc.variants.id(variant._id)
-            : mutableDoc.variants?.find(
-                (v) => v._id.toString() === variant._id.toString()
-              );
-          if (mutableVariant && mutableVariant.stock !== undefined) {
-            mutableVariant.stock -= item.qty;
-          }
+            : mutableDoc.variants?.find((v) => v._id.toString() === variant._id.toString());
+
+          if (mutableVariant?.stock !== undefined) mutableVariant.stock -= item.qty;
         } else {
-          // Base product stock
-          if (mutableDoc.stock !== undefined) {
-            mutableDoc.stock -= item.qty;
-          }
+          if (mutableDoc.stock !== undefined) mutableDoc.stock -= item.qty;
         }
         await mutableDoc.save({ session });
       }
     }
 
-    // ✅ FIX 1: productId — consistent with controller
+    // FIX: include hotelId, selectedAddons, customizations so order.controller
+    // buildFormattedItems receives the correct data instead of undefined
     validatedItems.push({
       productId:         product._id,
       itemModel,
@@ -224,6 +205,9 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       qty:               item.qty,
       total:             itemTotal,
       isCampaignProduct: false,
+      hotelId:           item.hotelId        || null,
+      selectedAddons:    item.selectedAddons || [],
+      customizations:    item.customizations || {},
     });
   }
 
@@ -231,20 +215,13 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
      CONFIG + FEES
   ═══════════════════════════════════════════════════════════ */
 
-  // ✅ FIX 10: cached — no DB hit on every preview call
   const config = await getConfigCached();
 
   const deliveryFee = itemsTotal >= config.freeDeliveryLimit ? 0 : config.deliveryFee;
   const handlingFee = config.handlingFee ?? 0;
   const baseFees    = deliveryFee + handlingFee;
 
-  /* ═══════════════════════════════════════════════════════════
-     SURGE
-     ✅ FIX 6: surge applied to items total BEFORE discounts,
-     so discounts aren't applied to an already-inflated total
-     which could produce weird or negative results
-  ═══════════════════════════════════════════════════════════ */
-
+  /* ── Surge ── */
   const surgeMultiplier  = config.surgeEnabled ? (config.surgeMultiplier ?? 1) : 1;
   const surgedItemsTotal = Math.round(itemsTotal * surgeMultiplier);
 
@@ -252,20 +229,16 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
      CAMPAIGNS
   ═══════════════════════════════════════════════════════════ */
 
-  // thresholdTotal excludes ₹1 campaign items so they don't inflate unlock thresholds
+  // Exclude ₹1 campaign items from unlock threshold calculations
   const thresholdTotal = validatedItems
     .filter((i) => !i.isCampaignProduct)
     .reduce((sum, i) => sum + i.total, 0);
 
-  // Enrich campaign product docs for the response
   const cpIds = activeCampaigns
     .filter((c) => c.campaignProduct)
     .map((c) => c.campaignProduct);
 
-  const cpDocs = cpIds.length
-    ? await Product.find({ _id: { $in: cpIds } }).lean()
-    : [];
-
+  const cpDocs   = cpIds.length ? await Product.find({ _id: { $in: cpIds } }).lean() : [];
   const cpDocMap = {};
   for (const p of cpDocs) cpDocMap[p._id.toString()] = p;
 
@@ -273,68 +246,48 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
   let campaignProducts = [];
 
   for (const campaign of activeCampaigns) {
-    const minCart = campaign.minCartValue || 0;
-    if (thresholdTotal < minCart) continue;
+    if (thresholdTotal < (campaign.minCartValue || 0)) continue;
 
-    if (campaign.discountType === "PERCENT") {
-      campaignDiscount += (thresholdTotal * campaign.discountValue) / 100;
-    }
-
-    if (campaign.discountType === "FLAT") {
-      campaignDiscount += campaign.discountValue;
-    }
+    if (campaign.discountType === "PERCENT") campaignDiscount += (thresholdTotal * campaign.discountValue) / 100;
+    if (campaign.discountType === "FLAT")    campaignDiscount += campaign.discountValue;
 
     if (campaign.campaignProduct) {
       const p = cpDocMap[campaign.campaignProduct.toString()];
-      if (p) {
-        // ✅ FIX 12: use _id on POJO (not .id which is undefined on plain objects)
-        const alreadyAdded = campaignProducts.some(
-          (cp) => cp._id.toString() === p._id.toString()
-        );
-        if (!alreadyAdded) {
-          campaignProducts.push({
-            _id:           p._id,
-            id:            p._id,  // kept for frontend compatibility
-            name:          p.name,
-            price:         p.basePrice || p.price,
-            campaignPrice: campaign.campaignPrice ?? 1,
-            image:         p.image || null,
-          });
-        }
+      if (p && !campaignProducts.some((cp) => cp._id.toString() === p._id.toString())) {
+        campaignProducts.push({
+          _id:           p._id,
+          id:            p._id,
+          name:          p.name,
+          price:         p.basePrice || p.price,
+          campaignPrice: campaign.campaignPrice ?? 1,
+          image:         p.image || null,
+        });
       }
     }
   }
 
-  // ✅ FIX 8: cap against surgedItemsTotal (not thresholdTotal) so we include fees in cap
   campaignDiscount = Math.min(Math.round(campaignDiscount), surgedItemsTotal);
 
   /* ═══════════════════════════════════════════════════════════
      COUPON
-     ✅ FIX 11: propagate error — don't swallow it silently
-     Controller catches it and returns 400 with message to frontend
   ═══════════════════════════════════════════════════════════ */
 
   let couponDiscount = 0;
-
   if (couponCode) {
-    couponDiscount = await applyCoupon(thresholdTotal, couponCode);
-    couponDiscount = Math.round(couponDiscount);
+    couponDiscount = Math.round(await applyCoupon(thresholdTotal, couponCode));
   }
 
   /* ═══════════════════════════════════════════════════════════
      GRAND TOTAL
-     ✅ FIX 5: floor applied after ALL discounts, before returning
-     ✅ FIX 6: surge baked into surgedItemsTotal, not re-applied here
   ═══════════════════════════════════════════════════════════ */
 
-  let grandTotal  = surgedItemsTotal + baseFees;
-  grandTotal     -= campaignDiscount;
-  grandTotal     -= couponDiscount;
-
-  if (grandTotal < 0) grandTotal = 0;
+  const grandTotal = Math.max(
+    0,
+    Math.round(surgedItemsTotal + baseFees - campaignDiscount - couponDiscount)
+  );
 
   /* ═══════════════════════════════════════════════════════════
-     CART PROGRESS — next unlock threshold
+     CART PROGRESS
   ═══════════════════════════════════════════════════════════ */
 
   let cartProgress = null;
@@ -359,14 +312,13 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   /* ═══════════════════════════════════════════════════════════
      AVAILABLE COUPONS
-     ✅ FIX 7: only return public coupons the user can actually use
   ═══════════════════════════════════════════════════════════ */
 
   const availableCoupons = await Coupon.find({
     isActive:       true,
     expiryDate:     { $gt: new Date() },
-    isPublic:       true,                      // never expose staff/internal coupons
-    minOrderAmount: { $lte: thresholdTotal },  // only show coupons user qualifies for
+    isPublic:       true,
+    minOrderAmount: { $lte: thresholdTotal },
   })
     .select("code discountType discountValue minOrderAmount maxDiscount")
     .lean();
@@ -386,7 +338,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     campaignProducts,
     cartProgress,
     totalSavings:     Math.round(couponDiscount + campaignDiscount),
-    grandTotal:       Math.round(grandTotal),
+    grandTotal,
     availableCoupons,
   };
 };

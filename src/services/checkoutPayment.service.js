@@ -1,14 +1,21 @@
 const CheckoutPaymentConfig = require("../models/CheckoutPaymentConfig");
-const Order = require("../models/Order");
+const Order                 = require("../models/Order");
 
-/* ═══════════════════════════════════════════════════════════════
-   CONFIG CACHE
-   ✅ FIX 4: cache payment configs — they change rarely (admin only)
-═══════════════════════════════════════════════════════════════ */
+/* ─── PAYMENT CONFIG CACHE ──────────────────────────────────────────────────
+   Payment configs change only when an admin updates them.
+   Call invalidatePaymentConfigCache() in your admin config-update route:
 
+     const { invalidatePaymentConfigCache } = require("../services/checkoutPayment.service");
+
+     router.put("/admin/payment-config", adminAuth, async (req, res) => {
+       await CheckoutPaymentConfig.findByIdAndUpdate(req.params.id, req.body);
+       invalidatePaymentConfigCache(); // ← bust cache immediately
+       res.json({ success: true });
+     });
+──────────────────────────────────────────────────────────────────────────── */
 let _configCache    = null;
 let _configCachedAt = 0;
-const CONFIG_TTL_MS = 60_000; // 1 minute
+const CONFIG_TTL_MS = 60_000; // 1 minute — safety net if invalidation is missed
 
 async function getPaymentConfigsCached() {
   if (_configCache && Date.now() - _configCachedAt < CONFIG_TTL_MS) {
@@ -19,7 +26,6 @@ async function getPaymentConfigsCached() {
   return _configCache;
 }
 
-// Call from your admin panel when payment config is updated
 exports.invalidatePaymentConfigCache = () => {
   _configCache    = null;
   _configCachedAt = 0;
@@ -27,30 +33,28 @@ exports.invalidatePaymentConfigCache = () => {
 
 /* ═══════════════════════════════════════════════════════════════
    GET CHECKOUT PAYMENT OPTIONS
+   Returns an array of payment method objects for the given user + amount.
+   Shape: { id, label, enabled, reason, codFee }
 ═══════════════════════════════════════════════════════════════ */
 
 exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
 
-  // ✅ FIX 7: guard against undefined userId before any DB query
   if (!userId) throw new Error("userId is required to fetch payment options");
 
-  // ✅ FIX 4: cached fetch
   const configs = await getPaymentConfigsCached();
 
-  // ✅ FIX 5: fail loudly if no configs found — likely a misconfiguration
   if (!configs || configs.length === 0) {
     throw new Error("No payment methods configured. Please contact support.");
   }
 
-  /* ── ✅ FIX 1 + 2: single aggregate instead of two sequential countDocuments ──
-     Correct field name: `status` (not `orderStatus`)
-     Correct enum casing: "Cancelled" (not "CANCELLED")
-     RTO removed — not in Order model enum
-  ── */
+  /* ── Single aggregate: total COD orders + cancelled count ──────────────
+     Using $group avoids two separate countDocuments calls.
+     Correct field: `status` with casing "Cancelled" (matches Order schema enum).
+  ────────────────────────────────────────────────────────────────────────── */
   const [codStats] = await Order.aggregate([
     {
       $match: {
-        user:          userId,         // mongoose ObjectId passed directly
+        user:          userId,
         paymentMethod: "COD",
       },
     },
@@ -59,21 +63,20 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
         _id:       null,
         total:     { $sum: 1 },
         cancelled: {
-          $sum: {
-            $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0],
-          },
+          $sum: { $cond: [{ $eq: ["$status", "Cancelled"] }, 1, 0] },
         },
       },
     },
   ]);
 
-  const totalCod    = codStats?.total     ?? 0;
-  const failedCod   = codStats?.cancelled ?? 0;
+  const totalCod  = codStats?.total     ?? 0;
+  const failedCod = codStats?.cancelled ?? 0;
 
-  // ✅ FIX 3: refined failure rate — only flag if user has enough history (min 3 orders)
-  // and cancellation rate exceeds 40%, OR absolute cancellations exceed 5
-  const failureRate    = totalCod >= 3 ? (failedCod / totalCod) * 100 : 0;
-  const codAbuse       = failureRate > 40 || failedCod >= 5;
+  // Only penalise users with enough history (min 3 orders).
+  // Trigger: cancellation rate > 40% OR 5+ absolute cancellations.
+  const failureRate = totalCod >= 3 ? (failedCod / totalCod) * 100 : 0;
+  const codAbuse    = failureRate > 40 || failedCod >= 5;
+
   const codAbuseReason = codAbuse
     ? `COD unavailable due to ${failedCod} cancellation${failedCod !== 1 ? "s" : ""} on previous orders`
     : null;
@@ -83,7 +86,7 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
     let enabled = true;
     let reason  = null;
 
-    /* ── Amount range check ── */
+    /* ── Amount range ── */
     if (amount < (config.minOrderAmount ?? 0)) {
       enabled = false;
       reason  = `Available on orders above ₹${config.minOrderAmount}`;
@@ -94,7 +97,7 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
       reason  = `Not available on orders above ₹${config.maxOrderAmount}`;
     }
 
-    /* ── COD abuse check ── */
+    /* ── COD abuse block ── */
     if (config.code === "COD" && codAbuse) {
       enabled = false;
       reason  = codAbuseReason;
@@ -105,7 +108,7 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
       label:   config.label,
       enabled,
       reason,
-      // ✅ FIX 6: expose codFee clearly so pricing service/controller can add it to total
+      // codFee is 0 when COD is disabled — prevents fee being applied to blocked method
       codFee:  config.code === "COD" && enabled ? (config.codFee ?? 0) : 0,
     };
   });
