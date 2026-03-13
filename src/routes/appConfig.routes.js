@@ -153,7 +153,8 @@ router.get("/delivery-config", (req, res) => {
 
 const APP_CONFIG = {
 
-  min_version_android: "1.1.0",
+  min_version_android: "1.2.0",
+   latest_version_android: "1.2.0",
   min_version_ios: "1.0.0",
 
   force_update_message:
@@ -186,6 +187,8 @@ const APP_CONFIG = {
 
 
 router.get("/app-config",(req,res)=>{
+
+  res.set("Cache-Control","no-store");
 
   res.json({
     success:true,
