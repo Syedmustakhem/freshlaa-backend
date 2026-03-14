@@ -145,11 +145,11 @@ const APP_CONFIG = {
     // ✅ TIP: This image_url is loaded remotely — make sure it's fast to load.
     //         Consider using a small optimized PNG (< 200KB) for best splash speed.
     image_url:
-      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1773512701/1a85c644-af78-4017-98a1-3fc4cfe12186_f8415r.jpg",
+      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1773513291/1d947bae-771d-45f5-a8e3-8612365a0589_grmvax.jpg",
 
     bg_color: "#ffffff",
 
-    tagline: "Fresh delivery in 10 mins ⚡",
+    tagline: "Fresh delivery in 30 mins ⚡",
 
     tagline_color: "#16a34a",
 
