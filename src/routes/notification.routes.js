@@ -4,37 +4,47 @@ const protect = require("../middlewares/auth.middleware");
 const User = require("../models/User");
 
 /* SAVE PUSH TOKENS (Expo + FCM) */
-router.post("/save-push-token", protect, async (req, res) => {
+router.post("/save-push-token", async (req, res) => {
   try {
-    const { expoPushToken, fcmToken } = req.body;
 
-    // At least one token must be provided
-    if (!expoPushToken && !fcmToken) {
+    const { token, userId, device } = req.body;
+
+    if (!token) {
       return res.status(400).json({
         success: false,
-        message: "At least one token required",
+        message: "Push token required"
       });
     }
 
-    // Only update fields that are provided
-    const update = {};
-    if (expoPushToken) update.expoPushToken = expoPushToken;
-    if (fcmToken) update.fcmToken = fcmToken;
+    if (userId) {
+      // Logged-in user → save in user table
+      await User.findByIdAndUpdate(userId, {
+        expoPushToken: token
+      });
 
-    await User.findByIdAndUpdate(req.user._id, update);
+      console.log("✅ Token saved for user:", userId);
 
-    console.log(`✅ Tokens saved for user ${req.user._id}:`, update);
+    } else {
+
+      console.log("👤 Guest push token saved:", token);
+
+      // optional: save in guest_tokens collection
+    }
 
     res.json({
       success: true,
-      message: "Tokens saved successfully",
+      message: "Token saved"
     });
+
   } catch (err) {
-    console.error("❌ Token save error:", err.message);
+
+    console.error("❌ Token save error:", err);
+
     res.status(500).json({
       success: false,
-      message: "Failed to save tokens",
+      message: "Server error"
     });
+
   }
 });
 

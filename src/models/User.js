@@ -12,15 +12,27 @@ const userSchema = new mongoose.Schema(
     },
 
     /* 🔔 PUSH NOTIFICATIONS */
+
     expoPushToken: {
       type: String,
       default: null,
+      index: true,
     },
-fcmToken: {
-  type: String,
-  default: null
-},
+
+    fcmToken: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
+    pushDevice: {
+      type: String,
+      enum: ["android", "ios", "web"],
+      default: "android",
+    },
+
     /* 👤 PROFILE */
+
     name: {
       type: String,
       default: "",
@@ -35,6 +47,7 @@ fcmToken: {
     },
 
     /* 🛒 CART */
+
     cart: {
       type: [
         {
@@ -53,6 +66,7 @@ fcmToken: {
           qty: {
             type: Number,
             default: 1,
+            min: 1,
           },
 
           hotelId: {
@@ -73,7 +87,7 @@ fcmToken: {
 
           finalPrice: {
             type: Number,
-            default: 0, // 🔥 SAFER
+            default: 0,
           },
         },
       ],
@@ -81,18 +95,28 @@ fcmToken: {
     },
 
     /* ⏱️ META */
+
     lastLogin: {
       type: Date,
       default: Date.now,
     },
 
     /* 🛡️ STATUS */
+
     isBlocked: {
       type: Boolean,
       default: false,
     },
   },
-  { timestamps: true }
+
+  {
+    timestamps: true,
+  }
 );
+
+/* 🔧 OPTIONAL: Remove duplicate tokens automatically */
+
+userSchema.index({ expoPushToken: 1 }, { sparse: true });
+userSchema.index({ fcmToken: 1 }, { sparse: true });
 
 module.exports = mongoose.model("User", userSchema);
