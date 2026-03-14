@@ -1,39 +1,46 @@
 const express = require("express");
 const router = express.Router();
-const protect = require("../middlewares/auth.middleware");
 const User = require("../models/User");
 
 /* SAVE PUSH TOKENS (Expo + FCM) */
+
 router.post("/save-push-token", async (req, res) => {
   try {
 
-    const { token, userId, device } = req.body;
+    const { expoPushToken, fcmToken, userId, device } = req.body;
 
-    if (!token) {
+    if (!expoPushToken && !fcmToken) {
       return res.status(400).json({
         success: false,
-        message: "Push token required"
+        message: "No push tokens provided"
       });
     }
 
     if (userId) {
-      // Logged-in user → save in user table
+
       await User.findByIdAndUpdate(userId, {
-        expoPushToken: token
+        ...(expoPushToken && { expoPushToken }),
+        ...(fcmToken && { fcmToken }),
+        ...(device && { pushDevice: device })
       });
 
-      console.log("✅ Token saved for user:", userId);
+      console.log("✅ Tokens saved for user:", userId);
+      console.log("Expo:", expoPushToken);
+      console.log("FCM:", fcmToken);
 
     } else {
 
-      console.log("👤 Guest push token saved:", token);
+      console.log("👤 Guest tokens received:");
+      console.log("Expo:", expoPushToken);
+      console.log("FCM:", fcmToken);
 
-      // optional: save in guest_tokens collection
+      // optional: store guest tokens in separate collection
+
     }
 
     res.json({
       success: true,
-      message: "Token saved"
+      message: "Push tokens saved"
     });
 
   } catch (err) {
