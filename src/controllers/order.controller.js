@@ -223,43 +223,51 @@ if (!selectedMethod || !selectedMethod.enabled) {
   throw new Error(selectedMethod?.reason || `Payment method '${paymentMethod}' not found in config. Available: ${methods.map(m => m.id).join(', ')}`);
 }
 
-    const codFee = selectedMethod.codFee ?? 0;
-    if (codFee > 0) {
-      result.grandTotal += codFee;
-      result.codFee      = codFee;
-    }
+console.log("🧪 step 1: past selectedMethod check");
 
-    /* ── Online payment verification ── */
-    let paymentStatus = "Pending";
-    let razorpayData  = null;
+const codFee = selectedMethod.codFee ?? 0;
+console.log("🧪 step 2: codFee =", codFee);
 
-    if (paymentMethod === "ONLINE") {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payment || {};
+if (codFee > 0) {
+  result.grandTotal += codFee;
+  result.codFee      = codFee;
+}
 
-      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
-        throw new Error("Incomplete payment data");
+console.log("🧪 step 3: grandTotal =", result?.grandTotal);
 
-      // Idempotency — reject duplicate payments
-      const duplicate = await Order.findOne({ "paymentDetails.razorpay_payment_id": razorpay_payment_id });
-      if (duplicate) throw new Error("Duplicate payment detected");
+/* ── Online payment verification ── */
+let paymentStatus = "Pending";
+let razorpayData  = null;
 
-      const expected = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
+console.log("🧪 step 4: paymentMethod =", paymentMethod, "— skipping ONLINE block for COD");
 
-      if (expected !== razorpay_signature)
-        throw new Error("Payment signature verification failed");
+if (paymentMethod === "ONLINE") {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payment || {};
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+    throw new Error("Incomplete payment data");
+  const duplicate = await Order.findOne({ "paymentDetails.razorpay_payment_id": razorpay_payment_id });
+  if (duplicate) throw new Error("Duplicate payment detected");
+  const expected = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+  if (expected !== razorpay_signature)
+    throw new Error("Payment signature verification failed");
+  paymentStatus = "Paid";
+  razorpayData  = payment;
+}
 
-      paymentStatus = "Paid";
-      razorpayData  = payment;
-    }
+console.log("🧪 step 5: paymentStatus =", paymentStatus);
+console.log("🧪 step 6: validatedItems =", JSON.stringify(result?.validatedItems?.length));
 
-    /* ── Build items (single batched DB query) ── */
-    const formattedItems = await buildFormattedItems(result.validatedItems);
+/* ── Build items (single batched DB query) ── */
+const formattedItems = await buildFormattedItems(result.validatedItems);
 
-    /* ── Persist order ── */
-    const [order] = await Order.create(
+console.log("🧪 step 7: formattedItems count =", formattedItems?.length);
+console.log("🧪 step 8: about to create order in DB");
+
+/* ── Persist order ── */
+const [order] = await Order.create(
       [{
         user:          req.user._id,
         items:         formattedItems,
