@@ -8,7 +8,7 @@ const User          = require("../models/User");
 const AdminPush     = require("../models/AdminPush");
 const HotelMenuItem = require("../models/HotelMenuItem");
 
-const razorpay          = require("../utils/razorpay.instance"); // ← shared singleton
+const razorpay          = require("../utils/razorpay.instance");
 const { notifyUser }    = require("../services/notification.service");
 const { sendWhatsAppTemplate, sendWhatsAppDocument } = require("../services/whatsapp.service");
 const { calculateOrder }   = require("../services/pricing.service");
@@ -42,33 +42,30 @@ const STATUS_MESSAGES = {
 
 /* ─── HELPERS ───────────────────────────────────────────────────────────── */
 
-/** Resolves a delivery slot string to an absolute UTC Date */
 function resolveScheduledTime(slot) {
   const now = new Date();
 
-  // Build a Date for tomorrow at a given IST hour (stored as UTC)
   const tomorrowAt = (hourIST) => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    d.setHours(hourIST - 5, 30, 0, 0); // IST = UTC+5:30
+    d.setHours(hourIST - 5, 30, 0, 0);
     return d;
   };
 
   const map = {
-    "30m":          new Date(now.getTime() + 30 * 60 * 1000),
-    "1h":           new Date(now.getTime() + 60 * 60 * 1000),
-    "5h":           new Date(now.getTime() + 5  * 60 * 60 * 1000),
-    "12h":          new Date(now.getTime() + 12 * 60 * 60 * 1000),
-    "1d":           new Date(now.getTime() + 24 * 60 * 60 * 1000),
-    "tmr_morning":  tomorrowAt(8),
-    "tmr_afternoon":tomorrowAt(12),
-    "tmr_evening":  tomorrowAt(17),
+    "30m":           new Date(now.getTime() + 30 * 60 * 1000),
+    "1h":            new Date(now.getTime() + 60 * 60 * 1000),
+    "5h":            new Date(now.getTime() + 5  * 60 * 60 * 1000),
+    "12h":           new Date(now.getTime() + 12 * 60 * 60 * 1000),
+    "1d":            new Date(now.getTime() + 24 * 60 * 60 * 1000),
+    "tmr_morning":   tomorrowAt(8),
+    "tmr_afternoon": tomorrowAt(12),
+    "tmr_evening":   tomorrowAt(17),
   };
 
   return map[slot] ?? null;
 }
 
-/** Single batched DB lookup for all cart items — avoids N+1 queries */
 async function buildFormattedItems(validatedItems) {
   const productIds   = [];
   const hotelItemIds = [];
@@ -79,7 +76,7 @@ async function buildFormattedItems(validatedItems) {
   }
 
   const [products, hotelItems] = await Promise.all([
-    productIds.length   ? Product.find({ _id: { $in: productIds } }).lean()      : [],
+    productIds.length   ? Product.find({ _id: { $in: productIds } }).lean()         : [],
     hotelItemIds.length ? HotelMenuItem.find({ _id: { $in: hotelItemIds } }).lean() : [],
   ]);
 
@@ -106,12 +103,11 @@ async function buildFormattedItems(validatedItems) {
   });
 }
 
-/** Sends admin web-push notifications, auto-cleans stale subscriptions */
 async function notifyAdmins(payload) {
   try {
-    const subs   = await AdminPush.find().select("subscription");
-    const body   = JSON.stringify(payload);
-    const stale  = [];
+    const subs  = await AdminPush.find().select("subscription");
+    const body  = JSON.stringify(payload);
+    const stale = [];
 
     await Promise.allSettled(
       subs.map(async (s) => {
@@ -151,14 +147,12 @@ exports.previewCheckout = async (req, res) => {
 
 /* ═══════════════════════════════════════════════════════════════
    CREATE ORDER
+   NOTE: Transactions removed — MongoDB M0 free tier does not
+   support multi-document transactions. Upgrade to M2+ to re-enable.
 ═══════════════════════════════════════════════════════════════ */
 
 exports.createOrder = async (req, res) => {
-  const session = await mongoose.startSession();
-
   try {
-    session.startTransaction();
-
     const {
       items,
       address,
@@ -189,7 +183,7 @@ exports.createOrder = async (req, res) => {
         throw new Error(`Invalid delivery slot. Allowed: ${ALLOWED_SLOTS.join(", ")}`);
 
       scheduledTime = resolveScheduledTime(deliverySlot);
-      if (!scheduledTime)    throw new Error("Could not resolve delivery time for slot: " + deliverySlot);
+      if (!scheduledTime)         throw new Error("Could not resolve delivery time for slot: " + deliverySlot);
       if (scheduledTime < new Date()) throw new Error("Scheduled time cannot be in the past");
     }
 
@@ -201,112 +195,102 @@ exports.createOrder = async (req, res) => {
         throw new Error("Invalid recipient phone number");
     }
 
-    /* ── Pricing ── */
-    const result = await calculateOrder(items, session, couponCode);
+    /* ── Pricing — pass null for session (no transactions on M0) ── */
+    const result = await calculateOrder(items, null, couponCode);
 
     /* ── Payment method eligibility ── */
-  /* ── Payment method eligibility ── */
-const methods = await checkoutService.getCheckoutPaymentOptions({ 
-  userId: req.user._id, 
-  amount: result?.grandTotal || 0 
-});
+    const methods = await checkoutService.getCheckoutPaymentOptions({
+      userId: req.user._id,
+      amount: result?.grandTotal || 0,
+    });
 
-// 🧪 TEMP DEBUG — remove after fix
-console.log("🧪 paymentMethod from app:", paymentMethod);
-console.log("🧪 methods returned:", JSON.stringify(methods));
+    const selectedMethod = methods.find((m) => m.id === paymentMethod);
 
-const selectedMethod = methods.find((m) => m.id === paymentMethod);
+    if (!selectedMethod || !selectedMethod.enabled) {
+      throw new Error(
+        selectedMethod?.reason ||
+        `Payment method '${paymentMethod}' not available. Options: ${methods.map((m) => m.id).join(", ")}`
+      );
+    }
 
-console.log("🧪 selectedMethod:", JSON.stringify(selectedMethod));
+    /* ── Apply COD fee if any ── */
+    const codFee = selectedMethod.codFee ?? 0;
+    if (codFee > 0) {
+      result.grandTotal += codFee;
+      result.codFee      = codFee;
+    }
 
-if (!selectedMethod || !selectedMethod.enabled) {
-  throw new Error(selectedMethod?.reason || `Payment method '${paymentMethod}' not found in config. Available: ${methods.map(m => m.id).join(', ')}`);
-}
+    /* ── Online payment verification ── */
+    let paymentStatus = "Pending";
+    let razorpayData  = null;
 
-console.log("🧪 step 1: past selectedMethod check");
+    if (paymentMethod === "ONLINE") {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payment || {};
 
-const codFee = selectedMethod.codFee ?? 0;
-console.log("🧪 step 2: codFee =", codFee);
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+        throw new Error("Incomplete payment data");
 
-if (codFee > 0) {
-  result.grandTotal += codFee;
-  result.codFee      = codFee;
-}
+      // Idempotency — reject duplicate payments
+      const duplicate = await Order.findOne({
+        "paymentDetails.razorpay_payment_id": razorpay_payment_id,
+      });
+      if (duplicate) throw new Error("Duplicate payment detected");
 
-console.log("🧪 step 3: grandTotal =", result?.grandTotal);
+      const expected = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest("hex");
 
-/* ── Online payment verification ── */
-let paymentStatus = "Pending";
-let razorpayData  = null;
+      if (expected !== razorpay_signature)
+        throw new Error("Payment signature verification failed");
 
-console.log("🧪 step 4: paymentMethod =", paymentMethod, "— skipping ONLINE block for COD");
+      paymentStatus = "Paid";
+      razorpayData  = payment;
+    }
 
-if (paymentMethod === "ONLINE") {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = payment || {};
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
-    throw new Error("Incomplete payment data");
-  const duplicate = await Order.findOne({ "paymentDetails.razorpay_payment_id": razorpay_payment_id });
-  if (duplicate) throw new Error("Duplicate payment detected");
-  const expected = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest("hex");
-  if (expected !== razorpay_signature)
-    throw new Error("Payment signature verification failed");
-  paymentStatus = "Paid";
-  razorpayData  = payment;
-}
+    /* ── Build formatted items ── */
+    const formattedItems = await buildFormattedItems(result.validatedItems);
 
-console.log("🧪 step 5: paymentStatus =", paymentStatus);
-console.log("🧪 step 6: validatedItems =", JSON.stringify(result?.validatedItems?.length));
+    /* ── Persist order ── */
+    const order = await Order.create({
+      user:          req.user._id,
+      items:         formattedItems,
+      address,
+      deliveryType:  deliveryType || "instant",
+      deliverySlot:  deliverySlot || null,
+      scheduledTime,
 
-/* ── Build items (single batched DB query) ── */
-const formattedItems = await buildFormattedItems(result.validatedItems);
+      isGiftOrder: !!orderForSomeone,
+      recipient:   orderForSomeone
+        ? {
+            name:  recipient.name.trim(),
+            phone: recipient.phone.trim(),
+            note:  recipient.note?.trim() || "",
+          }
+        : null,
+      deliveryInstructions: deliveryInstructions || {},
 
-console.log("🧪 step 7: formattedItems count =", formattedItems?.length);
-console.log("🧪 step 8: about to create order in DB");
+      paymentMethod,
+      paymentStatus,
+      paymentDetails: razorpayData,
 
-/* ── Persist order ── */
-const [order] = await Order.create(
-      [{
-        user:          req.user._id,
-        items:         formattedItems,
-        address,
-        deliveryType:  deliveryType || "instant",
-        deliverySlot:  deliverySlot || null,
-        scheduledTime,
+      couponCode: couponCode || null,
+      pricing: {
+        itemsTotal:       result.itemsTotal       ?? 0,
+        deliveryFee:      result.deliveryFee      ?? 0,
+        handlingFee:      result.handlingFee      ?? 0,
+        codFee:           result.codFee           ?? 0,
+        couponDiscount:   result.couponDiscount   ?? 0,
+        campaignDiscount: result.campaignDiscount ?? 0,
+        totalSavings:     result.totalSavings     ?? 0,
+        grandTotal:       result.grandTotal,
+      },
 
-        isGiftOrder:  !!orderForSomeone,
-        recipient:    orderForSomeone
-          ? { name: recipient.name.trim(), phone: recipient.phone.trim(), note: recipient.note?.trim() || "" }
-          : null,
-        deliveryInstructions: deliveryInstructions || {},
+      total:  result.grandTotal,
+      status: "Placed",
+    });
 
-        paymentMethod,
-        paymentStatus,
-        paymentDetails: razorpayData,
-
-        couponCode: couponCode || null,
-        pricing: {
-          itemsTotal:       result.itemsTotal       ?? 0,
-          deliveryFee:      result.deliveryFee      ?? 0,
-          handlingFee:      result.handlingFee      ?? 0,
-          codFee:           result.codFee           ?? 0,
-          couponDiscount:   result.couponDiscount   ?? 0,
-          campaignDiscount: result.campaignDiscount ?? 0,
-          totalSavings:     result.totalSavings     ?? 0,
-          grandTotal:       result.grandTotal,
-        },
-
-        total:  result.grandTotal,
-        status: "Placed",
-      }],
-      { session }
-    );
-
-    await session.commitTransaction();
-
-    /* ── Post-commit side effects (non-blocking) ── */
+    /* ── Post-save side effects (non-blocking) ── */
     const user = await User.findById(req.user._id).lean();
 
     // Socket
@@ -319,14 +303,14 @@ const [order] = await Order.create(
     }
 
     // Admin push
-    await notifyAdmins({
+    notifyAdmins({
       title: "🛒 New Order",
       body:  `₹${order.total} order placed`,
       data:  { orderId: order._id.toString() },
     });
 
     // User push
-    await notifyUser({
+    notifyUser({
       userId:   user._id,
       type:     "ORDER",
       pushData: {
@@ -337,7 +321,7 @@ const [order] = await Order.create(
       },
     });
 
-    // WhatsApp — sent here only; NOT duplicated in updateOrderStatus
+    // WhatsApp
     if (user?.phone) {
       sendWhatsAppTemplate(
         user.phone.replace("+", ""),
@@ -349,31 +333,19 @@ const [order] = await Order.create(
     return res.status(201).json({ success: true, order });
 
   } catch (error) {
-    if (session.inTransaction()) await session.abortTransaction();
-
-    // 🧪 TEMP DEBUG
-    console.log("🔴 FULL ERROR:", error.message);
-    console.log("🔴 ERROR NAME:", error.name);
-    console.log("🔴 ERROR CODE:", error.code);
-    console.log("🔴 STACK:", error.stack?.split("\n")?.slice(0, 5)?.join("\n"));
-
+    console.error("❌ CREATE ORDER ERROR:", error.message);
     return res.status(400).json({ success: false, message: error.message });
-  }finally {
-    session.endSession();
   }
 };
 
 /* ═══════════════════════════════════════════════════════════════
    CANCEL ORDER
+   NOTE: Transactions removed — M0 free tier limitation.
 ═══════════════════════════════════════════════════════════════ */
 
 exports.cancelOrder = async (req, res) => {
-  const session = await mongoose.startSession();
-
   try {
-    session.startTransaction();
-
-    const order = await Order.findById(req.params.id).session(session);
+    const order = await Order.findById(req.params.id);
 
     if (!order)
       return res.status(404).json({ success: false, message: "Order not found" });
@@ -394,12 +366,14 @@ exports.cancelOrder = async (req, res) => {
       order.paymentStatus === "Paid"   &&
       order.paymentDetails?.razorpay_payment_id
     ) {
-      if (["Initiated", "Processed"].includes(order.refundStatus) || order.paymentStatus === "Refunded")
-        throw new Error("Refund already initiated or processed");
+      if (
+        ["Initiated", "Processed"].includes(order.refundStatus) ||
+        order.paymentStatus === "Refunded"
+      ) throw new Error("Refund already initiated or processed");
 
       const refund = await razorpay.payments.refund(
         order.paymentDetails.razorpay_payment_id,
-        { amount: Math.round(order.total * 100) } // paise, rounded to avoid float issues
+        { amount: Math.round(order.total * 100) }
       );
 
       order.paymentStatus = "Refunded";
@@ -410,9 +384,9 @@ exports.cancelOrder = async (req, res) => {
 
     /* ── Restore stock ── */
     for (const item of order.items) {
-      let product =
-        (await Product.findById(item.productId).session(session)) ||
-        (await HotelMenuItem.findById(item.productId).session(session));
+      const product =
+        (await Product.findById(item.productId)) ||
+        (await HotelMenuItem.findById(item.productId));
 
       if (!product) continue;
 
@@ -423,28 +397,24 @@ exports.cancelOrder = async (req, res) => {
         product.stock += item.qty;
       }
 
-      await product.save({ session });
+      await product.save();
     }
 
     order.status             = "Cancelled";
     order.cancellationReason = req.body.reason || null;
     order.cancelledAt        = new Date();
-    await order.save({ session });
-
-    await session.commitTransaction();
+    await order.save();
 
     return res.json({ success: true, message: "Order cancelled", order });
 
   } catch (error) {
-    if (session.inTransaction()) await session.abortTransaction();
+    console.error("❌ CANCEL ORDER ERROR:", error.message);
     return res.status(500).json({ success: false, message: error.message });
-  } finally {
-    session.endSession();
   }
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   GET MY ORDERS  (paginated)
+   GET MY ORDERS (paginated)
 ═══════════════════════════════════════════════════════════════ */
 
 exports.getMyOrders = async (req, res) => {
@@ -461,7 +431,13 @@ exports.getMyOrders = async (req, res) => {
     return res.json({
       success: true,
       orders,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit), hasMore: skip + orders.length < total },
+      pagination: {
+        page,
+        limit,
+        total,
+        pages:   Math.ceil(total / limit),
+        hasMore: skip + orders.length < total,
+      },
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -494,7 +470,9 @@ exports.getOrderById = async (req, res) => {
 
 exports.getLastOrder = async (req, res) => {
   try {
-    const order = await Order.findOne({ user: req.user._id }).sort({ createdAt: -1 }).lean();
+    const order = await Order.findOne({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
     return res.json({ success: true, order });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -510,7 +488,9 @@ exports.getActiveOrders = async (req, res) => {
     const orders = await Order.find({
       user:   req.user._id,
       status: { $nin: ["Delivered", "Cancelled"] },
-    }).sort({ createdAt: -1 }).lean();
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.json({ success: true, orders });
   } catch (error) {
@@ -561,10 +541,13 @@ exports.updateOrderStatus = async (req, res) => {
     /* ── Push notification ── */
     const msg = STATUS_MESSAGES[status];
     if (msg) {
-      await notifyUser({
+      notifyUser({
         userId:   order.user._id,
         type:     "ORDER",
-        pushData: { ...msg, data: { screen: "OrderTracking", orderId: order._id.toString() } },
+        pushData: {
+          ...msg,
+          data: { screen: "OrderTracking", orderId: order._id.toString() },
+        },
       });
     }
 
@@ -601,6 +584,7 @@ exports.updateOrderStatus = async (req, res) => {
     return res.json({ success: true, message: "Order status updated", order });
 
   } catch (error) {
+    console.error("❌ UPDATE ORDER STATUS ERROR:", error.message);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
