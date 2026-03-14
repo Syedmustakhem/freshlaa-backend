@@ -332,8 +332,9 @@ exports.createOrder = async (req, res) => {
 
     return res.status(201).json({ success: true, order });
 
-  } catch (error) {
+} catch (error) {
     console.error("❌ CREATE ORDER ERROR:", error.message);
+    console.error("❌ STACK:", error.stack); // ← ADD THIS ONE LINE
     return res.status(400).json({ success: false, message: error.message });
   }
 };
