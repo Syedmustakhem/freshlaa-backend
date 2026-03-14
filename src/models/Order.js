@@ -28,6 +28,7 @@ const pricingSchema = new mongoose.Schema(
     itemsTotal:       { type: Number, default: 0 },
     deliveryFee:      { type: Number, default: 0 },
     handlingFee:      { type: Number, default: 0 },
+    codFee:           { type: Number, default: 0 }, // ✅ ADD THIS
     couponDiscount:   { type: Number, default: 0 },
     campaignDiscount: { type: Number, default: 0 },
     totalSavings:     { type: Number, default: 0 },
