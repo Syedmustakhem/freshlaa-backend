@@ -124,8 +124,8 @@ router.get("/delivery-config", (req, res) => {
 const APP_CONFIG = {
   // ✅ FIX: min_version is the MINIMUM allowed — keep it at the last stable
   //         version. Only increase this when you want to force-block older builds.
-  min_version_android: "1.1.0",
-  latest_version_android: "1.1.0",
+  min_version_android: "1.4.0",
+  latest_version_android: "1.4.0",
   min_version_ios: "1.0.0",
 
   force_update_message:
@@ -145,7 +145,7 @@ const APP_CONFIG = {
     // ✅ TIP: This image_url is loaded remotely — make sure it's fast to load.
     //         Consider using a small optimized PNG (< 200KB) for best splash speed.
     image_url:
-      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1773170384/66a99aa1-8287-4b4d-8093-37686f06c738_a7p89s.jpg",
+      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1773512701/1a85c644-af78-4017-98a1-3fc4cfe12186_f8415r.jpg",
 
     bg_color: "#ffffff",
 
