@@ -47,7 +47,7 @@ const checkoutPaymentRoutes = require(
 const adminCampaignRoutes = require(
   path.join(routesPath, "adminCampaign.routes")
 );
-
+const pushTokenRoutes = require(path.join(routesPath, "pushToken.routes"));
 /* ================= MIDDLEWARE ================= */
 
 app.use(
@@ -103,6 +103,7 @@ app.use("/api", offerRoutes);
 app.use("/api/checkout-payment", checkoutPaymentRoutes);/* ================= HEALTH ================= */
 app.use("/api/brand", brandRoutes);
 app.use("/api", appConfigRoutes);
+app.use("/api", pushTokenRoutes);
 app.use("/api/admin/campaign", adminCampaignRoutes);
 app.get("/", (req, res) => {
   res.json({
