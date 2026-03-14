@@ -1,21 +1,10 @@
 const CheckoutPaymentConfig = require("../models/CheckoutPaymentConfig");
 const Order                 = require("../models/Order");
+const mongoose              = require("mongoose"); // ✅ ADDED
 
-/* ─── PAYMENT CONFIG CACHE ──────────────────────────────────────────────────
-   Payment configs change only when an admin updates them.
-   Call invalidatePaymentConfigCache() in your admin config-update route:
-
-     const { invalidatePaymentConfigCache } = require("../services/checkoutPayment.service");
-
-     router.put("/admin/payment-config", adminAuth, async (req, res) => {
-       await CheckoutPaymentConfig.findByIdAndUpdate(req.params.id, req.body);
-       invalidatePaymentConfigCache(); // ← bust cache immediately
-       res.json({ success: true });
-     });
-──────────────────────────────────────────────────────────────────────────── */
 let _configCache    = null;
 let _configCachedAt = 0;
-const CONFIG_TTL_MS = 60_000; // 1 minute — safety net if invalidation is missed
+const CONFIG_TTL_MS = 60_000;
 
 async function getPaymentConfigsCached() {
   if (_configCache && Date.now() - _configCachedAt < CONFIG_TTL_MS) {
@@ -31,15 +20,17 @@ exports.invalidatePaymentConfigCache = () => {
   _configCachedAt = 0;
 };
 
-/* ═══════════════════════════════════════════════════════════════
-   GET CHECKOUT PAYMENT OPTIONS
-   Returns an array of payment method objects for the given user + amount.
-   Shape: { id, label, enabled, reason, codFee }
-═══════════════════════════════════════════════════════════════ */
-
 exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
 
   if (!userId) throw new Error("userId is required to fetch payment options");
+
+  // ✅ FIX: Cast userId to ObjectId so MongoDB aggregate $match works correctly
+  let oid;
+  try {
+    oid = new mongoose.Types.ObjectId(userId);
+  } catch (e) {
+    throw new Error("Invalid userId format");
+  }
 
   const configs = await getPaymentConfigsCached();
 
@@ -47,14 +38,10 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
     throw new Error("No payment methods configured. Please contact support.");
   }
 
-  /* ── Single aggregate: total COD orders + cancelled count ──────────────
-     Using $group avoids two separate countDocuments calls.
-     Correct field: `status` with casing "Cancelled" (matches Order schema enum).
-  ────────────────────────────────────────────────────────────────────────── */
   const [codStats] = await Order.aggregate([
     {
       $match: {
-        user:          userId,
+        user:          oid, // ✅ FIXED: was userId (raw), now properly cast ObjectId
         paymentMethod: "COD",
       },
     },
@@ -72,8 +59,6 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
   const totalCod  = codStats?.total     ?? 0;
   const failedCod = codStats?.cancelled ?? 0;
 
-  // Only penalise users with enough history (min 3 orders).
-  // Trigger: cancellation rate > 40% OR 5+ absolute cancellations.
   const failureRate = totalCod >= 3 ? (failedCod / totalCod) * 100 : 0;
   const codAbuse    = failureRate > 40 || failedCod >= 5;
 
@@ -86,7 +71,6 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
     let enabled = true;
     let reason  = null;
 
-    /* ── Amount range ── */
     if (amount < (config.minOrderAmount ?? 0)) {
       enabled = false;
       reason  = `Available on orders above ₹${config.minOrderAmount}`;
@@ -97,7 +81,6 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
       reason  = `Not available on orders above ₹${config.maxOrderAmount}`;
     }
 
-    /* ── COD abuse block ── */
     if (config.code === "COD" && codAbuse) {
       enabled = false;
       reason  = codAbuseReason;
@@ -108,7 +91,6 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
       label:   config.label,
       enabled,
       reason,
-      // codFee is 0 when COD is disabled — prevents fee being applied to blocked method
       codFee:  config.code === "COD" && enabled ? (config.codFee ?? 0) : 0,
     };
   });
