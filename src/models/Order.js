@@ -278,23 +278,17 @@ orderSchema.index({ deliveryType: 1, scheduledTime: 1 });               // sched
    PRE-SAVE HOOK — keep total in sync with pricing.grandTotal
 ═══════════════════════════════════════════════════════════════ */
 
-orderSchema.pre("save", function (next) {
-  // Always keep top-level total consistent with pricing breakdown
+// ✅ FIXED — async version, no next() needed
+orderSchema.pre("save", async function () {
   if (this.pricing?.grandTotal != null) {
     this.total = this.pricing.grandTotal;
   }
-
-  // Auto-set isGiftOrder if recipient is provided
   if (this.recipient?.name && this.recipient?.phone) {
     this.isGiftOrder = true;
   }
-
-  // Clear recipient if not a gift order
   if (!this.isGiftOrder) {
     this.recipient = null;
   }
-
-  next();
 });
 
 /* ═══════════════════════════════════════════════════════════════
