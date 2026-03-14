@@ -205,12 +205,23 @@ exports.createOrder = async (req, res) => {
     const result = await calculateOrder(items, session, couponCode);
 
     /* ── Payment method eligibility ── */
-    const methods        = await checkoutService.getCheckoutPaymentOptions({ userId: req.user._id, amount: result?.grandTotal || 0 });
-    const selectedMethod = methods.find((m) => m.id === paymentMethod);
+  /* ── Payment method eligibility ── */
+const methods = await checkoutService.getCheckoutPaymentOptions({ 
+  userId: req.user._id, 
+  amount: result?.grandTotal || 0 
+});
 
-    if (!selectedMethod || !selectedMethod.enabled) {
-      throw new Error(selectedMethod?.reason || "Selected payment method is not available for this order");
-    }
+// 🧪 TEMP DEBUG — remove after fix
+console.log("🧪 paymentMethod from app:", paymentMethod);
+console.log("🧪 methods returned:", JSON.stringify(methods));
+
+const selectedMethod = methods.find((m) => m.id === paymentMethod);
+
+console.log("🧪 selectedMethod:", JSON.stringify(selectedMethod));
+
+if (!selectedMethod || !selectedMethod.enabled) {
+  throw new Error(selectedMethod?.reason || `Payment method '${paymentMethod}' not found in config. Available: ${methods.map(m => m.id).join(', ')}`);
+}
 
     const codFee = selectedMethod.codFee ?? 0;
     if (codFee > 0) {
