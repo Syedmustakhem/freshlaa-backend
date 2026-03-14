@@ -46,7 +46,8 @@ const CategorySectionSchema = new mongoose.Schema(
 );
 
 /* ✅ Auto-generate slug from title */
-CategorySectionSchema.pre("validate", function () {
+// ✅ FIXED
+CategorySectionSchema.pre("validate", function (next) {
   if (!this.slug && this.title) {
     this.slug = this.title
       .toLowerCase()
@@ -55,6 +56,7 @@ CategorySectionSchema.pre("validate", function () {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
   }
+  next();
 });
 
 
