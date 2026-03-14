@@ -153,8 +153,8 @@ router.get("/delivery-config", (req, res) => {
 
 const APP_CONFIG = {
 
-  min_version_android: "1.1.0",
-   latest_version_android: "1.1.0",
+  min_version_android: "1.0.0",
+   latest_version_android: "1.0.0",
   min_version_ios: "1.0.0",
 
   force_update_message:
