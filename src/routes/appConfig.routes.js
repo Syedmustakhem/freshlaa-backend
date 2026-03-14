@@ -129,7 +129,7 @@ const APP_CONFIG = {
   min_version_ios: "1.0.0",
 
   force_update_message:
-    "A new version of FreshLaa is available with important improvements.",
+    "A new version of FreshLaa is available with important improvements..",
 
   maintenance_mode: false,
 
