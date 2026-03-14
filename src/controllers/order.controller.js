@@ -350,8 +350,15 @@ const [order] = await Order.create(
 
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction();
+
+    // 🧪 TEMP DEBUG
+    console.log("🔴 FULL ERROR:", error.message);
+    console.log("🔴 ERROR NAME:", error.name);
+    console.log("🔴 ERROR CODE:", error.code);
+    console.log("🔴 STACK:", error.stack?.split("\n")?.slice(0, 5)?.join("\n"));
+
     return res.status(400).json({ success: false, message: error.message });
-  } finally {
+  }finally {
     session.endSession();
   }
 };
