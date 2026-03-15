@@ -506,9 +506,22 @@ exports.getActiveOrders = async (req, res) => {
 // ─── REPLACE exports.updateOrderStatus in your order.controller.js ───────────
 // Only this function changes. Everything else stays the same.
 
+// In order.controller.js — find updateOrderStatus and change the admin check:
+
+// ❌ OLD (always undefined for admin requests — adminAuth sets req.admin not req.user):
+// if (!req.user?.isAdmin) {
+//   return res.status(403).json({ success: false, message: "Admin access required" });
+// }
+
+// ✅ NEW — accepts either req.admin (from adminAuth) OR req.user.isAdmin (from userAuth):
 exports.updateOrderStatus = async (req, res) => {
   try {
-    if (!req.user?.isAdmin) {
+
+    // adminAuth sets req.admin, userAuth sets req.user
+    // Accept either — req.admin existing means it passed adminAuth middleware
+    const isAdmin = !!req.admin || !!req.user?.isAdmin;
+
+    if (!isAdmin) {
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
 
@@ -536,7 +549,7 @@ exports.updateOrderStatus = async (req, res) => {
 
     await order.save();
 
-    /* ── Socket: emit ONLY to this order's room, not everyone ── */
+    /* ── Socket: emit ONLY to this order's room ── */
     if (global.io) {
       const roomId = order._id.toString();
       const msg    = STATUS_MESSAGES[status];
@@ -552,7 +565,7 @@ exports.updateOrderStatus = async (req, res) => {
       console.log(`📡 Socket emitted to room [${roomId}]: ${status}`);
     }
 
-    /* ── Push notification (FCM → Expo fallback already in notifyUser) ── */
+    /* ── Push notification (FCM → Expo fallback in notifyUser) ── */
     const msg = STATUS_MESSAGES[status];
     if (msg) {
       notifyUser({

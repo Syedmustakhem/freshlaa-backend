@@ -27,7 +27,7 @@ router.get("/dashboard", adminAuth, getDashboardMetrics);
  * PATCH /api/admin/orders/status
  * Update order status + push notification
  */
-router.patch("/orders/status", adminAuth, updateOrderStatus);
+router.put("/orders/status", adminAuth, updateOrderStatus);
 
 /* ================= USERS (ADMIN PANEL) ================= */
 /**
