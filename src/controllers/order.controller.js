@@ -502,32 +502,18 @@ exports.getActiveOrders = async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════
    ADMIN — UPDATE ORDER STATUS
 ═══════════════════════════════════════════════════════════════ */
+// ─── REPLACE exports.updateOrderStatus in order.controller.js ────────────────
 
-// ─── REPLACE exports.updateOrderStatus in your order.controller.js ───────────
-// Only this function changes. Everything else stays the same.
-
-// In order.controller.js — find updateOrderStatus and change the admin check:
-
-// ❌ OLD (always undefined for admin requests — adminAuth sets req.admin not req.user):
-// if (!req.user?.isAdmin) {
-//   return res.status(403).json({ success: false, message: "Admin access required" });
-// }
-
-// ✅ NEW — accepts either req.admin (from adminAuth) OR req.user.isAdmin (from userAuth):
 exports.updateOrderStatus = async (req, res) => {
   try {
-
-    // adminAuth sets req.admin, userAuth sets req.user
-    // Accept either — req.admin existing means it passed adminAuth middleware
     const isAdmin = !!req.admin || !!req.user?.isAdmin;
-
     if (!isAdmin) {
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
 
     const { orderId, status, reason } = req.body;
 
-    const allowedStatuses = ["Placed", "Confirmed", "Packed", "OutForDelivery", "Delivered", "Cancelled"];
+    const allowedStatuses = ["Placed", "Packed", "OutForDelivery", "Delivered", "Cancelled"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -541,19 +527,16 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     order.status = status;
-
     if (status === "Cancelled") {
       order.cancellationReason = reason || "Cancelled by admin";
       order.cancelledAt        = new Date();
     }
-
     await order.save();
 
-    /* ── Socket: emit ONLY to this order's room ── */
+    // ── Socket ────────────────────────────────────────────────────────────────
     if (global.io) {
       const roomId = order._id.toString();
       const msg    = STATUS_MESSAGES[status];
-
       global.io.to(roomId).emit("order-status-updated", {
         orderId:   roomId,
         status,
@@ -561,28 +544,44 @@ exports.updateOrderStatus = async (req, res) => {
         message:   msg?.body    || `Your order is now ${status}`,
         updatedAt: new Date().toISOString(),
       });
-
       console.log(`📡 Socket emitted to room [${roomId}]: ${status}`);
     }
 
-    /* ── Push notification (FCM → Expo fallback in notifyUser) ── */
+    // ── Push notification ─────────────────────────────────────────────────────
     const msg = STATUS_MESSAGES[status];
     if (msg) {
-      notifyUser({
-        userId:   order.user._id,
-        type:     "ORDER",
-        pushData: {
-          ...msg,
-          data: {
-            screen:  "OrderTracking",
-            orderId: order._id.toString(),
-            status,
+      try {
+        // Re-fetch user to guarantee latest tokens (populate can be stale)
+        const freshUser = await User.findById(order.user._id).lean();
+
+        console.log("🔔 NOTIFY DEBUG:", {
+          userId:    freshUser?._id?.toString(),
+          fcmToken:  freshUser?.fcmToken      ? `✅ ${freshUser.fcmToken.slice(0, 30)}...`      : "❌ MISSING",
+          expoToken: freshUser?.expoPushToken ? `✅ ${freshUser.expoPushToken.slice(0, 30)}...` : "❌ MISSING",
+        });
+
+        // ✅ await — so errors are visible instead of silently swallowed
+        await notifyUser({
+          userId:   freshUser._id,
+          type:     "ORDER",
+          pushData: {
+            ...msg,
+            data: {
+              screen:  "OrderTracking",
+              orderId: order._id.toString(),
+              status,
+            },
           },
-        },
-      });
+        });
+
+        console.log(`✅ Push sent for order ${order._id} → ${status}`);
+      } catch (notifyErr) {
+        console.error("❌ notifyUser failed:", notifyErr.message);
+        console.error("❌ notifyUser stack:", notifyErr.stack);
+      }
     }
 
-    /* ── WhatsApp ── */
+    // ── WhatsApp ──────────────────────────────────────────────────────────────
     const phone = order.user?.phone?.replace("+", "");
 
     if (status === "Cancelled" && phone) {
@@ -614,6 +613,7 @@ exports.updateOrderStatus = async (req, res) => {
 
   } catch (error) {
     console.error("❌ UPDATE ORDER STATUS ERROR:", error.message);
+    console.error("❌ STACK:", error.stack);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
