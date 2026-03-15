@@ -522,6 +522,65 @@ router.put("/coupons/:id", adminAuth, async (req, res) => {
     });
   }
 });
+// ✅ Enable/disable COD for a specific user
+router.put("/users/:id/cod-override", adminAuth, async (req, res) => {
+  try {
+    const { enable } = req.body; // true = enable COD, false = keep blocked
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        codOverride: enable,  // true = admin unlocked COD
+        codBlocked:  !enable, // false = not blocked
+      },
+      { new: true }
+    ).select("name phone codOverride codBlocked");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    return res.json({
+      success: true,
+      message: enable ? "COD enabled for user" : "COD disabled for user",
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ Get COD status for a user
+router.get("/users/:id/cod-status", adminAuth, async (req, res) => {
+  try {
+    const User   = require("../models/User");
+    const Order  = require("../models/Order");
+
+    const user = await User.findById(req.params.id)
+      .select("name phone codOverride codBlocked").lean();
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const codOrders = await Order.countDocuments({
+      user: req.params.id, paymentMethod: "COD"
+    });
+    const codCancelled = await Order.countDocuments({
+      user: req.params.id, paymentMethod: "COD", status: "Cancelled"
+    });
+
+    return res.json({
+      success: true,
+      user,
+      codStats: {
+        total:       codOrders,
+        cancelled:   codCancelled,
+        rate:        codOrders >= 3 ? Math.round((codCancelled / codOrders) * 100) : 0,
+        isBlocked:   !user.codOverride && (codCancelled >= 5 || (codOrders >= 3 && (codCancelled/codOrders)*100 > 40)),
+        isOverridden: !!user.codOverride,
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 router.post("/coupons", adminAuth, async (req, res) => {
   try {
     const {

@@ -24,7 +24,6 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
 
   if (!userId) throw new Error("userId is required to fetch payment options");
 
-  // ✅ FIX: Cast userId to ObjectId so MongoDB aggregate $match works correctly
   let oid;
   try {
     oid = new mongoose.Types.ObjectId(userId);
@@ -38,10 +37,15 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
     throw new Error("No payment methods configured. Please contact support.");
   }
 
+  // ✅ Check if admin has manually unblocked this user
+  const User = require("../models/User");
+  const user = await User.findById(oid).select("codBlocked").lean();
+  const manuallyUnblocked = user?.codBlocked === false && user?.codOverride === true;
+
   const [codStats] = await Order.aggregate([
     {
       $match: {
-        user:          oid, // ✅ FIXED: was userId (raw), now properly cast ObjectId
+        user:          oid,
         paymentMethod: "COD",
       },
     },
@@ -60,14 +64,15 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
   const failedCod = codStats?.cancelled ?? 0;
 
   const failureRate = totalCod >= 3 ? (failedCod / totalCod) * 100 : 0;
-  const codAbuse    = failureRate > 40 || failedCod >= 5;
+  
+  // ✅ Skip abuse check if admin has overridden
+  const codAbuse = !user?.codOverride && (failureRate > 40 || failedCod >= 5);
 
   const codAbuseReason = codAbuse
     ? `COD unavailable due to ${failedCod} cancellation${failedCod !== 1 ? "s" : ""} on previous orders`
     : null;
 
   return configs.map((config) => {
-
     let enabled = true;
     let reason  = null;
 

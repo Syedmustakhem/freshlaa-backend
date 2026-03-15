@@ -93,14 +93,21 @@ const userSchema = new mongoose.Schema(
       ],
       default: [],
     },
-
+codBlocked: {
+  type:    Boolean,
+  default: false,
+},
     /* ⏱️ META */
 
     lastLogin: {
       type: Date,
       default: Date.now,
     },
-
+codOverride: {
+  type:    Boolean,
+  default: false, // false = normal auto-block rules apply
+                  // true  = admin has manually enabled COD
+},
     /* 🛡️ STATUS */
 
     isBlocked: {
