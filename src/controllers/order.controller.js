@@ -503,6 +503,9 @@ exports.getActiveOrders = async (req, res) => {
    ADMIN — UPDATE ORDER STATUS
 ═══════════════════════════════════════════════════════════════ */
 
+// ─── REPLACE exports.updateOrderStatus in your order.controller.js ───────────
+// Only this function changes. Everything else stays the same.
+
 exports.updateOrderStatus = async (req, res) => {
   try {
     if (!req.user?.isAdmin) {
@@ -511,7 +514,7 @@ exports.updateOrderStatus = async (req, res) => {
 
     const { orderId, status, reason } = req.body;
 
-    const allowedStatuses = ["Placed", "Packed", "OutForDelivery", "Delivered", "Cancelled"];
+    const allowedStatuses = ["Placed", "Confirmed", "Packed", "OutForDelivery", "Delivered", "Cancelled"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -520,7 +523,6 @@ exports.updateOrderStatus = async (req, res) => {
     if (!order)
       return res.status(404).json({ success: false, message: "Order not found" });
 
-    // Idempotency — skip if already at target status
     if (order.status === status) {
       return res.json({ success: true, message: "Status already set", order });
     }
@@ -534,12 +536,23 @@ exports.updateOrderStatus = async (req, res) => {
 
     await order.save();
 
-    /* ── Socket ── */
+    /* ── Socket: emit ONLY to this order's room, not everyone ── */
     if (global.io) {
-      global.io.emit("order-updated", { orderId: order._id.toString(), status });
+      const roomId = order._id.toString();
+      const msg    = STATUS_MESSAGES[status];
+
+      global.io.to(roomId).emit("order-status-updated", {
+        orderId:   roomId,
+        status,
+        title:     msg?.title   || "Order Update",
+        message:   msg?.body    || `Your order is now ${status}`,
+        updatedAt: new Date().toISOString(),
+      });
+
+      console.log(`📡 Socket emitted to room [${roomId}]: ${status}`);
     }
 
-    /* ── Push notification ── */
+    /* ── Push notification (FCM → Expo fallback already in notifyUser) ── */
     const msg = STATUS_MESSAGES[status];
     if (msg) {
       notifyUser({
@@ -547,7 +560,11 @@ exports.updateOrderStatus = async (req, res) => {
         type:     "ORDER",
         pushData: {
           ...msg,
-          data: { screen: "OrderTracking", orderId: order._id.toString() },
+          data: {
+            screen:  "OrderTracking",
+            orderId: order._id.toString(),
+            status,
+          },
         },
       });
     }
@@ -567,13 +584,11 @@ exports.updateOrderStatus = async (req, res) => {
       (async () => {
         try {
           await generateInvoice(order, order.user);
-
           await sendWhatsAppTemplate(phone, "order_delivered", [
             order.user.name || "Customer",
             order._id.toString(),
             `₹${order.total}`,
           ]);
-
           const invoiceUrl = `https://api.freshlaa.com/invoices/invoice-${order._id}.pdf`;
           await sendWhatsAppDocument(phone, invoiceUrl, `Invoice-${order._id}.pdf`);
         } catch (err) {
