@@ -39,7 +39,7 @@ exports.getCheckoutPaymentOptions = async ({ userId, amount }) => {
 
   // ✅ Check if admin has manually unblocked this user
   const User = require("../models/User");
-  const user = await User.findById(oid).select("codBlocked").lean();
+const user = await User.findById(oid).select("codBlocked codOverride").lean();
   const manuallyUnblocked = user?.codBlocked === false && user?.codOverride === true;
 
   const [codStats] = await Order.aggregate([

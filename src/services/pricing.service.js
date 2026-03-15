@@ -217,7 +217,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
   const config = await getConfigCached();
 const deliveryFee = itemsTotal >= config.freeDeliveryLimit ? 0 : config.deliveryFee;
-const handlingFee = 0; // ✅ handling fee removed
+const handlingFee = 0; 
   const baseFees    = deliveryFee + handlingFee;
 
   /* ── Surge ── */
