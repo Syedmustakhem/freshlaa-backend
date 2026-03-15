@@ -42,6 +42,17 @@ const STATUS_MESSAGES = {
 
 /* ─── HELPERS ───────────────────────────────────────────────────────────── */
 
+// ── Generate unique order ID: FL + 6 digits e.g. FL847293 ────────────────────
+async function generateOrderId() {
+  let id, exists;
+  do {
+    const digits = Math.floor(100000 + Math.random() * 900000); // always 6 digits
+    id = `FL${digits}`;
+    exists = await Order.findOne({ orderId: id }).lean();
+  } while (exists); // retry on collision (extremely rare)
+  return id;
+}
+
 function resolveScheduledTime(slot) {
   const now = new Date();
 
@@ -147,8 +158,6 @@ exports.previewCheckout = async (req, res) => {
 
 /* ═══════════════════════════════════════════════════════════════
    CREATE ORDER
-   NOTE: Transactions removed — MongoDB M0 free tier does not
-   support multi-document transactions. Upgrade to M2+ to re-enable.
 ═══════════════════════════════════════════════════════════════ */
 
 exports.createOrder = async (req, res) => {
@@ -183,8 +192,14 @@ exports.createOrder = async (req, res) => {
         throw new Error(`Invalid delivery slot. Allowed: ${ALLOWED_SLOTS.join(", ")}`);
 
       scheduledTime = resolveScheduledTime(deliverySlot);
-      if (!scheduledTime)         throw new Error("Could not resolve delivery time for slot: " + deliverySlot);
-      if (scheduledTime < new Date()) throw new Error("Scheduled time cannot be in the past");
+      if (!scheduledTime)
+        throw new Error("Could not resolve delivery time for slot: " + deliverySlot);
+
+      // Only block past time for tomorrow slots — not for 30m/1h/5h/12h/1d
+      // (those are always in the future relative to now)
+      const futureSlotsOnly = ["tmr_morning", "tmr_afternoon", "tmr_evening"];
+      if (futureSlotsOnly.includes(deliverySlot) && scheduledTime < new Date())
+        throw new Error("Scheduled time cannot be in the past");
     }
 
     /* ── Recipient validation ── */
@@ -195,7 +210,7 @@ exports.createOrder = async (req, res) => {
         throw new Error("Invalid recipient phone number");
     }
 
-    /* ── Pricing — pass null for session (no transactions on M0) ── */
+    /* ── Pricing ── */
     const result = await calculateOrder(items, null, couponCode);
 
     /* ── Payment method eligibility ── */
@@ -213,7 +228,7 @@ exports.createOrder = async (req, res) => {
       );
     }
 
-    /* ── Apply COD fee if any ── */
+    /* ── Apply COD fee ── */
     const codFee = selectedMethod.codFee ?? 0;
     if (codFee > 0) {
       result.grandTotal += codFee;
@@ -230,7 +245,6 @@ exports.createOrder = async (req, res) => {
       if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
         throw new Error("Incomplete payment data");
 
-      // Idempotency — reject duplicate payments
       const duplicate = await Order.findOne({
         "paymentDetails.razorpay_payment_id": razorpay_payment_id,
       });
@@ -251,8 +265,12 @@ exports.createOrder = async (req, res) => {
     /* ── Build formatted items ── */
     const formattedItems = await buildFormattedItems(result.validatedItems);
 
+    /* ── Generate FL order ID ── */
+    const orderId = await generateOrderId();
+
     /* ── Persist order ── */
     const order = await Order.create({
+      orderId,                              // ← FL + 6 digits e.g. FL847293
       user:          req.user._id,
       items:         formattedItems,
       address,
@@ -290,58 +308,54 @@ exports.createOrder = async (req, res) => {
       status: "Placed",
     });
 
-    /* ── Post-save side effects (non-blocking) ── */
+    /* ── Post-save side effects ── */
     const user = await User.findById(req.user._id).lean();
 
-    // Socket
     if (global.io) {
       global.io.emit("new-order", {
-        orderId: order._id.toString(),
-        total:   order.total,
-        items:   order.items.length,
+        orderId:         order._id.toString(),
+        friendlyOrderId: order.orderId,
+        total:           order.total,
+        items:           order.items.length,
       });
     }
 
-    // Admin push
     notifyAdmins({
       title: "🛒 New Order",
-      body:  `₹${order.total} order placed`,
+      body:  `${order.orderId} · ₹${order.total}`,
       data:  { orderId: order._id.toString() },
     });
 
-    // User push
     notifyUser({
       userId:   user._id,
       type:     "ORDER",
       pushData: {
         title:    "Order Placed 🛒",
-        body:     `Your order of ₹${order.total} has been placed`,
+        body:     `${order.orderId} · ₹${order.total} has been placed`,
         imageUrl: "https://api.freshlaa.com/assets/order-placed.png",
         data:     { screen: "OrderTracking", orderId: order._id.toString() },
       },
     });
 
-    // WhatsApp
     if (user?.phone) {
       sendWhatsAppTemplate(
         user.phone.replace("+", ""),
         "order_placed",
-        [user.name || "Customer", "Freshlaa Grocery", order._id.toString(), `₹${order.total}`]
+        [user.name || "Customer", "Freshlaa Grocery", order.orderId, `₹${order.total}`]
       ).catch((err) => console.error("WhatsApp order_placed error:", err.message));
     }
 
     return res.status(201).json({ success: true, order });
 
-} catch (error) {
+  } catch (error) {
     console.error("❌ CREATE ORDER ERROR:", error.message);
-    console.error("❌ STACK:", error.stack); // ← ADD THIS ONE LINE
+    console.error("❌ STACK:", error.stack);
     return res.status(400).json({ success: false, message: error.message });
   }
 };
 
 /* ═══════════════════════════════════════════════════════════════
    CANCEL ORDER
-   NOTE: Transactions removed — M0 free tier limitation.
 ═══════════════════════════════════════════════════════════════ */
 
 exports.cancelOrder = async (req, res) => {
@@ -361,7 +375,6 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    /* ── Refund if paid online ── */
     if (
       order.paymentMethod === "ONLINE" &&
       order.paymentStatus === "Paid"   &&
@@ -383,7 +396,6 @@ exports.cancelOrder = async (req, res) => {
       order.refundAmount  = order.total;
     }
 
-    /* ── Restore stock ── */
     for (const item of order.items) {
       const product =
         (await Product.findById(item.productId)) ||
@@ -502,7 +514,6 @@ exports.getActiveOrders = async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════
    ADMIN — UPDATE ORDER STATUS
 ═══════════════════════════════════════════════════════════════ */
-// ─── REPLACE exports.updateOrderStatus in order.controller.js ────────────────
 
 exports.updateOrderStatus = async (req, res) => {
   try {
@@ -533,7 +544,7 @@ exports.updateOrderStatus = async (req, res) => {
     }
     await order.save();
 
-    // ── Socket ────────────────────────────────────────────────────────────────
+    /* ── Socket ── */
     if (global.io) {
       const roomId = order._id.toString();
       const msg    = STATUS_MESSAGES[status];
@@ -547,11 +558,10 @@ exports.updateOrderStatus = async (req, res) => {
       console.log(`📡 Socket emitted to room [${roomId}]: ${status}`);
     }
 
-    // ── Push notification ─────────────────────────────────────────────────────
+    /* ── Push notification ── */
     const msg = STATUS_MESSAGES[status];
     if (msg) {
       try {
-        // Re-fetch user to guarantee latest tokens (populate can be stale)
         const freshUser = await User.findById(order.user._id).lean();
 
         console.log("🔔 NOTIFY DEBUG:", {
@@ -560,7 +570,6 @@ exports.updateOrderStatus = async (req, res) => {
           expoToken: freshUser?.expoPushToken ? `✅ ${freshUser.expoPushToken.slice(0, 30)}...` : "❌ MISSING",
         });
 
-        // ✅ await — so errors are visible instead of silently swallowed
         await notifyUser({
           userId:   freshUser._id,
           type:     "ORDER",
@@ -574,21 +583,21 @@ exports.updateOrderStatus = async (req, res) => {
           },
         });
 
-        console.log(`✅ Push sent for order ${order._id} → ${status}`);
+        console.log(`✅ Push sent for order ${order.orderId || order._id} → ${status}`);
       } catch (notifyErr) {
         console.error("❌ notifyUser failed:", notifyErr.message);
         console.error("❌ notifyUser stack:", notifyErr.stack);
       }
     }
 
-    // ── WhatsApp ──────────────────────────────────────────────────────────────
+    /* ── WhatsApp ── */
     const phone = order.user?.phone?.replace("+", "");
 
     if (status === "Cancelled" && phone) {
       sendWhatsAppTemplate(phone, "order_cancelled", [
         order.user.name || "Customer",
         "Freshlaa",
-        order._id.toString(),
+        order.orderId || order._id.toString(),
       ]).catch((err) => console.error("WhatsApp order_cancelled error:", err.message));
     }
 
@@ -598,7 +607,7 @@ exports.updateOrderStatus = async (req, res) => {
           await generateInvoice(order, order.user);
           await sendWhatsAppTemplate(phone, "order_delivered", [
             order.user.name || "Customer",
-            order._id.toString(),
+            order.orderId || order._id.toString(),
             `₹${order.total}`,
           ]);
           const invoiceUrl = `https://api.freshlaa.com/invoices/invoice-${order._id}.pdf`;

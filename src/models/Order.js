@@ -136,7 +136,13 @@ const orderSchema = new mongoose.Schema(
       type:    Boolean,
       default: false,
     },
-
+// Add this field to orderSchema
+orderId: {
+  type:   String,
+  unique: true,
+  sparse: true,  // allows null for old orders without breaking unique index
+  index:  true,
+},
     recipient: {
       type:    recipientSchema,
       default: null,
