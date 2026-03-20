@@ -24,8 +24,9 @@ const sendViaSms = async (phone, otp) => {
 
 /* ---------- SEND VIA WHATSAPP ---------- */
 const sendViaWhatsApp = async (phone, otp) => {
-  const e164Phone = `+91${phone}`;
-const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
+  const e164Phone = `91${phone}`; // no +
+
+  const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
   const payload = {
     messaging_product: "whatsapp",
@@ -33,32 +34,34 @@ const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/m
     type: "template",
     template: {
       name: "freshlaa_otp_verification",
-      language: { code: "en_US" },
+      language: { code: "en" }, // IMPORTANT
       components: [
         {
           type: "body",
-          parameters: [{ type: "text", text: otp }],
-        },
-        {
-          type: "button",
-          sub_type: "url",
-          index: "0",
-          parameters: [{ type: "text", text: otp }],
+          parameters: [
+            { type: "text", text: otp } // {{1}}
+          ],
         },
       ],
     },
   };
 
-  await axios.post(url, payload, {
-    headers: {
-Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-  });
+  try {
+    const res = await axios.post(url, payload, {
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-  return true;
+    console.log("✅ WhatsApp Sent:", res.data);
+    return true;
+
+  } catch (err) {
+    console.error("❌ WhatsApp Error:", err.response?.data || err.message);
+    throw new Error("WhatsApp sending failed");
+  }
 };
-
 /* ---------- SEND OTP ---------- */
 // channel: "sms" | "whatsapp"  (default: "sms")
 const sendOtp = async (req, res) => {
