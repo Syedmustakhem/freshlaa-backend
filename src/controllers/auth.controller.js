@@ -1,3 +1,4 @@
+// ✅ FUNCTION EXPORT
 const axios = require("axios");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
@@ -10,6 +11,46 @@ const OTP_EXPIRY_MS = 5 * 60 * 1000; // ✅ 5 minutes
 /* ---------- HELPERS ---------- */
 const hashOtp = (otp) =>
   crypto.createHash("sha256").update(String(otp)).digest("hex");
+
+/* ---------- WHATSAPP OTP SENDER ---------- */
+const sendWhatsAppOtp = async (phone, otp) => {
+  // Meta expects E.164 format — phone in your DB is 10 digits, so we prefix +91
+  const e164Phone = `+91${phone}`;
+
+  const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: e164Phone,
+    type: "template",
+    template: {
+      name: "freshlaa_otp_verification", // ✅ your approved template name
+      language: { code: "en_US" },
+      components: [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: otp }],
+        },
+        {
+          // Enables the "Copy Code" button in WhatsApp
+          type: "button",
+          sub_type: "url",
+          index: "0",
+          parameters: [{ type: "text", text: otp }],
+        },
+      ],
+    },
+  };
+
+  const response = await axios.post(url, payload, {
+    headers: {
+      Authorization: `Bearer ${process.env.WHATSAPP_API_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  return response.data;
+};
 
 /* ---------- SEND OTP ---------- */
 const sendOtp = async (req, res) => {
@@ -45,20 +86,45 @@ const sendOtp = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // 📩 API HOME SMS
+    // 📩 Send via SMS + WhatsApp simultaneously
     const smsUrl = `https://apihome.in/panel/api/bulksms/?key=${process.env.SMS_API_KEY}&mobile=${phone}&otp=${otp}`;
-    const response = await axios.get(smsUrl);
 
-    if (response.data?.status !== "Success") {
+    const [smsResult, whatsappResult] = await Promise.allSettled([
+      axios.get(smsUrl),
+      sendWhatsAppOtp(phone, otp),
+    ]);
+
+    // Log results for debugging
+    if (smsResult.status === "rejected") {
+      console.error("⚠️ SMS failed:", smsResult.reason?.message);
+    } else {
+      console.log("✅ SMS sent:", smsResult.value?.data?.status);
+    }
+
+    if (whatsappResult.status === "rejected") {
+      console.error("⚠️ WhatsApp failed:", whatsappResult.reason?.response?.data || whatsappResult.reason?.message);
+    } else {
+      console.log("✅ WhatsApp OTP sent");
+    }
+
+    // ✅ If at least ONE channel succeeded, consider it a success
+    const smsSent = smsResult.status === "fulfilled" && smsResult.value?.data?.status === "Success";
+    const whatsappSent = whatsappResult.status === "fulfilled";
+
+    if (!smsSent && !whatsappSent) {
       return res.status(500).json({
         success: false,
-        message: "SMS sending failed",
+        message: "OTP sending failed on all channels",
       });
     }
 
     return res.json({
       success: true,
       message: "OTP sent successfully",
+      channels: {
+        sms: smsSent,
+        whatsapp: whatsappSent,
+      },
       expiresIn: OTP_EXPIRY_MS / 1000,
     });
   } catch (err) {
@@ -71,6 +137,7 @@ const sendOtp = async (req, res) => {
 };
 
 /* ---------- VERIFY OTP ---------- */
+// ✅ Zero changes — works exactly as before
 const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
