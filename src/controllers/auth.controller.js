@@ -25,7 +25,7 @@ const sendViaSms = async (phone, otp) => {
 /* ---------- SEND VIA WHATSAPP ---------- */
 const sendViaWhatsApp = async (phone, otp) => {
   const e164Phone = `+91${phone}`;
-  const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
   const payload = {
     messaging_product: "whatsapp",
@@ -51,7 +51,7 @@ const sendViaWhatsApp = async (phone, otp) => {
 
   await axios.post(url, payload, {
     headers: {
-      Authorization: `Bearer ${process.env.WHATSAPP_API_TOKEN}`,
+Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
       "Content-Type": "application/json",
     },
   });
