@@ -55,17 +55,11 @@ router.post("/save-push-token", async (req, res) => {
   }
 });
 
-/* ─────────────────────────────────────────────
-   TEST PUSH  (dev/admin use)
-   POST /api/notifications/test-push
-───────────────────────────────────────────── */
+
 router.post("/test-push", notificationController.sendTestPush);
 
 
-/* ═════════════════════════════════════════════
-   BANNER NOTIFICATIONS (Socket.io broadcast)
-   Uses global.io from server.js
-═════════════════════════════════════════════ */
+
 
 const BANNER_CONFIGS = {
   rain: {

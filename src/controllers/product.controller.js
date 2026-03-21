@@ -1,6 +1,6 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category"); // ✅ ADD THIS
-
+const { triggerRestock } = require("./restock.controller");
 /* ================= VARIANT NORMALIZER ================= */
 const normalizeVariants = (variants) => {
   const allowedUnits = ["kg", "g", "l", "ml", "pcs"];
@@ -365,85 +365,49 @@ exports.getProductsBySubCategory = async (req, res) => {
 
 
 /* ================= UPDATE PRODUCT ================= */
+/* ================= UPDATE PRODUCT ================= */
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const data   = req.body;                          // ✅ data first
 
-    const product = await Product.findById(id);
+    const product = await Product.findById(id);       // ✅ fetch product
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    // BASIC INFO
-    if (typeof data.name === "string" && data.name.trim()) {
-      product.name = data.name.trim();
-    }
+    const previousStock = product.stock;              // ✅ AFTER findById — not before
 
-    if (typeof data.description === "string") {
-      product.description = data.description;
-    }
- if (typeof data.quickFilter !== "undefined") {
-  product.quickFilter = data.quickFilter || null;
-}
-    // CATEGORY (SAFE)
-    if (data.category) {
-      product.category = data.category.toLowerCase();
-    }
+    if (typeof data.name === "string" && data.name.trim()) product.name = data.name.trim();
+    if (typeof data.description === "string") product.description = data.description;
+    if (typeof data.quickFilter !== "undefined") product.quickFilter = data.quickFilter || null;
+    if (data.category) { product.category = data.category.toLowerCase(); product.subCategory = data.category.toLowerCase(); }
+    if (data.sectionId) product.sectionId = data.sectionId;
+    if (Array.isArray(data.images) && data.images.length > 0) product.images = data.images;
+    if (typeof data.isFeatured     === "boolean") product.isFeatured     = data.isFeatured;
+    if (typeof data.isTrending     === "boolean") product.isTrending     = data.isTrending;
+    if (typeof data.isActive       === "boolean") product.isActive       = data.isActive;
+    if (typeof data.offerPercentage === "number") product.offerPercentage = data.offerPercentage;
 
-    if (data.sectionId) {
-      product.sectionId = data.sectionId;
-    }
-
-    if (data.category) {
-  product.subCategory = data.category.toLowerCase();
-}
-
-    // IMAGES
-    if (Array.isArray(data.images) && data.images.length > 0) {
-      product.images = data.images;
-    }
-
-    // FLAGS
-    if (typeof data.isFeatured === "boolean")
-      product.isFeatured = data.isFeatured;
-
-    if (typeof data.isTrending === "boolean")
-      product.isTrending = data.isTrending;
-
-    if (typeof data.isActive === "boolean")
-      product.isActive = data.isActive;
-
-    if (typeof data.offerPercentage === "number")
-      product.offerPercentage = data.offerPercentage;
-
-    // VARIANTS
     if (Array.isArray(data.variants) && data.variants.length > 0) {
       const variants = normalizeVariants(data.variants);
-
-      if (!variants.some(v => v.isDefault)) {
-        variants[0].isDefault = true;
-      }
-
+      if (!variants.some(v => v.isDefault)) variants[0].isDefault = true;
       product.variants = variants;
-      product.stock = variants.reduce((sum, v) => sum + v.stock, 0);
+      product.stock    = variants.reduce((sum, v) => sum + v.stock, 0);
     }
 
-    await product.save();
+    await product.save();                             // ✅ save first
 
-    res.json({
-      success: true,
-      data: product,
-    });
+    // ✅ THEN trigger restock — fire and forget, non-blocking
+    if (previousStock === 0 && product.stock > 0) {
+      triggerRestock(product._id);
+    }
+
+    res.json({ success: true, data: product });
+
   } catch (err) {
     console.error("Update product error:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message || "Update failed",
-    });
+    res.status(500).json({ success: false, message: err.message || "Update failed" });
   }
 };
 // product.controller.js
@@ -558,17 +522,6 @@ exports.getProductsByIds = async (req, res) => {
 };
 
 
-/* ================= UPDATE getAllProducts — ADD productIds support ================= */
-// In your existing getAllProducts, add this block AFTER the quickFilter block:
-//
-//   /* PINNED PRODUCT IDs (Quick Filters) */
-//   if (req.query.productIds) {
-//     const ids = req.query.productIds.split(",");
-//     query._id = { $in: ids };
-//   }
-//
-// That's the only change needed in getAllProducts.
-/* ================= ZEPTO: PRODUCTS BY SECTION + SUBCATEGORY ================= */
 exports.getProductsBySection = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;

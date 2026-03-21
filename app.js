@@ -15,6 +15,7 @@ app.get("/health", (req, res) => {
 const routesPath = path.join(__dirname, "src", "routes");
 const brandRoutes = require(path.join(routesPath, "brand.routes"));
 const appConfigRoutes = require(path.join(routesPath, "appConfig.routes"));
+const restockRoutes = require(path.join(routesPath, "restock.routes"));
 
 const adminRoutes = require(path.join(routesPath, "admin.routes"));
 const authRoutes = require(path.join(routesPath, "auth.routes"));
@@ -101,6 +102,8 @@ app.use("/api", categoryBannerRoutes);
 app.use("/api", offerRoutes);
 app.use("/api/checkout-payment", checkoutPaymentRoutes);/* ================= HEALTH ================= */
 app.use("/api/brand", brandRoutes);
+app.use("/api/restock", restockRoutes);
+
 app.use("/api", appConfigRoutes);
 app.use("/api/admin/campaign", adminCampaignRoutes);
 app.get("/", (req, res) => {
