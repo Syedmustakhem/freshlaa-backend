@@ -36,18 +36,22 @@ io.on("connection", (socket) => {
   /* 🔥 JOIN ORDER ROOM */
   socket.on("join-order", (orderId) => {
     if (!orderId) return;
-
-    const roomId = String(orderId); // very important
+    const roomId = String(orderId);
     socket.join(roomId);
-
     console.log(`📦 Socket ${socket.id} joined order room: ${roomId}`);
   });
 
-  /* 🔥 LEAVE ORDER ROOM (optional) */
+  /* 🔥 LEAVE ORDER ROOM */
   socket.on("leave-order", (orderId) => {
     const roomId = String(orderId);
     socket.leave(roomId);
     console.log(`🚪 Socket ${socket.id} left room: ${roomId}`);
+  });
+
+  /* ✅ NEW — app users join this room so banners reach them */
+  socket.on("join-app", () => {
+    socket.join("app-users");
+    console.log(`📱 App user joined: ${socket.id}`);
   });
 
   socket.on("disconnect", () => {
