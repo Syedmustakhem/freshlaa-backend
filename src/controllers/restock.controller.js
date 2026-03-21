@@ -2,9 +2,8 @@
 
 const RestockNotification = require("../models/RestockNotification");
 const Product             = require("../models/Product");
-const { Expo }            = require("expo-server-sdk");
-
-const expo = new Expo();
+let Expo;
+let expo;
 
 /* ─────────────────────────────────────────
    POST /api/restock/subscribe
@@ -67,10 +66,16 @@ async function subscribe(req, res) {
 ───────────────────────────────────────── */
 async function triggerRestock(productId) {
   try {
+
+    if (!Expo) {
+      const expoModule = await import('expo-server-sdk');
+      Expo = expoModule.Expo;
+      expo = new Expo();
+    }
+
     const product = await Product.findById(productId).select("name images");
     if (!product) return;
 
-    // Get all pending subscribers
     const subscribers = await RestockNotification.find({
       productId,
       notified: false,
@@ -81,21 +86,18 @@ async function triggerRestock(productId) {
       return;
     }
 
-    console.log(`[Restock] Notifying ${subscribers.length} subscribers for "${product.name}"`);
-
-    // ✅ Build Expo push messages
     const messages = [];
     const ids = [];
 
     for (const sub of subscribers) {
       if (sub.expoPushToken && Expo.isExpoPushToken(sub.expoPushToken)) {
         messages.push({
-          to:    sub.expoPushToken,
+          to: sub.expoPushToken,
           sound: "default",
           title: "🎉 Back in stock!",
-          body:  `${product.name} is available again. Order now before it runs out!`,
-          data:  {
-            screen:    "ProductDetails",
+          body: `${product.name} is available again. Order now before it runs out!`,
+          data: {
+            screen: "ProductDetails",
             productId: String(productId),
           },
         });
@@ -103,8 +105,8 @@ async function triggerRestock(productId) {
       }
     }
 
-    // ✅ Send in chunks — Expo limit is 100 per batch
     const chunks = expo.chunkPushNotifications(messages);
+
     for (const chunk of chunks) {
       try {
         await expo.sendPushNotificationsAsync(chunk);
@@ -113,7 +115,6 @@ async function triggerRestock(productId) {
       }
     }
 
-    // ✅ Mark as notified
     await RestockNotification.updateMany(
       { _id: { $in: ids } },
       { notified: true, notifiedAt: new Date() }
