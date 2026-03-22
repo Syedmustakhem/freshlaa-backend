@@ -149,9 +149,9 @@ const APP_CONFIG = {
 
     bg_color: "#ffffff",
 
-    tagline: "Fresh delivery in 30 mins ⚡",
+    // tagline: "Fresh delivery in 30 mins ⚡",
 
-    tagline_color: "#16a34a",
+    // tagline_color: "#16a34a",
 
     // ✅ FIX: Reduced from 3000ms → 1500ms for faster perceived startup time
     duration_ms: 1500,
