@@ -1,14 +1,11 @@
 // src/controllers/restock.controller.js
+// ✅ Uses dynamic import for expo-server-sdk (ESM-only package)
 
 const RestockNotification = require("../models/RestockNotification");
 const Product             = require("../models/Product");
-let Expo;
-let expo;
 
 /* ─────────────────────────────────────────
    POST /api/restock/subscribe
-   Body: { productId, userId?, expoPushToken?, fcmToken? }
-   Saves a restock subscription for user or guest
 ───────────────────────────────────────── */
 async function subscribe(req, res) {
   try {
@@ -22,7 +19,6 @@ async function subscribe(req, res) {
       return res.status(400).json({ success: false, message: "userId or push token required" });
     }
 
-    // Check product exists and is actually OOS
     const product = await Product.findById(productId).select("stock name");
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
@@ -32,7 +28,6 @@ async function subscribe(req, res) {
       return res.status(400).json({ success: false, message: "Product is in stock" });
     }
 
-    // ✅ Upsert — prevent duplicates
     const filter = userId
       ? { productId, userId }
       : { productId, expoPushToken };
@@ -60,18 +55,13 @@ async function subscribe(req, res) {
 }
 
 /* ─────────────────────────────────────────
-   POST /api/restock/trigger/:productId
-   Called internally when product stock is updated > 0
-   Sends push notifications to all subscribers
+   triggerRestock — called from product.controller
 ───────────────────────────────────────── */
 async function triggerRestock(productId) {
   try {
-
-    if (!Expo) {
-      const expoModule = await import('expo-server-sdk');
-      Expo = expoModule.Expo;
-      expo = new Expo();
-    }
+    // ✅ Dynamic import — fixes ERR_REQUIRE_ESM
+    const { Expo } = await import("expo-server-sdk");
+    const expo     = new Expo();
 
     const product = await Product.findById(productId).select("name images");
     if (!product) return;
@@ -86,27 +76,25 @@ async function triggerRestock(productId) {
       return;
     }
 
+    console.log(`[Restock] Notifying ${subscribers.length} subscribers for "${product.name}"`);
+
     const messages = [];
-    const ids = [];
+    const ids      = [];
 
     for (const sub of subscribers) {
       if (sub.expoPushToken && Expo.isExpoPushToken(sub.expoPushToken)) {
         messages.push({
-          to: sub.expoPushToken,
+          to:    sub.expoPushToken,
           sound: "default",
           title: "🎉 Back in stock!",
-          body: `${product.name} is available again. Order now before it runs out!`,
-          data: {
-            screen: "ProductDetails",
-            productId: String(productId),
-          },
+          body:  `${product.name} is available again. Order now before it runs out!`,
+          data:  { screen: "ProductDetails", productId: String(productId) },
         });
         ids.push(sub._id);
       }
     }
 
     const chunks = expo.chunkPushNotifications(messages);
-
     for (const chunk of chunks) {
       try {
         await expo.sendPushNotificationsAsync(chunk);
@@ -129,16 +117,11 @@ async function triggerRestock(productId) {
 
 /* ─────────────────────────────────────────
    GET /api/restock/count/:productId
-   Returns how many users are waiting for restock
-   Used in admin panel
 ───────────────────────────────────────── */
 async function getSubscriberCount(req, res) {
   try {
     const { productId } = req.params;
-    const count = await RestockNotification.countDocuments({
-      productId,
-      notified: false,
-    });
+    const count = await RestockNotification.countDocuments({ productId, notified: false });
     return res.json({ success: true, count });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -147,14 +130,11 @@ async function getSubscriberCount(req, res) {
 
 /* ─────────────────────────────────────────
    DELETE /api/restock/unsubscribe
-   Body: { productId, userId? or expoPushToken? }
 ───────────────────────────────────────── */
 async function unsubscribe(req, res) {
   try {
     const { productId, userId, expoPushToken } = req.body;
-    const filter = userId
-      ? { productId, userId }
-      : { productId, expoPushToken };
+    const filter = userId ? { productId, userId } : { productId, expoPushToken };
     await RestockNotification.findOneAndDelete(filter);
     return res.json({ success: true });
   } catch (err) {
