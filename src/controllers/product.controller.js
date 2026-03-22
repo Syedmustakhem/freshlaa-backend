@@ -38,6 +38,9 @@ const normalizeVariants = (variants) => {
 
 /* ================= GET ALL PRODUCTS ================= */
 /* ================= GET ALL PRODUCTS ================= */
+// ✅ Replace getAllProducts in product.controller.js with this version
+// Adds includeOOS support — when true, shows OOS products with overlay
+
 exports.getAllProducts = async (req, res) => {
   try {
     const {
@@ -47,69 +50,55 @@ exports.getAllProducts = async (req, res) => {
       category,
       quickFilter,
       featured,
+      includeOOS, // ✅ NEW — "true" includes out-of-stock products
     } = req.query;
 
-    const query = {
-      isActive: true,
-      "variants.stock": { $gt: 0 },
-    };
+    const query = { isActive: true };
 
-    // ── Text search ──
-    if (search) {
-      query.name = { $regex: search, $options: "i" };
+    // ✅ Only filter by stock if NOT including OOS
+    if (includeOOS !== "true") {
+      query["variants.stock"] = { $gt: 0 };
     }
 
-    // ── Category filter ──
-    if (category) {
-      query.category = category.toLowerCase();
-    }
+    if (search)   query.name        = { $regex: search, $options: "i" };
+    if (category) query.category    = category.toLowerCase();
+    if (featured === "true") query.isFeatured = true;
 
-    // ── Quick filter tag ──
-    if (quickFilter) {
-      query.quickFilter = quickFilter.toLowerCase();
-    }
+    if (quickFilter) query.quickFilter = quickFilter.toLowerCase();
 
-    // ── Featured flag ──
-    if (featured === "true") {
-      query.isFeatured = true;
+    if (
+      Object.prototype.hasOwnProperty.call(req.query, "quickFilter") &&
+      !quickFilter
+    ) {
+      return res.json({ success: true, data: [] });
     }
-
-    // ── Guard: block requests that are ONLY trying to fetch with
-    //    quickFilter but passed an empty string (the original bug).
-    //    Do NOT block plain /products calls — those are used by
-    //    Explore, Search initial load, and the admin panel.
-    //    Only block if quickFilter was explicitly passed but is empty.
-   if (
-  Object.prototype.hasOwnProperty.call(req.query, "quickFilter") &&
-  !quickFilter
-) {
-  return res.json({ success: true, data: [] });
-}
 
     let products = await Product.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ stock: -1, createdAt: -1 }) // ✅ in-stock first, OOS at bottom
       .skip((page - 1) * Number(limit))
       .limit(Number(limit))
       .lean();
 
-    // Strip out-of-stock variants from each product
+    // Strip OOS variants but keep the product (so stock field stays 0)
     products.forEach(p => {
-      p.variants = p.variants.filter(v => v.stock > 0);
+      if (includeOOS === "true") {
+        // Keep all variants for display, just filter OOS ones for info
+        p.variants = p.variants; // keep all
+      } else {
+        p.variants = p.variants.filter(v => v.stock > 0);
+      }
     });
 
     res.json({
       success: true,
-      data: products,
-      page: Number(page),
-      limit: Number(limit),
+      data:    products,
+      page:    Number(page),
+      limit:   Number(limit),
     });
 
   } catch (err) {
     console.error("getAllProducts error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch products",
-    });
+    res.status(500).json({ success: false, message: "Failed to fetch products" });
   }
 };
 exports.getTrendingProducts = async (req, res) => {
