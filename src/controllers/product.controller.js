@@ -56,9 +56,9 @@ exports.getAllProducts = async (req, res) => {
     const query = { isActive: true };
 
     // ✅ Only filter by stock if NOT including OOS
-    if (includeOOS !== "true") {
-      query["variants.stock"] = { $gt: 0 };
-    }
+   if (includeOOS !== "true") {
+  query.stock = { $gt: 0 };
+}
 
     if (search)   query.name        = { $regex: search, $options: "i" };
     if (category) query.category    = category.toLowerCase();
