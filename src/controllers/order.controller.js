@@ -544,8 +544,9 @@ exports.getActiveOrders = async (req, res) => {
 
 exports.generateDeliveryOTP = async (req, res) => {
   try {
-    const isAdmin = !!req.admin || !!req.user?.isAdmin;
-    if (!isAdmin) {
+const isAdmin = !!req.admin;    
+if (!isAdmin) {
+
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
 
