@@ -64,68 +64,66 @@
   };
   /* ---------- SEND OTP ---------- */
   // channel: "sms" | "whatsapp"  (default: "sms")
-  const sendOtp = async (req, res) => {
-    try {
-      const { phone, channel = "sms" } = req.body;
+ const sendOtp = async (req, res) => {
+  try {
+    const { phone, channel = "sms" } = req.body;
 
-      if (!/^[6-9]\d{9}$/.test(phone)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid phone number",
-        });
-      }
-
-      if (!["sms", "whatsapp"].includes(channel)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid channel. Use 'sms' or 'whatsapp'",
-        });
-      }
-
-      // 🔐 Prevent OTP overwrite while active
-      const existing = await OtpSession.findOne({ phone });
-      if (existing && existing.expiresAt > new Date()) {
-        return res.status(429).json({
-          success: false,
-          message: "OTP already sent. Please wait.",
-        });
-      }
-
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpHash = hashOtp(otp);
-
-      await OtpSession.findOneAndUpdate(
-        { phone },
-        {
-          otpHash,
-          attempts: 0,
-          channel, // store which channel was used
-          expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
-        },
-        { upsert: true, new: true }
-      );
-
-      // 📩 Send via selected channel only
-      if (channel === "whatsapp") {
-        await sendViaWhatsApp(phone, otp);
-      } else {
-        await sendViaSms(phone, otp);
-      }
-
-      return res.json({
-        success: true,
-        message: `OTP sent via ${channel === "whatsapp" ? "WhatsApp" : "SMS"}`,
-        channel,
-        expiresIn: OTP_EXPIRY_MS / 1000,
-      });
-    } catch (err) {
-      console.error("SEND OTP ERROR:", err);
-      return res.status(500).json({
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({
         success: false,
-        message: "OTP send failed. Please try again.",
+        message: "Invalid phone number",
       });
     }
-  };
+
+    const existing = await OtpSession.findOne({ phone });
+
+    if (existing && existing.expiresAt > new Date()) {
+      return res.status(429).json({
+        success: false,
+        message: "OTP already sent. Please wait.",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = hashOtp(otp);
+
+    // ✅ SEND FIRST
+    if (channel === "whatsapp") {
+      await sendViaWhatsApp(phone, otp);
+    } else {
+      await sendViaSms(phone, otp);
+    }
+
+    // ✅ SAVE ONLY AFTER SUCCESS
+    await OtpSession.findOneAndUpdate(
+      { phone },
+      {
+        otpHash,
+        attempts: 0,
+        channel,
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+      },
+      { upsert: true, new: true }
+    );
+
+    return res.json({
+      success: true,
+      message: `OTP sent via ${channel}`,
+      expiresIn: OTP_EXPIRY_MS / 1000,
+    });
+
+  } catch (err) {
+    console.error("SEND OTP ERROR:", err);
+
+    // ✅ OPTIONAL: Clean invalid session
+    await OtpSession.deleteOne({ phone: req.body.phone });
+
+    return res.status(500).json({
+      success: false,
+      message: "OTP send failed. Please try again.",
+    });
+  }
+};
 
   /* ---------- VERIFY OTP ---------- */
   // ✅ Zero changes needed — works for both channels
