@@ -28,23 +28,31 @@
 
     const url = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
-    const payload = {
-      messaging_product: "whatsapp",
-      to: e164Phone,
-      type: "template",
-      template: {
-        name: "freshlaa_otp_verification",
-        language: { code: "en" }, // IMPORTANT
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", text: otp } // {{1}}
-            ],
-          },
+  const payload = {
+  messaging_product: "whatsapp",
+  to: e164Phone,
+  type: "template",
+  template: {
+    name: "freshlaa_otp_verification",
+    language: { code: "en" },
+    components: [
+      {
+        type: "body",
+        parameters: [
+          { type: "text", text: otp } // {{1}}
         ],
       },
-    };
+      {
+        type: "button",
+        sub_type: "url",
+        index: "0",
+        parameters: [
+          { type: "text", text: otp } // REQUIRED for button {{1}}
+        ],
+      },
+    ],
+  },
+};
 
     try {
       const res = await axios.post(url, payload, {
