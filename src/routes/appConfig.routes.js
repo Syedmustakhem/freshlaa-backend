@@ -131,7 +131,7 @@ const APP_CONFIG = {
   force_update_message:
     "A new version of FreshLaa is available with important improvements.",
 
-  maintenance_mode: false,
+  maintenance_mode: true,
 
   maintenance_message:
     "FreshLaa is currently under maintenance. Please try again later.",
