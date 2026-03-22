@@ -37,6 +37,7 @@ global.io = io;
 io.on("connection", (socket) => {
   console.log("🟢 Client connected:", socket.id);
 
+  // ── Existing: Order tracking room ──────────────────────────────────────────
   socket.on("join-order", (orderId) => {
     if (!orderId) return;
     const roomId = String(orderId);
@@ -54,6 +55,31 @@ io.on("connection", (socket) => {
     socket.join("app-users");
     console.log(`📱 App user joined: ${socket.id}`);
   });
+
+  // ── NEW: Support chat rooms ─────────────────────────────────────────────────
+
+  // Customer joins their own private support room
+  // Room name: support_{userId} — only that user and agents receive events
+  socket.on("join-support", (userId) => {
+    if (!userId) return;
+    socket.join(`support_${userId}`);
+    console.log(`💬 Support room joined: support_${userId}`);
+  });
+
+  // Agent joins the global agents room to receive all new support requests
+  // Call this from your admin panel when an agent logs in
+  socket.on("join-agent", () => {
+    socket.join("support_agents");
+    console.log(`🎧 Agent joined support_agents room: ${socket.id}`);
+  });
+
+  // Agent leaves agents room (when logging out of admin)
+  socket.on("leave-agent", () => {
+    socket.leave("support_agents");
+    console.log(`🚪 Agent left support_agents room: ${socket.id}`);
+  });
+
+  // ── END: Support chat rooms ─────────────────────────────────────────────────
 
   socket.on("disconnect", () => {
     console.log("🔴 Client disconnected:", socket.id);

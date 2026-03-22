@@ -17,7 +17,8 @@ const routesPath = path.join(__dirname, "src", "routes");
 const brandRoutes           = require(path.join(routesPath, "brand.routes"));
 const appConfigRoutes       = require(path.join(routesPath, "appConfig.routes"));
 const restockRoutes         = require(path.join(routesPath, "restock.routes"));
-const cartRecoveryRoutes    = require(path.join(routesPath, "cartRecovery.routes")); // ✅ NEW
+const cartRecoveryRoutes    = require(path.join(routesPath, "cartRecovery.routes"));
+const supportRoutes         = require(path.join(routesPath, "support.routes")); // ✅ NEW
 
 const adminRoutes           = require(path.join(routesPath, "admin.routes"));
 const authRoutes            = require(path.join(routesPath, "auth.routes"));
@@ -86,9 +87,10 @@ app.use("/api",                  offerRoutes);
 app.use("/api/checkout-payment", checkoutPaymentRoutes);
 app.use("/api/brand",            brandRoutes);
 app.use("/api/restock",          restockRoutes);
-app.use("/api/cart-recovery",    cartRecoveryRoutes); // ✅ NEW
+app.use("/api/cart-recovery",    cartRecoveryRoutes);
 app.use("/api",                  appConfigRoutes);
 app.use("/api/admin/campaign",   adminCampaignRoutes);
+app.use("/api/support",          supportRoutes); // ✅ NEW
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Freshlaa Backend Running ✅" });
