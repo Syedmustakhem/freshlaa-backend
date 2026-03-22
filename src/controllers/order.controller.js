@@ -100,7 +100,7 @@ async function buildFormattedItems(validatedItems) {
     return {
       productId:         i.productId,
       name:              product?.name       || "Product",
-      image:             product?.image      || "",
+image: product?.images?.[0] || "",
       originalPrice:     i.originalPrice     ?? i.price,
       finalPrice:        i.finalPrice        ?? i.price,
       qty:               i.qty,
@@ -437,8 +437,24 @@ exports.getMyOrders = async (req, res) => {
     const skip  = (page - 1) * limit;
 
     const [orders, total] = await Promise.all([
-      Order.find({ user: req.user._id }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-      Order.countDocuments({ user: req.user._id }),
+Order.find({ user: req.user._id })
+  .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit)
+  .populate({ path: "items.productId", model: "Product", select: "images" })
+  .lean()
+  .then(orders =>
+    orders.map(order => ({
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        // ✅ use saved image if exists, fallback to populated product images
+        image: (item.image && item.image.trim() !== "")
+          ? item.image
+          : item.productId?.images?.[0] || "",
+      })),
+    }))
+  ),      Order.countDocuments({ user: req.user._id }),
     ]);
 
     return res.json({
