@@ -530,6 +530,196 @@ exports.getActiveOrders = async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════
    ADMIN — UPDATE ORDER STATUS
 ═══════════════════════════════════════════════════════════════ */
+// ─────────────────────────────────────────────────────────────────────────────
+// ADD THESE TWO FUNCTIONS TO THE BOTTOM OF order.controller.js
+// They handle OTP generation (admin/system) and verification (rider/admin)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/* ═══════════════════════════════════════════════════════════════
+   GENERATE DELIVERY OTP
+   Called automatically when order status → OutForDelivery
+   Also callable manually from admin panel
+   POST /api/orders/:id/generate-otp
+═══════════════════════════════════════════════════════════════ */
+
+exports.generateDeliveryOTP = async (req, res) => {
+  try {
+    const isAdmin = !!req.admin || !!req.user?.isAdmin;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: "Admin access required" });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Only generate for OutForDelivery orders
+    if (order.status !== "OutForDelivery") {
+      return res.status(400).json({
+        success: false,
+        message: `OTP can only be generated when order is OutForDelivery. Current: ${order.status}`,
+      });
+    }
+
+    // Don't regenerate if already verified
+    if (order.otpVerified) {
+      return res.status(400).json({ success: false, message: "OTP already verified for this order" });
+    }
+
+    // Generate fresh 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    order.deliveryOTP        = otp;
+    order.otpGeneratedAt     = new Date();
+    order.otpFailedAttempts  = 0; // reset on regenerate
+    await order.save();
+
+    // Emit OTP to customer via socket in real time
+    if (global.io) {
+      global.io.to(order._id.toString()).emit("delivery-otp-generated", {
+        orderId: order._id.toString(),
+        otp,     // ✅ customer sees OTP in their app
+      });
+      console.log(`🔐 OTP generated for order ${order.orderId}: ${otp}`);
+    }
+
+    return res.json({ success: true, otp, orderId: order._id });
+
+  } catch (error) {
+    console.error("❌ GENERATE OTP ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   VERIFY DELIVERY OTP
+   Called from rider app or admin panel when rider enters OTP
+   If correct → marks order as Delivered automatically
+   POST /api/orders/:id/verify-otp   { otp: "1234" }
+═══════════════════════════════════════════════════════════════ */
+
+exports.verifyDeliveryOTP = async (req, res) => {
+  try {
+    const isAdmin = !!req.admin || !!req.user?.isAdmin;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: "Admin access required" });
+    }
+
+    const { otp } = req.body;
+    if (!otp?.trim()) {
+      return res.status(400).json({ success: false, message: "OTP is required" });
+    }
+
+    const order = await Order.findById(req.params.id).populate("user");
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Guard: must be OutForDelivery
+    if (order.status !== "OutForDelivery") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot verify OTP for order with status: ${order.status}`,
+      });
+    }
+
+    // Guard: already verified
+    if (order.otpVerified) {
+      return res.status(400).json({ success: false, message: "OTP already verified" });
+    }
+
+    // Guard: too many failed attempts (fraud prevention)
+    if ((order.otpFailedAttempts || 0) >= 5) {
+      return res.status(429).json({
+        success: false,
+        message:  "Too many incorrect OTP attempts. Please regenerate OTP.",
+        code:     "OTP_LOCKED",
+      });
+    }
+
+    // ── Wrong OTP ──────────────────────────────────────────────────────────
+    if (order.deliveryOTP !== otp.trim()) {
+      order.otpFailedAttempts = (order.otpFailedAttempts || 0) + 1;
+      await order.save();
+
+      const remaining = Math.max(0, 5 - order.otpFailedAttempts);
+      return res.status(400).json({
+        success:    false,
+        message:    `Incorrect OTP. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`,
+        code:       "OTP_WRONG",
+        attemptsLeft: remaining,
+      });
+    }
+
+    // ── Correct OTP → mark as Delivered ───────────────────────────────────
+    order.status       = "Delivered";
+    order.otpVerified  = true;
+    await order.save();
+
+    // Emit to customer app in real time
+    if (global.io) {
+      const roomId = order._id.toString();
+
+      // 1. Tell the customer their order is delivered
+      global.io.to(roomId).emit("order-status-updated", {
+        orderId:   roomId,
+        status:    "Delivered",
+        title:     "Order Delivered 🎉",
+        message:   "Your order has been delivered. Enjoy!",
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 2. Tell the customer the OTP was verified
+      global.io.to(roomId).emit("otp-verified", {
+        orderId: roomId,
+        status:  "Delivered",
+      });
+
+      console.log(`✅ OTP verified for order ${order.orderId} → Delivered`);
+    }
+
+    // Push notification to customer
+    const freshUser = await User.findById(order.user._id || order.user).lean();
+    if (freshUser) {
+      await notifyUser({
+        userId: freshUser._id,
+        type:   "ORDER",
+        pushData: {
+          title:    "Order Delivered 🎉",
+          body:     "Your order has been delivered. Enjoy your fresh groceries!",
+          imageUrl: "https://api.freshlaa.com/assets/order-delivered.png",
+          data: {
+            screen:  "OrderTracking",
+            orderId: order._id.toString(),
+            status:  "Delivered",
+          },
+        },
+      });
+    }
+
+    // WhatsApp notification
+    const phone = (freshUser?.phone || order.user?.phone)?.replace("+", "");
+    if (phone) {
+      sendWhatsAppTemplate(phone, "order_delivered", [
+        freshUser?.name || "Customer",
+        order.orderId || order._id.toString(),
+        `₹${order.total}`,
+      ]).catch((err) => console.error("WhatsApp delivered error:", err.message));
+    }
+
+    return res.json({
+      success: true,
+      message: "OTP verified. Order marked as Delivered.",
+      order,
+    });
+
+  } catch (error) {
+    console.error("❌ VERIFY OTP ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 exports.updateOrderStatus = async (req, res) => {
   try {
@@ -558,7 +748,25 @@ exports.updateOrderStatus = async (req, res) => {
       order.cancellationReason = reason || "Cancelled by admin";
       order.cancelledAt        = new Date();
     }
+
+    // ✅ Auto-generate OTP when order goes OutForDelivery
+    if (status === "OutForDelivery") {
+      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      order.deliveryOTP       = otp;
+      order.otpGeneratedAt    = new Date();
+      order.otpFailedAttempts = 0;
+    }
+
     await order.save();
+
+    // ✅ Push OTP to customer AFTER save
+    if (status === "OutForDelivery" && order.deliveryOTP && global.io) {
+      global.io.to(order._id.toString()).emit("delivery-otp-generated", {
+        orderId: order._id.toString(),
+        otp:     order.deliveryOTP,
+      });
+      console.log(`🔐 OTP auto-generated for ${order.orderId}: ${order.deliveryOTP}`);
+    }
 
     /* ── Socket ── */
     if (global.io) {

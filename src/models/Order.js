@@ -211,7 +211,26 @@ orderId: {
       default: null,
       trim:    true,
     },
-
+deliveryOTP: {
+  type:    String,
+  default: null,
+},
+ 
+otpVerified: {
+  type:    Boolean,
+  default: false,
+},
+ 
+otpGeneratedAt: {
+  type:    Date,
+  default: null,
+},
+ 
+otpFailedAttempts: {
+  type:    Number,
+  default: 0,
+},
+ 
     /* ─────────────── PRICING BREAKDOWN ─────────────── */
     // ✅ FIX 5: full pricing breakdown for receipts and audits
     pricing: {

@@ -18,7 +18,8 @@ const {
 /* ================= ADMIN ROUTES ================= */
 router.put("/admin/:id/status", protect, admin, updateOrderStatus);
 router.post("/preview", protect, previewCheckout);
-
+router.post("/:id/generate-otp", adminAuth, orderController.generateDeliveryOTP);
+router.post("/:id/verify-otp",   adminAuth, orderController.verifyDeliveryOTP);
 /* ================= USER ROUTES ================= */
 router.post("/", protect, createOrder);
 router.get("/", protect, getMyOrders);
