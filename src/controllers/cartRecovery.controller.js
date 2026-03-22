@@ -1,27 +1,50 @@
 // src/controllers/cartRecovery.controller.js
+// ✅ Uses axios to call Expo Push API directly — no expo-server-sdk needed
 
 const AbandonedCart = require("../models/AbandonedCart");
-const { Expo }      = require("expo-server-sdk");
+const axios         = require("axios");
 
-const expo = new Expo();
+const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+
+// ✅ Send push notifications via Expo REST API directly
+async function sendExpoPushNotifications(messages) {
+  const chunks = [];
+  for (let i = 0; i < messages.length; i += 100) {
+    chunks.push(messages.slice(i, i + 100));
+  }
+  for (const chunk of chunks) {
+    try {
+      await axios.post(EXPO_PUSH_URL, chunk, {
+        headers: {
+          "Content-Type":  "application/json",
+          "Accept":        "application/json",
+          "Accept-Encoding": "gzip, deflate",
+        },
+        timeout: 10000,
+      });
+    } catch (err) {
+      console.error("[Push] Send error:", err?.message);
+    }
+  }
+}
+
+const isExpoPushToken = (token) =>
+  typeof token === "string" &&
+  (token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken["));
 
 /* ─────────────────────────────────────────
    POST /api/cart-recovery/sync
-   Called from frontend on every cart change
-   Body: { userId?, expoPushToken?, fcmToken?, items[], totalAmount }
 ───────────────────────────────────────── */
 async function syncAbandonedCart(req, res) {
   try {
     const { userId, expoPushToken, fcmToken, items, totalAmount } = req.body;
 
     if (!items || items.length === 0) {
-      // ✅ Cart cleared — remove abandoned cart record
       const filter = userId ? { userId } : { expoPushToken };
       await AbandonedCart.findOneAndDelete(filter);
       return res.json({ success: true });
     }
 
-    // ✅ Upsert — update cart snapshot, reset notification status
     const filter = userId ? { userId } : { expoPushToken };
     await AbandonedCart.findOneAndUpdate(
       filter,
@@ -31,7 +54,7 @@ async function syncAbandonedCart(req, res) {
         fcmToken:      fcmToken      || null,
         items,
         totalAmount:   totalAmount   || 0,
-        notified:      false,         // reset — they updated cart, give fresh window
+        notified:      false,
         notifiedAt:    null,
         isRecovered:   false,
         lastUpdatedAt: new Date(),
@@ -48,8 +71,6 @@ async function syncAbandonedCart(req, res) {
 
 /* ─────────────────────────────────────────
    POST /api/cart-recovery/recovered
-   Called when user completes an order
-   Marks the abandoned cart as recovered
 ───────────────────────────────────────── */
 async function markRecovered(req, res) {
   try {
@@ -67,20 +88,12 @@ async function markRecovered(req, res) {
 }
 
 /* ─────────────────────────────────────────
-   CRON JOB — run every 15 minutes
-   Finds carts abandoned for 30+ mins
-   Sends push notification
+   CRON JOB
 ───────────────────────────────────────── */
 async function runCartRecoveryCron() {
   try {
     const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-    // Find carts that:
-    // - were last updated 30+ mins ago
-    // - not yet notified
-    // - not already recovered
-    // - have items
-    // - have a push token
     const abandoned = await AbandonedCart.find({
       lastUpdatedAt: { $lte: thirtyMinsAgo },
       notified:      false,
@@ -90,7 +103,7 @@ async function runCartRecoveryCron() {
         { expoPushToken: { $ne: null } },
         { fcmToken:      { $ne: null } },
       ],
-    }).limit(100); // process max 100 per run
+    }).limit(100);
 
     if (!abandoned.length) {
       console.log("[CartRecovery] No abandoned carts found");
@@ -103,9 +116,8 @@ async function runCartRecoveryCron() {
     const ids      = [];
 
     for (const cart of abandoned) {
-      if (!cart.expoPushToken || !Expo.isExpoPushToken(cart.expoPushToken)) continue;
+      if (!isExpoPushToken(cart.expoPushToken)) continue;
 
-      const firstName = cart.items[0]?.name || "items";
       const itemCount = cart.items.reduce((sum, i) => sum + i.qty, 0);
       const total     = cart.totalAmount ? `₹${Math.round(cart.totalAmount)}` : "";
 
@@ -120,21 +132,12 @@ async function runCartRecoveryCron() {
     }
 
     if (!messages.length) {
-      console.log("[CartRecovery] No valid push tokens found");
+      console.log("[CartRecovery] No valid push tokens");
       return;
     }
 
-    // Send in chunks
-    const chunks = expo.chunkPushNotifications(messages);
-    for (const chunk of chunks) {
-      try {
-        await expo.sendPushNotificationsAsync(chunk);
-      } catch (err) {
-        console.error("[CartRecovery] Push error:", err);
-      }
-    }
+    await sendExpoPushNotifications(messages);
 
-    // Mark as notified
     await AbandonedCart.updateMany(
       { _id: { $in: ids } },
       { notified: true, notifiedAt: new Date() }
@@ -148,7 +151,7 @@ async function runCartRecoveryCron() {
 }
 
 /* ─────────────────────────────────────────
-   GET /api/cart-recovery/stats — admin
+   GET /api/cart-recovery/stats
 ───────────────────────────────────────── */
 async function getStats(req, res) {
   try {
@@ -159,10 +162,7 @@ async function getStats(req, res) {
       AbandonedCart.countDocuments({ notified: false, isRecovered: false, "items.0": { $exists: true } }),
     ]);
 
-    const recoveryRate = notified > 0
-      ? Math.round((recovered / notified) * 100)
-      : 0;
-
+    const recoveryRate = notified > 0 ? Math.round((recovered / notified) * 100) : 0;
     res.json({ success: true, total, notified, recovered, pending, recoveryRate });
   } catch (err) {
     res.status(500).json({ success: false });

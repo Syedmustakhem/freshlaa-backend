@@ -1,8 +1,36 @@
 // src/controllers/restock.controller.js
-// ✅ Uses dynamic import for expo-server-sdk (ESM-only package)
+// ✅ Uses axios to call Expo Push API directly — no expo-server-sdk needed
 
 const RestockNotification = require("../models/RestockNotification");
 const Product             = require("../models/Product");
+const axios               = require("axios");
+
+const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+
+const isExpoPushToken = (token) =>
+  typeof token === "string" &&
+  (token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken["));
+
+async function sendExpoPushNotifications(messages) {
+  const chunks = [];
+  for (let i = 0; i < messages.length; i += 100) {
+    chunks.push(messages.slice(i, i + 100));
+  }
+  for (const chunk of chunks) {
+    try {
+      await axios.post(EXPO_PUSH_URL, chunk, {
+        headers: {
+          "Content-Type":    "application/json",
+          "Accept":          "application/json",
+          "Accept-Encoding": "gzip, deflate",
+        },
+        timeout: 10000,
+      });
+    } catch (err) {
+      console.error("[Push] Send error:", err?.message);
+    }
+  }
+}
 
 /* ─────────────────────────────────────────
    POST /api/restock/subscribe
@@ -14,7 +42,6 @@ async function subscribe(req, res) {
     if (!productId) {
       return res.status(400).json({ success: false, message: "productId required" });
     }
-
     if (!userId && !expoPushToken && !fcmToken) {
       return res.status(400).json({ success: false, message: "userId or push token required" });
     }
@@ -23,7 +50,6 @@ async function subscribe(req, res) {
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
-
     if (product.stock > 0) {
       return res.status(400).json({ success: false, message: "Product is in stock" });
     }
@@ -34,14 +60,7 @@ async function subscribe(req, res) {
 
     await RestockNotification.findOneAndUpdate(
       filter,
-      {
-        productId,
-        userId:        userId        || null,
-        expoPushToken: expoPushToken || null,
-        fcmToken:      fcmToken      || null,
-        notified:      false,
-        notifiedAt:    null,
-      },
+      { productId, userId: userId || null, expoPushToken: expoPushToken || null, fcmToken: fcmToken || null, notified: false, notifiedAt: null },
       { upsert: true, new: true }
     );
 
@@ -59,18 +78,10 @@ async function subscribe(req, res) {
 ───────────────────────────────────────── */
 async function triggerRestock(productId) {
   try {
-    // ✅ Dynamic import — fixes ERR_REQUIRE_ESM
-    const { Expo } = await import("expo-server-sdk");
-    const expo     = new Expo();
-
     const product = await Product.findById(productId).select("name images");
     if (!product) return;
 
-    const subscribers = await RestockNotification.find({
-      productId,
-      notified: false,
-    });
-
+    const subscribers = await RestockNotification.find({ productId, notified: false });
     if (!subscribers.length) {
       console.log(`[Restock] No subscribers for product ${productId}`);
       return;
@@ -82,7 +93,7 @@ async function triggerRestock(productId) {
     const ids      = [];
 
     for (const sub of subscribers) {
-      if (sub.expoPushToken && Expo.isExpoPushToken(sub.expoPushToken)) {
+      if (isExpoPushToken(sub.expoPushToken)) {
         messages.push({
           to:    sub.expoPushToken,
           sound: "default",
@@ -94,14 +105,9 @@ async function triggerRestock(productId) {
       }
     }
 
-    const chunks = expo.chunkPushNotifications(messages);
-    for (const chunk of chunks) {
-      try {
-        await expo.sendPushNotificationsAsync(chunk);
-      } catch (err) {
-        console.error("[Restock] Push send error:", err);
-      }
-    }
+    if (!messages.length) return;
+
+    await sendExpoPushNotifications(messages);
 
     await RestockNotification.updateMany(
       { _id: { $in: ids } },
@@ -120,8 +126,7 @@ async function triggerRestock(productId) {
 ───────────────────────────────────────── */
 async function getSubscriberCount(req, res) {
   try {
-    const { productId } = req.params;
-    const count = await RestockNotification.countDocuments({ productId, notified: false });
+    const count = await RestockNotification.countDocuments({ productId: req.params.productId, notified: false });
     return res.json({ success: true, count });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
