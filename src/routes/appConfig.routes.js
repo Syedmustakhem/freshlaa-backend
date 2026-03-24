@@ -147,7 +147,7 @@ const APP_CONFIG = {
     image_url:
       "https://res.cloudinary.com/dxiujfq7i/image/upload/v1774370311/Freshlaa_splash_screen_202603242208_ylevay.jpg",
 
-    bg_color: "#ffffff",
+    // bg_color: "#ffffff",
 
     // tagline: "Fresh delivery in 30 mins ⚡",
 
