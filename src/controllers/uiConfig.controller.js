@@ -21,17 +21,17 @@ exports.getUIConfig = async (req, res) => {
     // ✅ NIGHT MODE (auto override)
     const hour = now.getHours();
 
-    if (hour >= 18) {
-      plain.header = {
-        gradient: ["#0f2027", "#203a43", "#2c5364"],
-        animation: {
-          type: "stars",
-          density: 8,
-          speed: 4000,
-          color: "#ffffff"
-        }
-      };
+if (hour >= 18 && !plain.overrideNight) {
+  plain.header = {
+    gradient: ["#0f2027", "#203a43", "#2c5364"],
+    animation: {
+      type: "stars",
+      density: 8,
+      speed: 4000,
+      color: "#ffffff"
     }
+  };
+}
 
     console.log("FINAL RESPONSE:", plain.header);
 
