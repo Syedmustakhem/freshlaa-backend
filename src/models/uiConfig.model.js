@@ -8,9 +8,24 @@ const uiConfigSchema = new mongoose.Schema({
       type: [String],
       default: ["#00C853", "#00897B"]
     },
+
     animation: {
-      type: String,
-      default: "none" // pulse, slide, none
+      type: {
+        type: String,
+        default: "none"
+      },
+      speed: {
+        type: Number,
+        default: 4000
+      },
+      intensity: {
+        type: Number,
+        default: 50
+      },
+      glow: {
+        type: Boolean,
+        default: false
+      }
     }
   },
 
