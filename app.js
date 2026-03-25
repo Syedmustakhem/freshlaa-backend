@@ -41,7 +41,7 @@ const offerRoutes           = require(path.join(routesPath, "offer.routes"));
 const checkoutPaymentRoutes = require(path.join(routesPath, "checkoutPayment.routes"));
 const adminCampaignRoutes   = require(path.join(routesPath, "adminCampaign.routes"));
 const riderRoutes = require(path.join(routesPath, "rider.routes"));
-
+const uiConfigRoutes = require(path.join(routesPath, "uiConfig.routes"));
 /* ================= MIDDLEWARE ================= */
 
 app.use(cors({
@@ -65,7 +65,7 @@ app.use(express.urlencoded({ extended: true }));
 
 /* ================= STATIC INVOICES ================= */
 app.use("/invoices", express.static(path.join(__dirname, "../freshlaa-backend/invoices")));
-
+app.use("/api", uiConfigRoutes);
 /* ================= ROUTES ================= */
 app.use("/api/auth",             authRoutes);
 app.use("/api/products",         productRoutes);
