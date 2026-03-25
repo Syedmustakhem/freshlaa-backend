@@ -13,17 +13,19 @@ exports.getUIConfig = async (req, res) => {
     // ✅ Time-based activation
     if (config.schedule?.startTime && config.schedule?.endTime) {
       if (now < config.schedule.startTime || now > config.schedule.endTime) {
-        config = null;
+        return res.json({});
       }
     }
 
     // ✅ Night Mode Auto Override
     const hour = now.getHours();
-    if (hour >= 18 && config) {
-      config.header.gradient = ["#1A1A1A", "#000000"];
+    let finalConfig = config.toObject(); // 🔥 IMPORTANT
+
+    if (hour >= 18) {
+      finalConfig.header.gradient = ["#1A1A1A", "#000000"];
     }
 
-    res.json(config);
+    res.json(finalConfig);
 
   } catch (err) {
     console.error("UI CONFIG ERROR:", err);
