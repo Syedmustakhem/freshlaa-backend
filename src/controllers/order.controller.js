@@ -100,7 +100,7 @@ async function buildFormattedItems(validatedItems) {
     return {
       productId:         i.productId,
       name:              product?.name       || "Product",
-image: product?.images?.[0] || "",
+      image:             product?.images?.[0] || "",
       originalPrice:     i.originalPrice     ?? i.price,
       finalPrice:        i.finalPrice        ?? i.price,
       qty:               i.qty,
@@ -437,24 +437,25 @@ exports.getMyOrders = async (req, res) => {
     const skip  = (page - 1) * limit;
 
     const [orders, total] = await Promise.all([
-Order.find({ user: req.user._id })
-  .sort({ createdAt: -1 })
-  .skip(skip)
-  .limit(limit)
-  .populate({ path: "items.productId", model: "Product", select: "images" })
-  .lean()
-  .then(orders =>
-    orders.map(order => ({
-      ...order,
-      items: order.items.map(item => ({
-        ...item,
-        // ✅ use saved image if exists, fallback to populated product images
-        image: (item.image && item.image.trim() !== "")
-          ? item.image
-          : item.productId?.images?.[0] || "",
-      })),
-    }))
-  ),      Order.countDocuments({ user: req.user._id }),
+      Order.find({ user: req.user._id })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "items.productId", model: "Product", select: "images" })
+        .lean()
+        .then(orders =>
+          orders.map(order => ({
+            ...order,
+            items: order.items.map(item => ({
+              ...item,
+              // ✅ use saved image if exists, fallback to populated product images
+              image: (item.image && item.image.trim() !== "")
+                ? item.image
+                : item.productId?.images?.[0] || "",
+            })),
+          }))
+        ),
+      Order.countDocuments({ user: req.user._id }),
     ]);
 
     return res.json({
@@ -528,14 +529,6 @@ exports.getActiveOrders = async (req, res) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ADMIN — UPDATE ORDER STATUS
-═══════════════════════════════════════════════════════════════ */
-// ─────────────────────────────────────────────────────────────────────────────
-// ADD THESE TWO FUNCTIONS TO THE BOTTOM OF order.controller.js
-// They handle OTP generation (admin/system) and verification (rider/admin)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/* ═══════════════════════════════════════════════════════════════
    GENERATE DELIVERY OTP
    Called automatically when order status → OutForDelivery
    Also callable manually from admin panel
@@ -544,9 +537,8 @@ exports.getActiveOrders = async (req, res) => {
 
 exports.generateDeliveryOTP = async (req, res) => {
   try {
-const isAdmin = !!req.admin;    
-if (!isAdmin) {
-
+    const isAdmin = !!req.admin;
+    if (!isAdmin) {
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
 
@@ -699,15 +691,9 @@ exports.verifyDeliveryOTP = async (req, res) => {
       });
     }
 
-    // WhatsApp notification
-    const phone = (freshUser?.phone || order.user?.phone)?.replace("+", "");
-    if (phone) {
-      sendWhatsAppTemplate(phone, "order_delivered", [
-        freshUser?.name || "Customer",
-        order.orderId || order._id.toString(),
-        `₹${order.total}`,
-      ]).catch((err) => console.error("WhatsApp delivered error:", err.message));
-    }
+    // ── WhatsApp NOT sent here ─────────────────────────────────────────────
+    // order_delivered WhatsApp template is sent exclusively from
+    // updateOrderStatus to avoid duplicate messages.
 
     return res.json({
       success: true,
@@ -721,6 +707,9 @@ exports.verifyDeliveryOTP = async (req, res) => {
   }
 };
 
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN — UPDATE ORDER STATUS
+═══════════════════════════════════════════════════════════════ */
 
 exports.updateOrderStatus = async (req, res) => {
   try {
@@ -826,21 +815,31 @@ exports.updateOrderStatus = async (req, res) => {
       ]).catch((err) => console.error("WhatsApp order_cancelled error:", err.message));
     }
 
+    // ✅ FIXED: order_delivered WhatsApp — single source of truth
     if (status === "Delivered" && phone) {
-      (async () => {
-        try {
-          await generateInvoice(order, order.user);
-          await sendWhatsAppTemplate(phone, "order_delivered", [
-            order.user.name || "Customer",
-            order.orderId || order._id.toString(),
-            `₹${order.total}`,
-          ]);
-          const invoiceUrl = `https://api.freshlaa.com/invoices/invoice-${order._id}.pdf`;
-          await sendWhatsAppDocument(phone, invoiceUrl, `Invoice-${order._id}.pdf`);
-        } catch (err) {
-          console.error("Invoice/WhatsApp delivered error:", err.message);
-        }
-      })();
+      try {
+        await generateInvoice(order, order.user);
+
+        // Build productName: "Item1 + X more" for multiple items, else first item name
+        const productName =
+          order.items.length > 1
+            ? `${order.items[0].name} + ${order.items.length - 1} more`
+            : order.items[0]?.name || "Freshlaa Items";
+
+        // ✅ Exactly 4 params: [name, orderId, productName, amount]
+        // ✅ Uses order.user?.name (not freshUser which is scoped inside the push block above)
+        await sendWhatsAppTemplate(phone, "order_delivered", [
+          order.user?.name || "Customer",
+          order.orderId || order._id.toString(),
+          productName,
+          order.total.toString(),
+        ]);
+
+        const invoiceUrl = `https://api.freshlaa.com/invoices/invoice-${order._id}.pdf`;
+        await sendWhatsAppDocument(phone, invoiceUrl, `Invoice-${order._id}.pdf`);
+      } catch (err) {
+        console.error("Invoice/WhatsApp delivered error:", err.message);
+      }
     }
 
     return res.json({ success: true, message: "Order status updated", order });
