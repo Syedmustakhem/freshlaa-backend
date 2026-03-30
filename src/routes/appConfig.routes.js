@@ -145,7 +145,7 @@ const APP_CONFIG = {
     // ✅ TIP: This image_url is loaded remotely — make sure it's fast to load.
     //         Consider using a small optimized PNG (< 200KB) for best splash speed.
     image_url:
-      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1774455121/Freshlaa_product_showcase_202603252141_pvpebs.jpg",
+      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1774865156/Freshlaa_product_showcase_202603301535_cq5ifa.jpg",
 
     // bg_color: "#ffffff",
 
