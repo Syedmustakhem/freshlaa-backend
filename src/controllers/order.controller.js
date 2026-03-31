@@ -740,14 +740,31 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     // ✅ Auto-generate OTP when order goes OutForDelivery
-    if (status === "OutForDelivery") {
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
-      order.deliveryOTP       = otp;
-      order.otpGeneratedAt    = new Date();
-      order.otpFailedAttempts = 0;
-    }
+ if (status === "OutForDelivery") {
+  const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
-    await order.save();
+  order.deliveryOTP = otp;
+  order.otpGeneratedAt = new Date();
+  order.otpFailedAttempts = 0;
+}
+
+// ✅ ALWAYS SAVE
+await order.save();
+
+if (status === "OutForDelivery") {
+  const phone = order.user?.phone?.replace("+", "");
+
+  if (phone) {
+    await sendWhatsAppTemplate(
+      phone,
+      "freshlaa_delivery_otp",
+      [
+        order.deliveryOTP.toString(),
+        "9441538282"
+      ]
+    );
+  }
+}
 
     // ✅ Push OTP to customer AFTER save
     if (status === "OutForDelivery" && order.deliveryOTP && global.io) {
