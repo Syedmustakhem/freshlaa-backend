@@ -4,7 +4,7 @@
  *   app.use("/api/reviews", require("./routes/review.routes"));
  */
 const router = require("express").Router();
-const ctrl   = require("../controllers/Review.controller");
+const ctrl   = require("../controllers/review.controller");
 const auth   = require("../middlewares/auth.middleware"); // your existing auth middleware
 
 // ── Public routes
