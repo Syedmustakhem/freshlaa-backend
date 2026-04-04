@@ -20,7 +20,7 @@ router.get("/can-review",         ctrl.canReview);            // check before sh
 router.post("/",                  ctrl.createReview);         // submit review
 router.put("/:id",                ctrl.updateReview);         // edit review
 router.delete("/:id",             ctrl.deleteReview);         // delete review
-router.post("/:id/helpful",       ctrl.toggleHelpful);        // helpful vote
+router.post("/:id/helpful",       ctrl.toggleHelpfull);        // helpful vote
 
 // ── Admin (controller checks isAdmin internally)
 router.post("/:id/reply",         ctrl.replyToReview);
