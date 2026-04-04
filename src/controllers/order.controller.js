@@ -740,40 +740,63 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     // ✅ Auto-generate OTP when order goes OutForDelivery
- if (status === "OutForDelivery") {
+ // ✅ Auto-generate OTP when order goes OutForDelivery
+if (status === "OutForDelivery") {
   const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
-  order.deliveryOTP = otp;
-  order.otpGeneratedAt = new Date();
+  order.deliveryOTP       = otp;
+  order.otpGeneratedAt    = new Date();
   order.otpFailedAttempts = 0;
 }
 
-// ✅ ALWAYS SAVE
+// ✅ ALWAYS SAVE FIRST — OTP must be persisted before anything else
 await order.save();
 
+// ✅ Send WhatsApp OTP — only after save, only for OutForDelivery
 if (status === "OutForDelivery") {
-  const phone = order.user?.phone?.replace("+", "");
 
-  if (phone) {
-    await sendWhatsAppTemplate(
-      phone,
-      "freshlaa_delivery_otp",
-      [
-        order.deliveryOTP.toString(),
-        "9441538282"
-      ]
-    );
+  // ── Debug logs
+  console.log("🔐 OTP generated:", order.deliveryOTP);
+
+  const rawPhone = order.user?.phone;
+  const phone    = rawPhone?.replace("+", "").trim();
+
+  console.log("📲 Sending OTP WhatsApp to:", phone ?? "MISSING");
+
+  // ── Guard: skip if phone or OTP missing
+  if (!phone) {
+    console.warn("⚠️  OTP WhatsApp skipped — phone number missing on order.user");
+  } else if (!order.deliveryOTP) {
+    console.warn("⚠️  OTP WhatsApp skipped — deliveryOTP missing after save");
+  } else {
+    try {
+      await sendWhatsAppTemplate(
+        phone,
+        "freshlaa_delivery_otp",
+        [
+          order.deliveryOTP.toString(), // param 1 — OTP
+          "9441538282",                 // param 2 — support/contact number
+        ]
+      );
+      console.log(`✅ OTP WhatsApp sent to ${phone} | OTP: ${order.deliveryOTP}`);
+    } catch (err) {
+      // Log full error — never crash the status update because of WhatsApp failure
+      console.error("❌ OTP WhatsApp send failed:");
+      console.error("   message  :", err.message);
+      console.error("   status   :", err.response?.status);
+      console.error("   response :", JSON.stringify(err.response?.data ?? err.response ?? {}));
+    }
+  }
+
+  // ── Push OTP to customer app via socket
+  if (order.deliveryOTP && global.io) {
+    global.io.to(order._id.toString()).emit("delivery-otp-generated", {
+      orderId: order._id.toString(),
+      otp:     order.deliveryOTP,
+    });
+    console.log(`📡 Socket OTP emitted for ${order.orderId}: ${order.deliveryOTP}`);
   }
 }
-
-    // ✅ Push OTP to customer AFTER save
-    if (status === "OutForDelivery" && order.deliveryOTP && global.io) {
-      global.io.to(order._id.toString()).emit("delivery-otp-generated", {
-        orderId: order._id.toString(),
-        otp:     order.deliveryOTP,
-      });
-      console.log(`🔐 OTP auto-generated for ${order.orderId}: ${order.deliveryOTP}`);
-    }
 
     /* ── Socket ── */
     if (global.io) {
