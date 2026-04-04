@@ -1,12 +1,5 @@
 const UIConfig = require("../models/uiConfig.model");
 
-// ─────────────────────────────────────────────────────────────
-// TIMEZONE FIX:
-// Server runs in UTC. new Date().getHours() returns UTC hour.
-// You are in India (IST = UTC+5:30).
-// At 11:57 AM IST → UTC hour = 6 → hits "hour < 7" → night theme. WRONG.
-// Fix: always compute hour in IST regardless of server timezone.
-// ─────────────────────────────────────────────────────────────
 
 function getISTHour() {
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // IST = UTC + 5h 30m
@@ -18,16 +11,11 @@ let _dbCache     = null;
 let _dbCacheTime = 0;
 const CACHE_TTL  = 5 * 60 * 1000; // 5 min — only avoids DB hammering
 
-// ─── Time-based theme builder (pure, runs on every request)
 function buildTheme(config, hour) {
 
-  // overrideNight = true → always use DB config (e.g. "space" theme)
   if (config.overrideNight) {
     return config.header;
-  }
-
-  // 🌙 Night: 7 PM (19) → 7 AM (7) IST
-  if (hour >= 19 || hour < 7) {
+  }  if (hour >= 19 || hour < 7) {
     return {
       gradient: ["#0f2027", "#203a43", "#2c5364"],
       animation: {
@@ -40,8 +28,6 @@ function buildTheme(config, hour) {
       },
     };
   }
-
-  // 🌇 Evening: 4 PM (16) → 7 PM (19) IST
   if (hour >= 16 && hour < 19) {
     return {
       gradient: ["#ee0979", "#ff6a00"],
@@ -56,7 +42,6 @@ function buildTheme(config, hour) {
     };
   }
 
-  // ☀️ Daytime 7 AM–4 PM: use active DB config (your Compass control)
   return config.header;
 }
 
