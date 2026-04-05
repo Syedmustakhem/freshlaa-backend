@@ -8,7 +8,7 @@ const app = express();
 
 /* HEALTH CHECK */
 app.get("/health", (req, res) => {
-  return res.status(200).send("OK");
+  return res.status(200).send("OK.");
 });
 
 /* ================= ROUTE IMPORTS (PM2 SAFE) ================= */
@@ -19,7 +19,8 @@ const appConfigRoutes       = require(path.join(routesPath, "appConfig.routes"))
 const restockRoutes         = require(path.join(routesPath, "restock.routes"));
 const cartRecoveryRoutes    = require(path.join(routesPath, "cartRecovery.routes"));
 const supportRoutes         = require(path.join(routesPath, "support.routes")); // ✅ NEW
-
+const activityRoutes = require(path.join(routesPath, "activity.routes"));
+const recommendationRoutes = require(path.join(routesPath, "recommendation.routes"));
 const adminRoutes           = require(path.join(routesPath, "admin.routes"));
 const authRoutes            = require(path.join(routesPath, "auth.routes"));
 const productRoutes         = require(path.join(routesPath, "product.routes"));
@@ -95,6 +96,8 @@ app.use("/api/admin/campaign",   adminCampaignRoutes);
 app.use("/api/support",          supportRoutes); // ✅ NEW
 app.use("/api/rider", riderRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/activity", activityRoutes);
+app.use("/api/recommendation", recommendationRoutes);
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Freshlaa Backend Running ✅" });
 });
