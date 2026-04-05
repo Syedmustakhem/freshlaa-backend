@@ -33,7 +33,17 @@ exports.getStillLooking = async (req, res) => {
   }
 };
 
+exports.getAlsoBought = async (req, res) => {
+  try {
+    const products = await Product.find()
+      .sort({ popularity: -1 })
+      .limit(10);
 
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 // ✅ SUGGESTED FOR YOU
 exports.getSuggested = async (req, res) => {
   try {
