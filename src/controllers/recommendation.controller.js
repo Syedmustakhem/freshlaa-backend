@@ -9,7 +9,14 @@ exports.getStillLooking = async (req, res) => {
 
     const activity = await UserActivity.findOne({ userId });
 
-    if (!activity) return res.json([]);
+    // 🔥 FALLBACK FOR NEW USERS
+    if (!activity) {
+      const fallback = await Product.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .limit(10);
+
+      return res.json(fallback);
+    }
 
     const recentSearches = activity.searches
       .slice(-5)
@@ -19,12 +26,20 @@ exports.getStillLooking = async (req, res) => {
       .slice(-5)
       .map(v => v.productId);
 
-    const products = await Product.find({
+    let products = await Product.find({
       $or: [
-        { category: { $in: recentSearches } },
+        { subCategory: { $in: recentSearches } },
         { _id: { $in: recentViews } }
-      ]
+      ],
+      isActive: true
     }).limit(10);
+
+    // 🔥 IF NO MATCH → FALLBACK
+    if (!products.length) {
+      products = await Product.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .limit(10);
+    }
 
     res.json(products);
 
@@ -32,7 +47,6 @@ exports.getStillLooking = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 exports.getAlsoBought = async (req, res) => {
   try {
     const products = await Product.find()

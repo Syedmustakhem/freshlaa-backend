@@ -510,7 +510,6 @@ exports.getProductsByIds = async (req, res) => {
   }
 };
 
-
 exports.getProductsBySection = async (req, res) => {
   try {
     const { sectionId, subCategory } = req.query;

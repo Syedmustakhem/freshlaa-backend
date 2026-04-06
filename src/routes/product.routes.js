@@ -35,7 +35,8 @@ router.put("/:id", adminAuth, updateProduct);
 /* ================= APP ================= */
 router.get("/by-section", getProductsBySection);
 router.get("/by-category-slug", getProductsByCategorySlug);
-router.post("/by-ids", getProductsByIds);  // ← not productController.getProductsByIdsrouter.get("/featured", getFeaturedProducts);
+router.post("/by-ids", getProductsByIds);
+router.get("/featured", getFeaturedProducts);
 router.get("/trending", getTrendingProducts);
 router.get("/offers", getOfferProducts);
 
