@@ -628,11 +628,18 @@ exports.getProductsBySection = async (req, res) => {
 exports.getFlashSales = async (req, res) => {
   try {
     const { includeOOS } = req.query;
+    const now = new Date();
     const query = { 
       isFlashSale: true, 
-      flashSaleEndTime: { $gt: new Date() },
       isActive: true,
+      $or: [
+        { flashSaleEndTime: { $gt: now } },
+        { flashSaleEndTime: null },
+        { flashSaleEndTime: { $exists: false } }
+      ]
     };
+
+    console.log(`[FlashSale] Fetching at ${now.toISOString()}. Query:`, JSON.stringify(query));
 
     if (includeOOS !== "true") {
       query.stock = { $gt: 0 };
