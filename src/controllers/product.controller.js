@@ -188,11 +188,19 @@ exports.getProductsByCategory = async (req, res) => {
   try {
     const category = req.params.category?.trim().toLowerCase();
 
-    const products = await Product.find({
+    const { includeOOS } = req.query;
+    const query = {
       category,
       isActive: true,
-      stock: { $gt: 0 },
-    }).lean();
+    };
+
+    if (includeOOS !== "true") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
+      .sort({ stock: -1, createdAt: -1 }) // In-stock first
+      .lean();
 
     products.forEach(p => {
       p.variants = p.variants.filter(v => v.stock > 0);
@@ -213,11 +221,19 @@ exports.getProductsByCategory = async (req, res) => {
 
 /* ================= FEATURED ================= */
 exports.getFeaturedProducts = async (req, res) => {
-  const products = await Product.find({
+  const { includeOOS } = req.query;
+  const query = {
     isFeatured: true,
     isActive: true,
-    stock: { $gt: 0 },
-  }).lean();
+  };
+
+  if (includeOOS !== "true") {
+    query.stock = { $gt: 0 };
+  }
+
+  const products = await Product.find(query)
+    .sort({ stock: -1, createdAt: -1 })
+    .lean();
 
   products.forEach(p => {
     p.variants = p.variants.filter(v => v.stock > 0);
@@ -232,11 +248,19 @@ exports.getFeaturedProducts = async (req, res) => {
 
 /* ================= OFFERS ================= */
 exports.getOfferProducts = async (req, res) => {
-  const products = await Product.find({
+  const { includeOOS } = req.query;
+  const query = {
     offerPercentage: { $gt: 0 },
     isActive: true,
-    stock: { $gt: 0 },
-  }).lean();
+  };
+
+  if (includeOOS !== "true") {
+    query.stock = { $gt: 0 };
+  }
+
+  const products = await Product.find(query)
+    .sort({ stock: -1, createdAt: -1 })
+    .lean();
 
   products.forEach(p => {
     p.variants = p.variants.filter(v => v.stock > 0);
