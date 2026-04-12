@@ -19,6 +19,11 @@ const HomeSectionSchema = new mongoose.Schema({
       "REVIEWS",
       "QUICK_REORDER",
       "FOOTER",
+      "TRENDING_TICKER",
+      "FLASH_SALE",
+      "STILL_LOOKING",
+      "ALSO_BOUGHT",
+      "SUGGESTED_PRODUCTS",
     ],
   },
 

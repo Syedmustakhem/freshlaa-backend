@@ -22,6 +22,7 @@ const {
   deleteProduct,
   getProductsByIds,
   getFlashSales,
+  getDiscoveryProducts,
 } = productController;
 
 /* ================= ADMIN ================= */
@@ -35,6 +36,7 @@ router.put("/:id", adminAuth, updateProduct);
 
 /* ================= APP ================= */
 router.get("/flash-sales", getFlashSales);
+router.get("/discovery", getDiscoveryProducts);
 router.get("/by-section", getProductsBySection);
 router.get("/by-category-slug", getProductsByCategorySlug);
 router.post("/by-ids", getProductsByIds);

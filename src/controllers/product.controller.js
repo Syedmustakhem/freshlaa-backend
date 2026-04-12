@@ -583,3 +583,24 @@ exports.getFlashSales = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch flash sales" });
   }
 };
+
+/* ================= GET DISCOVERY PRODUCTS (Swipe-to-Shop) ================= */
+exports.getDiscoveryProducts = async (req, res) => {
+  try {
+    const products = await Product.aggregate([
+      { $match: { isActive: true, stock: { $gt: 0 }, "images.0": { $exists: true } } },
+      { $sample: { size: 20 } }
+    ]);
+
+    // Ensure numeric fields and lean-like structure
+    const cleaned = products.map(p => {
+      p.variants = p.variants?.filter(v => v.stock > 0);
+      return p;
+    });
+
+    res.json({ success: true, data: cleaned });
+  } catch (err) {
+    console.error("getDiscoveryProducts error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch discovery products" });
+  }
+};
