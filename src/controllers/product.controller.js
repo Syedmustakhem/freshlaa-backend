@@ -418,10 +418,18 @@ exports.updateProduct = async (req, res) => {
     if (typeof data.isTrending     === "boolean") product.isTrending     = data.isTrending;
     if (typeof data.isActive       === "boolean") product.isActive       = data.isActive;
     if (typeof data.offerPercentage === "number") product.offerPercentage = data.offerPercentage;
-    if (typeof data.isFlashSale     === "boolean") product.isFlashSale     = data.isFlashSale;
-    if (typeof data.flashSalePrice  === "number")  product.flashSalePrice  = data.flashSalePrice;
-    if (data.flashSaleEndTime)                     product.flashSaleEndTime = new Date(data.flashSaleEndTime);
-    else if (data.isFlashSale === false)           product.flashSaleEndTime = null;
+    // Robust Flash Sale Updates
+    if (typeof data.isFlashSale !== "undefined") {
+      product.isFlashSale = String(data.isFlashSale) === "true";
+    }
+    if (typeof data.flashSalePrice !== "undefined") {
+      product.flashSalePrice = Number(data.flashSalePrice) || 0;
+    }
+    if (data.flashSaleEndTime) {
+      product.flashSaleEndTime = new Date(data.flashSaleEndTime);
+    } else if (product.isFlashSale === false) {
+      product.flashSaleEndTime = null;
+    }
 
     if (Array.isArray(data.variants) && data.variants.length > 0) {
       const variants = normalizeVariants(data.variants);
@@ -635,9 +643,11 @@ exports.getFlashSales = async (req, res) => {
       .sort({ stock: -1, flashSaleEndTime: 1 }) // In-stock first
       .lean();
 
-    products.forEach(p => {
-      p.variants = p.variants?.filter(v => v.stock > 0);
-    });
+    if (includeOOS !== "true") {
+      products.forEach(p => {
+        p.variants = p.variants?.filter(v => v.stock > 0);
+      });
+    }
 
     res.json({ success: true, data: products });
   } catch (err) {
