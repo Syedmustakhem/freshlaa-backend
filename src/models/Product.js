@@ -53,6 +53,11 @@ const productSchema = new mongoose.Schema(
     index:true
   },
 
+  /* ================= FLASH SALES (NEW) ================= */
+  isFlashSale: { type: Boolean, default: false, index: true },
+  flashSaleEndTime: { type: Date },
+  flashSalePrice: { type: Number },
+
 
   /* ================= MEDIA ================= */
 

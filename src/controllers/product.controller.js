@@ -559,3 +559,27 @@ exports.getProductsBySection = async (req, res) => {
     });
   }
 };
+
+/* ================= GET FLASH SALES ================= */
+exports.getFlashSales = async (req, res) => {
+  try {
+    const products = await Product.find({ 
+      isFlashSale: true, 
+      flashSaleEndTime: { $gt: new Date() },
+      isActive: true,
+      stock: { $gt: 0 }
+    })
+      .select("name images variants category subCategory isFlashSale flashSalePrice flashSaleEndTime stock")
+      .sort({ flashSaleEndTime: 1 })
+      .lean();
+
+    products.forEach(p => {
+      p.variants = p.variants?.filter(v => v.stock > 0);
+    });
+
+    res.json({ success: true, data: products });
+  } catch (err) {
+    console.error("getFlashSales error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch flash sales" });
+  }
+};

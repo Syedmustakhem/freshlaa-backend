@@ -87,13 +87,19 @@ async function checkPriceDrops(productId = null) {
           imageUrl = `https://api.freshlaa.com${imageUrl}`;
         }
 
+        // ✅ IMPORTANT: Update alert FIRST to prevent double notifications in case of race condition
+        await PriceAlert.findByIdAndUpdate(alert._id, {
+          lastNotifiedAt: new Date(),
+          lastNotifiedPrice: currentPrice,
+        });
+
         // Send push notification using your existing notifyUser
         await notifyUser({
           userId: alert.user,
           type: "PRICE_ALERT",
           pushData: {
             title: "🔔 Price Drop Alert!",
-            body: `${product.name} — was ₹${trackedPrice}, now ₹${currentPrice}! Save ₹${dropAmount} (${dropPercent}% off)`,
+            body: `You tracked ${product.name} at ₹${trackedPrice}. Now it's ₹${currentPrice}! Save ₹${dropAmount}!`,
             deepLinkType: "PRODUCT",
             deepLinkParams: {
               productId: product._id?.toString(),
@@ -102,12 +108,6 @@ async function checkPriceDrops(productId = null) {
             },
             imageUrl: imageUrl,
           },
-        });
-
-        // Update alert — mark as notified to avoid spam
-        await PriceAlert.findByIdAndUpdate(alert._id, {
-          lastNotifiedAt: new Date(),
-          lastNotifiedPrice: currentPrice,
         });
 
         notified++;

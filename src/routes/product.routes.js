@@ -21,6 +21,7 @@ const {
   toggleProductStatus,
   deleteProduct,
   getProductsByIds,
+  getFlashSales,
 } = productController;
 
 /* ================= ADMIN ================= */
@@ -33,6 +34,7 @@ router.post("/manual", adminAuth, createManualProduct);
 router.put("/:id", adminAuth, updateProduct);
 
 /* ================= APP ================= */
+router.get("/flash-sales", getFlashSales);
 router.get("/by-section", getProductsBySection);
 router.get("/by-category-slug", getProductsByCategorySlug);
 router.post("/by-ids", getProductsByIds);

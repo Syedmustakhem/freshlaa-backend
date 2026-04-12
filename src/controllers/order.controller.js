@@ -890,3 +890,43 @@ if (status === "OutForDelivery") {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   GET TRENDING TICKER
+   Fetches recent live purchases for social proof FOMO banner
+═══════════════════════════════════════════════════════════════ */
+
+exports.getTrendingTicker = async (req, res) => {
+  try {
+    const orders = await Order.find({ status: { $ne: "Cancelled" } })
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .lean();
+
+    const tickerItems = [];
+    
+    for (const order of orders) {
+      if (order.items && order.items.length > 0 && order.address && order.address.area) {
+        // Just extract the area and the first item
+        const area = order.address.area.substring(0, 25); // prevent ridiculously long areas
+        const productName = order.items[0].name;
+        tickerItems.push(`Someone in ${area} bought ${productName}`);
+      }
+    }
+
+    // 🔥 Fallback if database is fresh / local dev
+    if (tickerItems.length < 3) {
+      tickerItems.push("Someone in HSR Layout bought Farm Fresh Milk 1L");
+      tickerItems.push("Someone in Koramangala bought Ripe Avocados");
+      tickerItems.push("Someone in Indiranagar bought Whole Wheat Bread");
+      tickerItems.push("Someone in Whitefield bought Premium Dates");
+    }
+
+    // filter duplicates
+    const uniqueTickers = [...new Set(tickerItems)];
+
+    return res.json({ success: true, tickerItems: uniqueTickers.slice(0, 8) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

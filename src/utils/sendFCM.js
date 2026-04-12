@@ -55,11 +55,16 @@ const sendFCM = async ({
       notification: {
         sound:     "default",
         channelId,                             // ✅ dynamic, not hardcoded "orders"
-        ...(imageUrl && { imageUrl }),
+        ...(imageUrl && { imageUrl, image: imageUrl }), // Fallback included
       },
     },
     apns: {
-      payload: { aps: { sound: "default" } },
+      payload: { 
+        aps: { 
+          sound: "default",
+          "mutable-content": imageUrl ? 1 : 0 
+        } 
+      },
       ...(imageUrl && { fcmOptions: { imageUrl } }),
     },
   };

@@ -14,6 +14,7 @@ const {
   previewCheckout,
   generateDeliveryOTP, // ✅ added
   verifyDeliveryOTP,   // ✅ added
+  getTrendingTicker,   // ✅ added
 } = require("../controllers/order.controller");
 
 /* ================= ADMIN ROUTES ================= */
@@ -27,6 +28,7 @@ router.post("/",        protect, createOrder);
 router.get("/",         protect, getMyOrders);
 
 // 🔥 IMPORTANT: specific routes BEFORE :id
+router.get("/trending-ticker", getTrendingTicker); // Public route
 router.get("/last",   protect, getLastOrder);
 router.get("/active", protect, getActiveOrders);
 
