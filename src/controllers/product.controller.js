@@ -418,6 +418,10 @@ exports.updateProduct = async (req, res) => {
     if (typeof data.isTrending     === "boolean") product.isTrending     = data.isTrending;
     if (typeof data.isActive       === "boolean") product.isActive       = data.isActive;
     if (typeof data.offerPercentage === "number") product.offerPercentage = data.offerPercentage;
+    if (typeof data.isFlashSale     === "boolean") product.isFlashSale     = data.isFlashSale;
+    if (typeof data.flashSalePrice  === "number")  product.flashSalePrice  = data.flashSalePrice;
+    if (data.flashSaleEndTime)                     product.flashSaleEndTime = new Date(data.flashSaleEndTime);
+    else if (data.isFlashSale === false)           product.flashSaleEndTime = null;
 
     if (Array.isArray(data.variants) && data.variants.length > 0) {
       const variants = normalizeVariants(data.variants);
