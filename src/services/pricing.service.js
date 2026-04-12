@@ -165,7 +165,18 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
     const originalPrice = price;
 
-    if (product.offerPercentage > 0) {
+    // ⚡ FLASH SALE PRICE OVERRIDE & QTY LIMIT ⚡
+    const isFlashSaleActive = product.isFlashSale && 
+                              product.flashSalePrice > 0 && 
+                              product.flashSaleEndTime && 
+                              new Date(product.flashSaleEndTime) > new Date();
+
+    if (isFlashSaleActive) {
+      if (item.qty > 1) {
+        throw new Error(`Flash sale deal for ${product.name} is limited to 1 quantity per order.`);
+      }
+      price = product.flashSalePrice;
+    } else if (product.offerPercentage > 0) {
       price = price - (price * product.offerPercentage) / 100;
     }
 
