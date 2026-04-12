@@ -13,12 +13,17 @@ const { notifyUser } = require("../services/notification.service");
 /* ─────────────────────────────────────────────
    CHECK & NOTIFY — core logic
 ───────────────────────────────────────────── */
-async function checkPriceDrops() {
+async function checkPriceDrops(productId = null) {
   console.log("🔔 [PriceAlertCron] Starting price drop check...");
 
   try {
     // 1. Get all active alerts with product data
-    const alerts = await PriceAlert.find({ isActive: true })
+    const query = { isActive: true };
+    if (productId) {
+      query.product = productId;
+    }
+    
+    const alerts = await PriceAlert.find(query)
       .populate("product", "name price variants images")
       .lean();
 
@@ -76,6 +81,12 @@ async function checkPriceDrops() {
 
         console.log(`  🔽 Price dropped ₹${dropAmount} (${dropPercent}% off) — sending notification...`);
 
+        // Ensure imageUrl is an absolute HTTPS URL
+        let imageUrl = product.images?.[0] || null;
+        if (imageUrl && imageUrl.startsWith("/")) {
+          imageUrl = `https://api.freshlaa.com${imageUrl}`;
+        }
+
         // Send push notification using your existing notifyUser
         await notifyUser({
           userId: alert.user,
@@ -89,7 +100,7 @@ async function checkPriceDrops() {
               oldPrice: String(trackedPrice),
               newPrice: String(currentPrice),
             },
-            imageUrl: product.images?.[0] || null,
+            imageUrl: imageUrl,
           },
         });
 

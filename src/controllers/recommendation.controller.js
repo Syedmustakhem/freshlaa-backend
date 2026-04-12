@@ -1,6 +1,8 @@
 const UserActivity = require("../models/UserActivity");
 const Product = require("../models/Product");
+const Order = require("../models/Order");
 
+const PRODUCT_SELECT_FIELDS = "name images variants offerPercentage category subCategory isActive";
 
 // ✅ STILL LOOKING
 exports.getStillLooking = async (req, res) => {
@@ -13,7 +15,8 @@ exports.getStillLooking = async (req, res) => {
     if (!activity) {
       const fallback = await Product.find({ isActive: true })
         .sort({ createdAt: -1 })
-        .limit(10);
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
 
       return res.json(fallback);
     }
@@ -32,13 +35,16 @@ exports.getStillLooking = async (req, res) => {
         { _id: { $in: recentViews } }
       ],
       isActive: true
-    }).limit(10);
+    })
+      .limit(10)
+      .select(PRODUCT_SELECT_FIELDS);
 
     // 🔥 IF NO MATCH → FALLBACK
     if (!products.length) {
       products = await Product.find({ isActive: true })
         .sort({ createdAt: -1 })
-        .limit(10);
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
     }
 
     res.json(products);
@@ -47,17 +53,60 @@ exports.getStillLooking = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ ALSO BOUGHT (People Also Bought)
 exports.getAlsoBought = async (req, res) => {
   try {
-    const products = await Product.find()
-      .sort({ popularity: -1 })
-      .limit(10);
+    const { userId } = req.params;
+
+    // 1. Get user's past orders
+    const pastOrders = await Order.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // 2. Extract product IDs from past orders
+    const pastProductIds = [];
+    pastOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.productId && item.itemModel === "Product") {
+          pastProductIds.push(item.productId);
+        }
+      });
+    });
+
+    let products = [];
+
+    // 3. If user has past purchases, try to find co-purchased items 
+    // For simplicity, we suggest items in the same categories they usually buy
+    // In a real ML system, this would be actual market basket analysis
+    if (pastProductIds.length > 0) {
+      const purchasedProducts = await Product.find({ _id: { $in: pastProductIds } });
+      const favoriteCategories = [...new Set(purchasedProducts.map(p => p.category))];
+
+      products = await Product.find({
+        category: { $in: favoriteCategories },
+        _id: { $nin: pastProductIds }, // don't recommend exact same items they just bought
+        isActive: true
+      })
+        .sort({ popularity: -1, createdAt: -1 }) // if popularity exists, or fallback to newest
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
+    }
+
+    // 4. Fallback if no specific recommendations or no orders
+    if (!products.length) {
+      products = await Product.find({ isActive: true })
+        .sort({ popularity: -1, createdAt: -1 })
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
+    }
 
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 // ✅ SUGGESTED FOR YOU
 exports.getSuggested = async (req, res) => {
   try {
@@ -66,9 +115,10 @@ exports.getSuggested = async (req, res) => {
     const activity = await UserActivity.findOne({ userId });
 
     if (!activity) {
-      const trending = await Product.find()
-        .sort({ popularity: -1 })
-        .limit(10);
+      const trending = await Product.find({ isActive: true })
+        .sort({ popularity: -1, createdAt: -1 })
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
 
       return res.json(trending);
     }
@@ -76,7 +126,8 @@ exports.getSuggested = async (req, res) => {
     const keywords = activity.searches.map(s => s.keyword);
 
     const viewedProducts = await Product.find({
-      _id: { $in: activity.viewedProducts.map(v => v.productId) }
+      _id: { $in: activity.viewedProducts.map(v => v.productId) },
+      isActive: true
     });
 
     const categories = viewedProducts.map(p => p.category);
@@ -84,10 +135,21 @@ exports.getSuggested = async (req, res) => {
     const signals = [...keywords, ...categories];
 
     const products = await Product.find({
-      category: { $in: signals }
+      category: { $in: signals },
+      isActive: true
     })
-      .sort({ popularity: -1 })
-      .limit(10);
+      .sort({ popularity: -1, createdAt: -1 })
+      .limit(10)
+      .select(PRODUCT_SELECT_FIELDS);
+
+    // Fallback
+    if (!products.length) {
+      const trending = await Product.find({ isActive: true })
+        .sort({ popularity: -1, createdAt: -1 })
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
+      return res.json(trending);
+    }
 
     res.json(products);
 

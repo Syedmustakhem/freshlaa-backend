@@ -1,6 +1,9 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category"); // ✅ ADD THIS
 const { triggerRestock } = require("./restock.controller");
+const PriceAlert = require("../models/PriceAlert");
+const { notifyUser } = require("../services/notification.service");
+const { checkPriceDrops } = require("../crons/price_alert.cron");
 /* ================= VARIANT NORMALIZER ================= */
 const normalizeVariants = (variants) => {
   const allowedUnits = ["kg", "g", "l", "ml", "pcs"];
@@ -391,6 +394,11 @@ exports.updateProduct = async (req, res) => {
     if (previousStock === 0 && product.stock > 0) {
       triggerRestock(product._id);
     }
+
+    // ✅ Trigger price drop check instantly
+    checkPriceDrops(product._id).catch(err => {
+      console.error("Instant price drop check failed:", err.message);
+    });
 
     res.json({ success: true, data: product });
 
