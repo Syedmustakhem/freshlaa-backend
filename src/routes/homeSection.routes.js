@@ -87,6 +87,22 @@ router.get("/home-layout", async (req, res) => {
 /* ─── ADMIN — GET all sections ──────────────────────── */
 router.get("/admin/home-layout", adminAuth, async (req, res) => {
   try {
+    // Self-healing: Ensure system sections exist
+    const systemSections = [
+      { type: "TRENDING_TICKER", order: 1.5 },
+      { type: "FLASH_SALE", order: 1.6 },
+      { type: "STILL_LOOKING", order: 20 },
+      { type: "ALSO_BOUGHT", order: 21 },
+      { type: "SUGGESTED_PRODUCTS", order: 22 },
+    ];
+
+    for (const sys of systemSections) {
+      const exists = await HomeSection.findOne({ type: sys.type });
+      if (!exists) {
+        await HomeSection.create({ ...sys, isActive: false, data: {} });
+      }
+    }
+
     const sections = await HomeSection.find().sort({ order: 1 }).lean();
     return res.json({
       success:  true,
