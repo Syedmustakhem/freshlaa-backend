@@ -18,7 +18,7 @@ async function enrichSections(sections = []) {
       if (sec.productIds?.length) {
         const docs = await Product.find({
           _id:    { $in: sec.productIds },
-          active: true,
+          isActive: true,
         })
           .select("name images variants category brand rating reviewCount")
           .lean();
@@ -63,7 +63,7 @@ router.get("/home-layout", async (req, res) => {
       if (section.type === "CATEGORY" && section.data?.categorySlug) {
         section.data.products = await Product.find({
           categorySlug: section.data.categorySlug,
-          active: true,
+          isActive: true,
         })
           .limit(6)
           .select("name price mrp images");

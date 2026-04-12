@@ -142,7 +142,8 @@ if (!product) {
 
     }
 
-    product.variants = product.variants.filter(v => v.stock > 0);
+    // Keep all variants so the UI can show which ones are OOS
+    // product.variants = product.variants.filter(v => v.stock > 0); 
 
     res.json({
       success: true,
@@ -159,17 +160,26 @@ if (!product) {
 /* ================= SEARCH PRODUCTS ================= */
 exports.searchProducts = async (req, res) => {
   try {
-    const q = req.query.q || "";
-
-    const products = await Product.find({
+    const { q = "", includeOOS } = req.query;
+    const query = {
       name: { $regex: q, $options: "i" },
       isActive: true,
-      stock: { $gt: 0 },
-    }).lean();
+    };
 
-    products.forEach(p => {
-      p.variants = p.variants.filter(v => v.stock > 0);
-    });
+    if (includeOOS !== "true") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
+      .sort({ stock: -1, createdAt: -1 })
+      .lean();
+
+    // In search result, we can keep variants or filter them
+    if (includeOOS !== "true") {
+      products.forEach(p => {
+        p.variants = p.variants.filter(v => v.stock > 0);
+      });
+    }
 
     res.json({
       success: true,
@@ -347,27 +357,31 @@ data.subCategory = data.category; // keep compatibility if needed
 /* ================= ZEPTO: PRODUCTS BY SUB CATEGORY ================= */
 exports.getProductsBySubCategory = async (req, res) => {
   try {
-    const { sectionId, subCategory } = req.query;
+    const { sectionId, subCategory, includeOOS } = req.query;
 
-  if (!subCategory) {
-  return res.status(400).json({
-    success: false,
-    message: "subCategory is required",
-  });
-}
+    if (!subCategory) {
+      return res.status(400).json({ success: false, message: "subCategory is required" });
+    }
 
-    const products = await Product.find({
+    const query = {
       sectionId,
       subCategory,
       isActive: true,
-      stock: { $gt: 0 },
-    })
-      .sort({ createdAt: -1 })
+    };
+
+    if (includeOOS !== "true") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
+      .sort({ stock: -1, createdAt: -1 })
       .lean();
 
-    products.forEach(p => {
-      p.variants = p.variants.filter(v => v.stock > 0);
-    });
+    if (includeOOS !== "true") {
+      products.forEach(p => {
+        p.variants = p.variants.filter(v => v.stock > 0);
+      });
+    }
 
     res.json({ success: true, data: products });
   } catch (err) {
@@ -434,21 +448,30 @@ exports.updateProduct = async (req, res) => {
 // product.controller.js
 exports.getProductsByCategorySlug = async (req, res) => {
   try {
-    const { slug } = req.query;
+    const { slug, includeOOS } = req.query;
 
     if (!slug) {
       return res.json({ success: true, data: [] });
     }
 
-    const products = await Product.find({
-      category: slug,           // ✅ slug match
+    const query = {
+      category: slug,
       isActive: true,
-      stock: { $gt: 0 },
-    }).lean();
+    };
 
-    products.forEach(p => {
-      p.variants = p.variants?.filter(v => v.stock > 0);
-    });
+    if (includeOOS !== "true") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
+      .sort({ stock: -1, createdAt: -1 })
+      .lean();
+
+    if (includeOOS !== "true") {
+      products.forEach(p => {
+        p.variants = p.variants?.filter(v => v.stock > 0);
+      });
+    }
 
     res.json({ success: true, data: products });
   } catch (err) {
@@ -544,17 +567,20 @@ exports.getProductsByIds = async (req, res) => {
 
 exports.getProductsBySection = async (req, res) => {
   try {
-    const { sectionId, subCategory } = req.query;
+    const { sectionId, subCategory, includeOOS } = req.query;
 
     if (!sectionId) {
       return res.json({ success: true, data: [] });
     }
 
-    let query = {
+    const query = {
       sectionId,
       isActive: true,
-      stock: { $gt: 0 },
     };
+
+    if (includeOOS !== "true") {
+      query.stock = { $gt: 0 };
+    }
 
     // 🔥 TOP PICKS (NO subCategory selected)
     if (!subCategory) {
@@ -566,12 +592,14 @@ exports.getProductsBySection = async (req, res) => {
     }
 
     const products = await Product.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ stock: -1, createdAt: -1 })
       .lean();
 
-    products.forEach(p => {
-      p.variants = p.variants.filter(v => v.stock > 0);
-    });
+    if (includeOOS !== "true") {
+      products.forEach(p => {
+        p.variants = p.variants.filter(v => v.stock > 0);
+      });
+    }
 
     res.json({ success: true, data: products });
 
@@ -587,14 +615,20 @@ exports.getProductsBySection = async (req, res) => {
 /* ================= GET FLASH SALES ================= */
 exports.getFlashSales = async (req, res) => {
   try {
-    const products = await Product.find({ 
+    const { includeOOS } = req.query;
+    const query = { 
       isFlashSale: true, 
       flashSaleEndTime: { $gt: new Date() },
       isActive: true,
-      stock: { $gt: 0 }
-    })
+    };
+
+    if (includeOOS !== "true") {
+      query.stock = { $gt: 0 };
+    }
+
+    const products = await Product.find(query)
       .select("name images variants category subCategory isFlashSale flashSalePrice flashSaleEndTime stock")
-      .sort({ flashSaleEndTime: 1 })
+      .sort({ stock: -1, flashSaleEndTime: 1 }) // In-stock first
       .lean();
 
     products.forEach(p => {
@@ -611,14 +645,23 @@ exports.getFlashSales = async (req, res) => {
 /* ================= GET DISCOVERY PRODUCTS (Swipe-to-Shop) ================= */
 exports.getDiscoveryProducts = async (req, res) => {
   try {
+    const { includeOOS } = req.query;
+    const match = { isActive: true, "images.0": { $exists: true } };
+
+    if (includeOOS !== "true") {
+      match.stock = { $gt: 0 };
+    }
+
     const products = await Product.aggregate([
-      { $match: { isActive: true, stock: { $gt: 0 }, "images.0": { $exists: true } } },
+      { $match: match },
       { $sample: { size: 20 } }
     ]);
 
     // Ensure numeric fields and lean-like structure
     const cleaned = products.map(p => {
-      p.variants = p.variants?.filter(v => v.stock > 0);
+      if (includeOOS !== "true") {
+        p.variants = p.variants?.filter(v => v.stock > 0);
+      }
       return p;
     });
 
