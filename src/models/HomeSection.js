@@ -24,6 +24,7 @@ const HomeSectionSchema = new mongoose.Schema({
       "STILL_LOOKING",
       "ALSO_BOUGHT",
       "SUGGESTED_PRODUCTS",
+      "EVENT_GRID",
     ],
   },
 
