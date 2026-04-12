@@ -7,6 +7,7 @@
 const cron = require("node-cron");
 const PriceAlert = require("../models/PriceAlert");
 const Product = require("../models/Product");
+const User = require("../models/User");
 const { notifyUser } = require("../services/notification.service");
 
 /* ─────────────────────────────────────────────
@@ -29,25 +30,51 @@ async function checkPriceDrops() {
     console.log(`🔔 [PriceAlertCron] Checking ${alerts.length} alerts...`);
 
     let notified = 0;
+    let skippedNoDrop = 0;
+    let skippedAlreadyNotified = 0;
 
     for (const alert of alerts) {
       try {
         const product = alert.product;
-        if (!product) continue;
+        if (!product) {
+          console.log(`  ⚠️ Alert ${alert._id}: product not found (deleted?)`);
+          continue;
+        }
 
         // Current price from first variant or flat price
         const currentPrice = product.variants?.[0]?.price || product.price || 0;
         const trackedPrice = alert.trackedPrice || 0;
 
+        console.log(`  📊 ${product.name}: tracked=₹${trackedPrice}, current=₹${currentPrice}, lastNotified=₹${alert.lastNotifiedPrice || 'never'}`);
+
         // Skip if price hasn't dropped
-        if (currentPrice >= trackedPrice) continue;
+        if (currentPrice >= trackedPrice) {
+          skippedNoDrop++;
+          console.log(`  ⏭️ No drop — skipping`);
+          continue;
+        }
 
         // Skip if we already notified for this exact price
-        if (alert.lastNotifiedPrice === currentPrice) continue;
+        if (alert.lastNotifiedPrice === currentPrice) {
+          skippedAlreadyNotified++;
+          console.log(`  ⏭️ Already notified at ₹${currentPrice} — skipping`);
+          continue;
+        }
+
+        // Check if user has FCM token
+        const user = await User.findById(alert.user).select("fcmToken expoPushToken name phone").lean();
+        console.log(`  👤 User ${alert.user}: fcmToken=${user?.fcmToken ? 'YES' : 'NO'}, expoPushToken=${user?.expoPushToken ? 'YES' : 'NO'}`);
+
+        if (!user?.fcmToken && !user?.expoPushToken) {
+          console.log(`  ⚠️ User has no push tokens — skipping notification`);
+          continue;
+        }
 
         // Calculate drop
         const dropAmount = trackedPrice - currentPrice;
         const dropPercent = Math.round((dropAmount / trackedPrice) * 100);
+
+        console.log(`  🔽 Price dropped ₹${dropAmount} (${dropPercent}% off) — sending notification...`);
 
         // Send push notification using your existing notifyUser
         await notifyUser({
@@ -81,7 +108,7 @@ async function checkPriceDrops() {
       }
     }
 
-    console.log(`🔔 [PriceAlertCron] Done. Sent ${notified} notifications.`);
+    console.log(`🔔 [PriceAlertCron] Done. Sent ${notified} notifications. Skipped: ${skippedNoDrop} no drop, ${skippedAlreadyNotified} already notified.`);
 
   } catch (err) {
     console.error("🔔 [PriceAlertCron] Fatal error:", err);
