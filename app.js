@@ -1,51 +1,47 @@
 require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-
 const app = express();
-
 /* HEALTH CHECK */
 app.get("/health", (req, res) => {
   return res.status(200).send("OK.");
 });
-
 /* ================= ROUTE IMPORTS (PM2 SAFE) ================= */
-
 const routesPath = path.join(__dirname, "src", "routes");
-const brandRoutes           = require(path.join(routesPath, "brand.routes"));
-const appConfigRoutes       = require(path.join(routesPath, "appConfig.routes"));
-const restockRoutes         = require(path.join(routesPath, "restock.routes"));
-const cartRecoveryRoutes    = require(path.join(routesPath, "cartRecovery.routes"));
-const supportRoutes         = require(path.join(routesPath, "support.routes")); // ✅ NEW
+const uploadRoutes = require(path.join(routesPath, "upload.routes"));
+const brandRoutes = require(path.join(routesPath, "brand.routes"));
+const appConfigRoutes = require(path.join(routesPath, "appConfig.routes"));
+const restockRoutes = require(path.join(routesPath, "restock.routes"));
+const cartRecoveryRoutes = require(path.join(routesPath, "cartRecovery.routes"));
+const supportRoutes = require(path.join(routesPath, "support.routes")); // ✅ NEW
 const activityRoutes = require(path.join(routesPath, "activity.routes"));
 const recommendationRoutes = require(path.join(routesPath, "recommendation.routes"));
-const adminRoutes           = require(path.join(routesPath, "admin.routes"));
-const authRoutes            = require(path.join(routesPath, "auth.routes"));
-const productRoutes         = require(path.join(routesPath, "product.routes"));
-const orderRoutes           = require(path.join(routesPath, "order.routes"));
-const addressRoutes         = require(path.join(routesPath, "address.routes"));
-const cartRoutes            = require(path.join(routesPath, "cart.routes"));
-const userRoutes            = require(path.join(routesPath, "user.routes"));
-const notificationRoutes    = require(path.join(routesPath, "notification.routes"));
-const hotelMenuRoutes       = require(path.join(routesPath, "hotelMenu.routes"));
-const paymentMethodRoutes   = require(path.join(routesPath, "paymentMethod.routes"));
-const razorpayRoutes        = require(path.join(routesPath, "razorpay.routes"));
-const restaurantRoutes      = require(path.join(routesPath, "restaurant.routes"));
-const categoryRoutes        = require(path.join(routesPath, "category.routes"));
-const bannerRoutes          = require(path.join(routesPath, "banner.routes"));
-const adminPushRoutes       = require(path.join(routesPath, "admin.push.routes"));
-const homeSectionRoutes     = require(path.join(routesPath, "homeSection.routes"));
-const categoryBannerRoutes  = require(path.join(routesPath, "categoryBanner.routes"));
-const offerRoutes           = require(path.join(routesPath, "offer.routes"));
+const adminRoutes = require(path.join(routesPath, "admin.routes"));
+const authRoutes = require(path.join(routesPath, "auth.routes"));
+const productRoutes = require(path.join(routesPath, "product.routes"));
+const orderRoutes = require(path.join(routesPath, "order.routes"));
+const addressRoutes = require(path.join(routesPath, "address.routes"));
+const cartRoutes = require(path.join(routesPath, "cart.routes"));
+const userRoutes = require(path.join(routesPath, "user.routes"));
+const notificationRoutes = require(path.join(routesPath, "notification.routes"));
+const hotelMenuRoutes = require(path.join(routesPath, "hotelMenu.routes"));
+const paymentMethodRoutes = require(path.join(routesPath, "paymentMethod.routes"));
+const razorpayRoutes = require(path.join(routesPath, "razorpay.routes"));
+const restaurantRoutes = require(path.join(routesPath, "restaurant.routes"));
+const categoryRoutes = require(path.join(routesPath, "category.routes"));
+const bannerRoutes = require(path.join(routesPath, "banner.routes"));
+const adminPushRoutes = require(path.join(routesPath, "admin.push.routes"));
+const homeSectionRoutes = require(path.join(routesPath, "homeSection.routes"));
+const categoryBannerRoutes = require(path.join(routesPath, "categoryBanner.routes"));
+const offerRoutes = require(path.join(routesPath, "offer.routes"));
 const checkoutPaymentRoutes = require(path.join(routesPath, "checkoutPayment.routes"));
-const adminCampaignRoutes   = require(path.join(routesPath, "adminCampaign.routes"));
+const adminCampaignRoutes = require(path.join(routesPath, "adminCampaign.routes"));
 const riderRoutes = require(path.join(routesPath, "rider.routes"));
 const uiConfigRoutes = require(path.join(routesPath, "uiConfig.routes"));
 const reviewRoutes = require(path.join(routesPath, "review.routes"));
+const priceAlertRoutes = require(path.join(routesPath, "pricealert.routes"));
 /* ================= MIDDLEWARE ================= */
-
 app.use(cors({
   origin: [
     "https://admin.freshlaa.com",
@@ -57,57 +53,55 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 }));
-
 /* 🔥 Razorpay Webhook RAW */
 app.use("/api/razorpay/webhook", express.raw({ type: "*/*" }));
-
 /* Normal JSON for everything else */
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-
 /* ================= STATIC INVOICES ================= */
 app.use("/invoices", express.static(path.join(__dirname, "../freshlaa-backend/invoices")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", uiConfigRoutes);
 /* ================= ROUTES ================= */
-app.use("/api/auth",             authRoutes);
-app.use("/api/products",         productRoutes);
-app.use("/api/orders",           orderRoutes);
-app.use("/api/addresses",        addressRoutes);
-app.use("/api/cart",             cartRoutes);
-app.use("/api/user",             userRoutes);
-app.use("/api/notifications",    notificationRoutes);
-app.use("/api/hotel/menu",       hotelMenuRoutes);
-app.use("/api/payment-methods",  paymentMethodRoutes);
-app.use("/api/razorpay",         razorpayRoutes);
-app.use("/api/restaurants",      restaurantRoutes);
-app.use("/api/categories",       categoryRoutes);
-app.use("/api/admin",            adminRoutes);
-app.use("/api/banners",          bannerRoutes);
-app.use("/api/admin/push",       adminPushRoutes);
-app.use("/api",                  homeSectionRoutes);
-app.use("/api",                  categoryBannerRoutes);
-app.use("/api",                  offerRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/hotel/menu", hotelMenuRoutes);
+app.use("/api/payment-methods", paymentMethodRoutes);
+app.use("/api/razorpay", razorpayRoutes);
+app.use("/api/restaurants", restaurantRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/banners", bannerRoutes);
+app.use("/api/admin/push", adminPushRoutes);
+app.use("/api", homeSectionRoutes);
+app.use("/api", categoryBannerRoutes);
+app.use("/api", offerRoutes);
 app.use("/api/checkout-payment", checkoutPaymentRoutes);
-app.use("/api/brand",            brandRoutes);
-app.use("/api/restock",          restockRoutes);
-app.use("/api/cart-recovery",    cartRecoveryRoutes);
-app.use("/api",                  appConfigRoutes);
-app.use("/api/admin/campaign",   adminCampaignRoutes);
-app.use("/api/support",          supportRoutes); // ✅ NEW
+app.use("/api/brand", brandRoutes);
+app.use("/api/restock", restockRoutes);
+app.use("/api/cart-recovery", cartRecoveryRoutes);
+app.use("/api", appConfigRoutes);
+app.use("/api/admin/campaign", adminCampaignRoutes);
+app.use("/api/support", supportRoutes); // ✅ NEW
 app.use("/api/rider", riderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/recommendation", recommendationRoutes);
+app.use("/api", uploadRoutes);
+app.use("/api/price-alerts", priceAlertRoutes);
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Freshlaa Backend Running ✅" });
 });
-
 /* ================= WHATSAPP WEBHOOK ================= */
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
-
 app.get("/webhook", (req, res) => {
-  const mode      = req.query["hub.mode"];
-  const token     = req.query["hub.verify_token"];
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     console.log("✅ WhatsApp Webhook Verified");
@@ -116,21 +110,17 @@ app.get("/webhook", (req, res) => {
   console.log("❌ Verification Failed");
   return res.sendStatus(403);
 });
-
 app.post("/webhook", (req, res) => {
   console.log("📩 WhatsApp Webhook:", JSON.stringify(req.body, null, 2));
   res.sendStatus(200);
 });
-
 /* ================= 404 ================= */
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "API route not found" });
 });
-
 /* ================= ERROR ================= */
 app.use((err, req, res, next) => {
   console.error("🔥 SERVER ERROR:", err);
   res.status(500).json({ success: false, message: "Internal server error" });
 });
-
 module.exports = app;

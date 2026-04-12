@@ -10,6 +10,9 @@ const connectDB = require("./src/config/db");
 // ✅ Cart recovery cron
 const { runCartRecoveryCron } = require("./src/controllers/cartRecovery.controller");
 
+// ✅ Price drop alert cron
+require("./src/crons/price_alert.cron");
+
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
