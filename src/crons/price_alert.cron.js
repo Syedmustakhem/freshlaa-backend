@@ -4,9 +4,9 @@
  * and sends push notifications when a product price drops.
  */
 
-const cron       = require("node-cron");
+const cron = require("node-cron");
 const PriceAlert = require("../models/PriceAlert");
-const Product    = require("../models/Product");
+const Product = require("../models/Product");
 const { notifyUser } = require("../services/notification.service");
 
 /* ─────────────────────────────────────────────
@@ -46,18 +46,22 @@ async function checkPriceDrops() {
         if (alert.lastNotifiedPrice === currentPrice) continue;
 
         // Calculate drop
-        const dropAmount  = trackedPrice - currentPrice;
+        const dropAmount = trackedPrice - currentPrice;
         const dropPercent = Math.round((dropAmount / trackedPrice) * 100);
 
         // Send push notification using your existing notifyUser
         await notifyUser({
           userId: alert.user,
-          type: "MARKETING",
+          type: "PRICE_ALERT",
           pushData: {
             title: "🔔 Price Drop Alert!",
-            body: `${product.name} dropped ₹${dropAmount} (${dropPercent}% off) — Now ₹${currentPrice}!`,
+            body: `${product.name} — was ₹${trackedPrice}, now ₹${currentPrice}! Save ₹${dropAmount} (${dropPercent}% off)`,
             deepLinkType: "PRODUCT",
-            deepLinkParams: { productId: product._id?.toString() },
+            deepLinkParams: {
+              productId: product._id?.toString(),
+              oldPrice: String(trackedPrice),
+              newPrice: String(currentPrice),
+            },
             imageUrl: product.images?.[0] || null,
           },
         });

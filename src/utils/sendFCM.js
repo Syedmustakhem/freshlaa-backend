@@ -3,9 +3,10 @@ const admin = require("../config/firebase");
 // Channel IDs must be created in your Android app's notification setup
 // Each maps to a different sound/importance level
 const CHANNEL_MAP = {
-  ORDER:    "orders",      // order updates — high importance
-  MARKETING:"marketing",  // offers, campaigns — default importance
-  DEFAULT:  "default",    // fallback
+  ORDER:       "orders",        // order updates — high importance
+  MARKETING:   "marketing",     // offers, campaigns — default importance
+  PRICE_ALERT: "price_alerts",  // price drop alerts — high importance
+  DEFAULT:     "default",       // fallback
 };
 
 const sendFCM = async ({

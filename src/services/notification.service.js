@@ -168,7 +168,7 @@ exports.notifyUser = async ({
       /* ───────── TRY FCM FIRST ───────── */
       if (user.fcmToken) {
         try {
-          await sendFCM({ token: user.fcmToken, title, body, imageUrl, data });
+          await sendFCM({ token: user.fcmToken, title, body, imageUrl, data, type });
           pushStatus = "SENT";
           console.log("✅ FCM push sent to", userId);
         } catch (err) {
