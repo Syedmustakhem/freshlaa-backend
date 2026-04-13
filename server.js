@@ -69,6 +69,13 @@ io.on("connection", (socket) => {
     console.log(`💬 Support room joined: support_${userId}`);
   });
 
+  // Ticket-specific room for multi-ticket support
+  socket.on("join-ticket", (ticketId) => {
+    if (!ticketId) return;
+    socket.join(`ticket_${ticketId}`);
+    console.log(`🎫 Ticket room joined: ticket_${ticketId}`);
+  });
+
   // Agent joins the global agents room to receive all new support requests
   // Call this from your admin panel when an agent logs in
   socket.on("join-agent", () => {
