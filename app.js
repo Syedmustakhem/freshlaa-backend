@@ -3,6 +3,21 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const app = express();
+const ServiceableArea = require("./src/models/ServiceableArea");
+const mongoose = require("mongoose");
+
+// Auto-seed initial pincode
+setTimeout(async () => {
+  try {
+    const exists = await ServiceableArea.findOne({ pincode: "515591" });
+    if (!exists) {
+      await ServiceableArea.create({ pincode: "515591", areaName: "Default Area", isActive: true });
+      console.log("✅ Auto-seeded initial pincode: 515591");
+    }
+  } catch (err) {
+    console.error("❌ Auto-seed failed:", err.message);
+  }
+}, 5000);
 /* HEALTH CHECK */
 app.get("/health", (req, res) => {
   return res.status(200).send("OK.");
@@ -42,6 +57,7 @@ const uiConfigRoutes = require(path.join(routesPath, "uiConfig.routes"));
 const reviewRoutes = require(path.join(routesPath, "review.routes"));
 const priceAlertRoutes = require(path.join(routesPath, "pricealert.routes"));
 const supportTicketRoutes = require(path.join(routesPath, "supportTicket.routes"));
+const serviceabilityRoutes = require(path.join(routesPath, "serviceability.routes"));
 /* ================= MIDDLEWARE ================= */
 app.use(cors({
   origin: [
@@ -96,6 +112,7 @@ app.use("/api/recommendation", recommendationRoutes);
 app.use("/api", uploadRoutes);
 app.use("/api/price-alerts", priceAlertRoutes);
 app.use("/api/tickets", supportTicketRoutes);
+app.use("/api/serviceability", serviceabilityRoutes);
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Freshlaa Backend Running ✅" });
 });

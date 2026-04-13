@@ -7,6 +7,7 @@ const Order         = require("../models/Order");
 const User          = require("../models/User");
 const AdminPush     = require("../models/AdminPush");
 const HotelMenuItem = require("../models/HotelMenuItem");
+const ServiceableArea = require("../models/ServiceableArea");
 
 const razorpay          = require("../utils/razorpay.instance");
 const { notifyUser }    = require("../services/notification.service");
@@ -184,6 +185,12 @@ exports.createOrder = async (req, res) => {
 
     if (!["COD", "ONLINE"].includes(paymentMethod))
       throw new Error("Invalid payment method");
+
+    /* ── Serviceability check ── */
+    const isServiceable = await ServiceableArea.findOne({ pincode: address.pincode, isActive: true });
+    if (!isServiceable) {
+      throw new Error(`We are not serviceable in ${address.pincode} yet. Coming soon! 🛵`);
+    }
 
     /* ── Delivery slot validation ── */
     let scheduledTime = null;
