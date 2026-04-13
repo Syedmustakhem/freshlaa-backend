@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const SupportTicket = require("../models/SupportTicket");
 const auth = require("../middlewares/auth.middleware");
+const adminAuth = require("../middlewares/adminAuth");
 
 // Helper: emit real-time update via Socket.io to participants of a ticket
 function emitToTicket(ticketId, event, data) {
@@ -152,6 +153,104 @@ router.post("/:id/message", auth, async (req, res) => {
     return res.json({ success: true, message: newMessage });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Failed to send message" });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ADMIN ROUTES
+// ═════════════════════════════════════════════════════════════════════════════
+
+// GET /api/tickets/admin/all
+// List all tickets across all users
+router.get("/admin/all", adminAuth, async (req, res) => {
+  try {
+    const { status, category } = req.query;
+    let query = {};
+    if (status) query.status = status;
+    if (category) query.category = category;
+
+    const tickets = await SupportTicket.find(query)
+      .sort({ updatedAt: -1 })
+      .select("-messages");
+    
+    return res.json({ success: true, tickets });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to fetch all tickets" });
+  }
+});
+
+// GET /api/tickets/admin/:id
+// Get full history for admin (no userId check)
+router.get("/admin/:id", adminAuth, async (req, res) => {
+  try {
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: "Ticket not found" });
+
+    // Reset unread for agent
+    ticket.unreadByAgent = 0;
+    await ticket.save();
+
+    return res.json({ success: true, ticket });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to load ticket" });
+  }
+});
+
+// POST /api/tickets/admin/:id/message
+// Agent sends a message
+router.post("/admin/:id/message", adminAuth, async (req, res) => {
+  try {
+    const { text, images } = req.body;
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: "Ticket not found" });
+
+    const newMessage = {
+      sender: "agent",
+      text: text || "",
+      attachments: images || [],
+      createdAt: new Date(),
+    };
+
+    ticket.messages.push(newMessage);
+    ticket.lastMessage = text || "Image shared by Agent";
+    ticket.lastMessageAt = new Date();
+    ticket.unreadByUser += 1;
+    ticket.status = "active"; // Auto mark as active on respond
+
+    await ticket.save();
+
+    // Notify ticket room (user + other agents)
+    emitToTicket(ticket._id, "ticket-message", {
+      ticketId: ticket._id,
+      message: newMessage,
+    });
+
+    // Notify user of new status if it changed
+    emitToTicket(ticket._id, "ticket-status", { status: "active" });
+
+    return res.json({ success: true, message: newMessage });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to send agent message" });
+  }
+});
+
+// PATCH /api/tickets/admin/:id/status
+// Update ticket status manually
+router.patch("/admin/:id/status", adminAuth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: "Ticket not found" });
+
+    ticket.status = status;
+    await ticket.save();
+
+    // Notify real-time
+    emitToTicket(ticket._id, "ticket-status", { status });
+
+    return res.json({ success: true, status });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to update status" });
   }
 });
 
