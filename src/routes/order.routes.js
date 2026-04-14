@@ -15,6 +15,7 @@ const {
   generateDeliveryOTP, // ✅ added
   verifyDeliveryOTP,   // ✅ added
   getTrendingTicker,   // ✅ added
+  appendItemsToOrder,  // ✅ added
 } = require("../controllers/order.controller");
 
 /* ================= ADMIN ROUTES ================= */
