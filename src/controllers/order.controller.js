@@ -362,6 +362,112 @@ exports.createOrder = async (req, res) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
+   APPEND ITEMS TO ORDER (Modification)
+═══════════════════════════════════════════════════════════════ */
+
+exports.appendItemsToOrder = async (req, res) => {
+  try {
+    const { items, paymentMethod, payment } = req.body;
+    const orderId = req.params.id;
+
+    if (!Array.isArray(items) || !items.length)
+      throw new Error("No new items provided to append");
+
+    const order = await Order.findById(orderId);
+    if (!order) throw new Error("Original order not found");
+
+    if (order.status !== "Placed") {
+      throw new Error(`Cannot modify order once it is ${order.status}. Only "Placed" orders can be modified.`);
+    }
+
+    // Combine existing items with new ones for pricing calculation
+    // We map existing items to the format expected by calculateOrder
+    const existingItems = order.items.map(i => ({
+      productId: i.productId,
+      variantId: i.variant?.key,
+      qty: i.qty,
+      itemModel: i.itemModel
+    }));
+
+    const combinedItems = [...existingItems, ...items];
+
+    // Recalculate everything
+    const result = await calculateOrder(combinedItems, null, order.couponCode);
+
+    // Build new formatted items list
+    const formattedItems = await buildFormattedItems(result.validatedItems);
+
+    // Update order fields
+    order.items = formattedItems;
+    order.pricing = {
+      itemsTotal:       result.itemsTotal       ?? 0,
+      deliveryFee:      result.deliveryFee      ?? 0,
+      handlingFee:      result.handlingFee      ?? 0,
+      codFee:           order.pricing.codFee, // Keep original COD fee if applicable
+      couponDiscount:   result.couponDiscount   ?? 0,
+      campaignDiscount: result.campaignDiscount ?? 0,
+      totalSavings:     result.totalSavings     ?? 0,
+      grandTotal:       result.grandTotal + (order.pricing.codFee || 0),
+    };
+    order.total = order.pricing.grandTotal;
+
+    // Handle payment status if অনলাইন
+    if (paymentMethod === "ONLINE" && payment) {
+      // Logic for second payment verification would go here
+      // For now, we assume the frontend handles the Razorpay flow for the delta
+      // and we just update the payment status or details if needed.
+      order.paymentStatus = "Paid"; 
+      // We might want to append rather than replace paymentDetails
+      order.paymentDetails = { ...order.paymentDetails, ...payment };
+    }
+
+    await order.save();
+
+    // Notify user via Socket
+    if (global.io) {
+      global.io.emit("order-updated", {
+        orderId: order._id.toString(),
+        friendlyOrderId: order.orderId,
+        total: order.total,
+      });
+
+      global.io.to(order._id.toString()).emit("order-status-updated", {
+        orderId:   order._id.toString(),
+        status:    order.status,
+        title:     "Order Updated 🛍️",
+        message:   `Order ${order.orderId} updated. New Total: ₹${order.total}`,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // Notify Admins
+    notifyAdmins({
+      title: "🛍️ Order Updated",
+      body:  `${order.orderId} · New Total: ₹${order.total}`,
+      data:  { orderId: order._id.toString() },
+    });
+
+    // Notify User (Push)
+    notifyUser({
+      userId:   req.user._id,
+      type:     "ORDER",
+      pushData: {
+        title:    "Order Updated 🛍️",
+        body:     `Your order ${order.orderId} has been updated with new items.`,
+        imageUrl: order.items[order.items.length - 1]?.image || "https://api.freshlaa.com/assets/order-placed.png",
+        data:     { screen: "OrderTracking", orderId: order._id.toString() },
+      },
+    });
+
+    return res.json({ success: true, message: "Order updated successfully", order });
+
+  } catch (error) {
+    console.error("❌ APPEND ITEMS ERROR:", error.message);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
    CANCEL ORDER
 ═══════════════════════════════════════════════════════════════ */
 

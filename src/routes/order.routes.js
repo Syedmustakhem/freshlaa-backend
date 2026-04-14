@@ -34,5 +34,6 @@ router.get("/active", protect, getActiveOrders);
 
 router.get("/:id",         protect, getOrderById);
 router.put("/:id/cancel",  protect, cancelOrder);
+router.put("/:id/append",  protect, appendItemsToOrder); // ✅ Modification flow
 
 module.exports = router;
