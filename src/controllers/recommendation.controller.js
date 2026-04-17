@@ -101,9 +101,10 @@ exports.getAlsoBought = async (req, res) => {
         .select(PRODUCT_SELECT_FIELDS);
     }
 
-    res.json(products);
+    return res.json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Also Bought Error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -123,24 +124,31 @@ exports.getSuggested = async (req, res) => {
       return res.json(trending);
     }
 
-    const keywords = activity.searches.map(s => s.keyword);
+    const keywords = (activity.searches || []).map(s => s.keyword).filter(Boolean);
 
+    const viewedProductIds = (activity.viewedProducts || []).map(v => v.productId);
     const viewedProducts = await Product.find({
-      _id: { $in: activity.viewedProducts.map(v => v.productId) },
+      _id: { $in: viewedProductIds },
       isActive: true
     });
 
-    const categories = viewedProducts.map(p => p.category);
+    const categories = viewedProducts.map(p => p.category).filter(Boolean);
 
-    const signals = [...keywords, ...categories];
+    const signals = [...new Set([...keywords, ...categories])];
 
-    const products = await Product.find({
-      category: { $in: signals },
-      isActive: true
-    })
-      .sort({ popularity: -1, createdAt: -1 })
-      .limit(10)
-      .select(PRODUCT_SELECT_FIELDS);
+    let products = [];
+    if (signals.length > 0) {
+      products = await Product.find({
+        $or: [
+          { category: { $in: signals } },
+          { subCategory: { $in: signals } }
+        ],
+        isActive: true
+      })
+        .sort({ popularity: -1, createdAt: -1 })
+        .limit(10)
+        .select(PRODUCT_SELECT_FIELDS);
+    }
 
     // Fallback
     if (!products.length) {
@@ -151,9 +159,10 @@ exports.getSuggested = async (req, res) => {
       return res.json(trending);
     }
 
-    res.json(products);
+    return res.json(products);
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Suggested Error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
