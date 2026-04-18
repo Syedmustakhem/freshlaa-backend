@@ -99,7 +99,7 @@ router.get("/admin/home-layout", adminAuth, async (req, res) => {
     for (const sys of systemSections) {
       const exists = await HomeSection.findOne({ type: sys.type });
       if (!exists) {
-        await HomeSection.create({ ...sys, isActive: false, data: {} });
+        await HomeSection.create({ ...sys, isActive: true, data: {} });
       }
     }
 
