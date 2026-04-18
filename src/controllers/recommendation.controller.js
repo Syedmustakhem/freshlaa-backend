@@ -2,7 +2,7 @@ const UserActivity = require("../models/UserActivity");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 
-const PRODUCT_SELECT_FIELDS = "name images variants offerPercentage category subCategory isActive";
+const PRODUCT_SELECT_FIELDS = "name images variants offerPercentage category subCategory isActive stock";
 
 // ✅ STILL LOOKING
 exports.getStillLooking = async (req, res) => {

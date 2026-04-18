@@ -130,7 +130,7 @@ exports.createReview = async (req, res) => {
       body: body?.trim() || "",
       photos,
       isVerifiedPurchase,
-      status: "approved",
+      status: "pending",
     });
 
     if (reviewType === "product" && productId) {

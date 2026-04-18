@@ -58,10 +58,7 @@ exports.getAllProducts = async (req, res) => {
 
     const query = { isActive: true };
 
-    // ✅ Only filter by stock if NOT including OOS
-   if (includeOOS !== "true") {
-  query.stock = { $gt: 0 };
-}
+    // ✅ Always include OOS — frontend shows overlay + notify button
 
     if (search)   query.name        = { $regex: search, $options: "i" };
     if (category) query.category    = category.toLowerCase();
@@ -82,15 +79,7 @@ exports.getAllProducts = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
-    // Strip OOS variants but keep the product (so stock field stays 0)
-    products.forEach(p => {
-      if (includeOOS === "true") {
-        // Keep all variants for display, just filter OOS ones for info
-        p.variants = p.variants; // keep all
-      } else {
-        p.variants = p.variants.filter(v => v.stock > 0);
-      }
-    });
+    // ✅ Keep all variants — frontend handles OOS display
 
     res.json({
       success: true,
@@ -160,26 +149,17 @@ if (!product) {
 /* ================= SEARCH PRODUCTS ================= */
 exports.searchProducts = async (req, res) => {
   try {
-    const { q = "", includeOOS } = req.query;
+    const { q = "" } = req.query;
     const query = {
       name: { $regex: q, $options: "i" },
       isActive: true,
     };
 
-    if (includeOOS !== "true") {
-      query.stock = { $gt: 0 };
-    }
-
     const products = await Product.find(query)
       .sort({ stock: -1, createdAt: -1 })
       .lean();
 
-    // In search result, we can keep variants or filter them
-    if (includeOOS !== "true") {
-      products.forEach(p => {
-        p.variants = p.variants.filter(v => v.stock > 0);
-      });
-    }
+    // ✅ Keep all variants — frontend handles OOS display
 
     res.json({
       success: true,
@@ -198,23 +178,14 @@ exports.getProductsByCategory = async (req, res) => {
   try {
     const category = req.params.category?.trim().toLowerCase();
 
-    const { includeOOS } = req.query;
     const query = {
       category,
       isActive: true,
     };
 
-    if (includeOOS !== "true") {
-      query.stock = { $gt: 0 };
-    }
-
     const products = await Product.find(query)
-      .sort({ stock: -1, createdAt: -1 }) // In-stock first
+      .sort({ stock: -1, createdAt: -1 }) // In-stock first, OOS at bottom
       .lean();
-
-    products.forEach(p => {
-      p.variants = p.variants.filter(v => v.stock > 0);
-    });
 
     res.json({
       success: true,
@@ -231,23 +202,14 @@ exports.getProductsByCategory = async (req, res) => {
 
 /* ================= FEATURED ================= */
 exports.getFeaturedProducts = async (req, res) => {
-  const { includeOOS } = req.query;
   const query = {
     isFeatured: true,
     isActive: true,
   };
 
-  if (includeOOS !== "true") {
-    query.stock = { $gt: 0 };
-  }
-
   const products = await Product.find(query)
     .sort({ stock: -1, createdAt: -1 })
     .lean();
-
-  products.forEach(p => {
-    p.variants = p.variants.filter(v => v.stock > 0);
-  });
 
   res.json({
     success: true,
@@ -258,23 +220,14 @@ exports.getFeaturedProducts = async (req, res) => {
 
 /* ================= OFFERS ================= */
 exports.getOfferProducts = async (req, res) => {
-  const { includeOOS } = req.query;
   const query = {
     offerPercentage: { $gt: 0 },
     isActive: true,
   };
 
-  if (includeOOS !== "true") {
-    query.stock = { $gt: 0 };
-  }
-
   const products = await Product.find(query)
     .sort({ stock: -1, createdAt: -1 })
     .lean();
-
-  products.forEach(p => {
-    p.variants = p.variants.filter(v => v.stock > 0);
-  });
 
   res.json({
     success: true,
