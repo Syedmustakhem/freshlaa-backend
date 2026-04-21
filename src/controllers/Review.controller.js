@@ -503,9 +503,6 @@ exports.getHomeReviews = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 exports.adminGetReviews = async (req, res) => {
   try {
-    const isAdmin = !!req.admin || !!req.user?.isAdmin;
-    if (!isAdmin)
-      return res.status(403).json({ success: false, message: "Admin access required" });
 
     const {
       page = 1, limit = 20,

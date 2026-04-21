@@ -5,26 +5,28 @@
  */
 const router = require("express").Router();
 const ctrl = require("../controllers/review.controller");
-const auth = require("../middlewares/auth.middleware"); // your existing auth middleware
+const auth = require("../middlewares/auth.middleware");
+const adminAuth = require("../middlewares/adminAuth");
 
 // ── Public routes
-router.get("/home", ctrl.getHomeReviews);       // home screen widget
-router.get("/product/:productId", ctrl.getProductReviews);    // product detail page
-router.get("/hotel/:hotelId", ctrl.getHotelReviews);      // restaurant page
-router.get("/order/:orderId", ctrl.getOrderReviews);      // order tracking page
+router.get("/home", ctrl.getHomeReviews);
+router.get("/product/:productId", ctrl.getProductReviews);
+router.get("/hotel/:hotelId", ctrl.getHotelReviews);
+router.get("/order/:orderId", ctrl.getOrderReviews);
 
-// ── Auth required
+// ── Admin routes (use adminAuth, NOT user auth)
+router.get("/admin/all", adminAuth, ctrl.adminGetReviews);
+router.patch("/admin/:id/status", adminAuth, ctrl.adminUpdateReviewStatus);
+router.post("/:id/reply", adminAuth, ctrl.replyToReview);
+
+// ── Auth required (user routes)
 router.use(auth);
-router.get("/my", ctrl.getMyReviews);         // my reviews tab
-router.get("/can-review", ctrl.canReview);            // check before showing button
-router.post("/", ctrl.createReview);         // submit review
-router.put("/:id", ctrl.updateReview);         // edit review
-router.delete("/:id", ctrl.deleteReview);         // delete review
-router.post("/:id/helpful", ctrl.toggleHelpful);        // helpful vote
-
-// ── Admin (controller checks isAdmin internally)
-router.post("/:id/reply", ctrl.replyToReview);
-router.get("/admin/all", ctrl.adminGetReviews);
-router.patch("/admin/:id/status", ctrl.adminUpdateReviewStatus);
+router.get("/my", ctrl.getMyReviews);
+router.get("/can-review", ctrl.canReview);
+router.post("/", ctrl.createReview);
+router.put("/:id", ctrl.updateReview);
+router.delete("/:id", ctrl.deleteReview);
+router.post("/:id/helpful", ctrl.toggleHelpful);
 
 module.exports = router;
+
