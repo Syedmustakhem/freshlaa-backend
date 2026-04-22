@@ -13,7 +13,7 @@ exports.getStillLooking = async (req, res) => {
 
     // 🔥 FALLBACK FOR NEW USERS
     if (!activity) {
-      const fallback = await Product.find({ isActive: true })
+      const fallback = await Product.find({ isActive: { $ne: false } })
         .sort({ createdAt: -1 })
         .limit(10)
         .select(PRODUCT_SELECT_FIELDS);
@@ -34,14 +34,14 @@ exports.getStillLooking = async (req, res) => {
         { subCategory: { $in: recentSearches } },
         { _id: { $in: recentViews } }
       ],
-      isActive: true
+      isActive: { $ne: false }
     })
       .limit(10)
       .select(PRODUCT_SELECT_FIELDS);
 
     // 🔥 IF NO MATCH → FALLBACK
     if (!products.length) {
-      products = await Product.find({ isActive: true })
+      products = await Product.find({ isActive: { $ne: false } })
         .sort({ createdAt: -1 })
         .limit(10)
         .select(PRODUCT_SELECT_FIELDS);
@@ -86,7 +86,7 @@ exports.getAlsoBought = async (req, res) => {
       products = await Product.find({
         category: { $in: favoriteCategories },
         _id: { $nin: pastProductIds }, // don't recommend exact same items they just bought
-        isActive: true
+        isActive: { $ne: false }
       })
         .sort({ popularity: -1, createdAt: -1 }) // if popularity exists, or fallback to newest
         .limit(10)
@@ -95,7 +95,7 @@ exports.getAlsoBought = async (req, res) => {
 
     // 4. Fallback if no specific recommendations or no orders
     if (!products.length) {
-      products = await Product.find({ isActive: true })
+      products = await Product.find({ isActive: { $ne: false } })
         .sort({ popularity: -1, createdAt: -1 })
         .limit(10)
         .select(PRODUCT_SELECT_FIELDS);
@@ -116,7 +116,7 @@ exports.getSuggested = async (req, res) => {
     const activity = await UserActivity.findOne({ userId });
 
     if (!activity) {
-      const trending = await Product.find({ isActive: true })
+      const trending = await Product.find({ isActive: { $ne: false } })
         .sort({ popularity: -1, createdAt: -1 })
         .limit(10)
         .select(PRODUCT_SELECT_FIELDS);
@@ -129,7 +129,7 @@ exports.getSuggested = async (req, res) => {
     const viewedProductIds = (activity.viewedProducts || []).map(v => v.productId);
     const viewedProducts = await Product.find({
       _id: { $in: viewedProductIds },
-      isActive: true
+      isActive: { $ne: false }
     });
 
     const categories = viewedProducts.map(p => p.category).filter(Boolean);
@@ -143,7 +143,7 @@ exports.getSuggested = async (req, res) => {
           { category: { $in: signals } },
           { subCategory: { $in: signals } }
         ],
-        isActive: true
+        isActive: { $ne: false }
       })
         .sort({ popularity: -1, createdAt: -1 })
         .limit(10)
@@ -152,7 +152,7 @@ exports.getSuggested = async (req, res) => {
 
     // Fallback
     if (!products.length) {
-      const trending = await Product.find({ isActive: true })
+      const trending = await Product.find({ isActive: { $ne: false } })
         .sort({ popularity: -1, createdAt: -1 })
         .limit(10)
         .select(PRODUCT_SELECT_FIELDS);
