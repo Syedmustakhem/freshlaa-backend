@@ -74,7 +74,7 @@ const reviewSchema = new mongoose.Schema({
   status: {
     type:    String,
     enum:    ["pending", "approved", "rejected"],
-    default: "approved", // auto-publish; change to "pending" if you want moderation
+    default: "pending", // auto-publish; change to "pending" if you want moderation
     index:   true,
   },
   rejectionReason: { type: String, default: null },
