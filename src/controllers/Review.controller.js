@@ -506,7 +506,7 @@ exports.adminGetReviews = async (req, res) => {
 
     const {
       page = 1, limit = 20,
-      status, reviewType, minRating, maxRating, withPhotos,
+      status, reviewType, minRating, maxRating, withPhotos, search,
     } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -519,6 +519,13 @@ exports.adminGetReviews = async (req, res) => {
       query.rating = {};
       if (minRating) query.rating.$gte = Number(minRating);
       if (maxRating) query.rating.$lte = Number(maxRating);
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { body: { $regex: search, $options: "i" } },
+      ];
     }
 
     const [reviews, total] = await Promise.all([
@@ -565,6 +572,30 @@ exports.adminUpdateReviewStatus = async (req, res) => {
     if (review.product) await updateProductRating(review.product);
 
     return res.json({ success: true, review });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// ADMIN — DELETE /api/reviews/admin/:id
+// ─────────────────────────────────────────────────────────────
+exports.adminDeleteReview = async (req, res) => {
+  try {
+    const isAdmin = !!req.admin || !!req.user?.isAdmin;
+    if (!isAdmin)
+      return res.status(403).json({ success: false, message: "Admin access required" });
+
+    const review = await Review.findById(req.params.id);
+    if (!review)
+      return res.status(404).json({ success: false, message: "Review not found" });
+
+    review.isDeleted = true;
+    await review.save();
+    
+    if (review.product) await updateProductRating(review.product);
+
+    return res.json({ success: true, message: "Review deleted by admin" });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

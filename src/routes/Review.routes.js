@@ -17,6 +17,7 @@ router.get("/order/:orderId", ctrl.getOrderReviews);
 // ── Admin routes (use adminAuth, NOT user auth)
 router.get("/admin/all", adminAuth, ctrl.adminGetReviews);
 router.patch("/admin/:id/status", adminAuth, ctrl.adminUpdateReviewStatus);
+router.delete("/admin/:id", adminAuth, ctrl.adminDeleteReview);
 router.post("/:id/reply", adminAuth, ctrl.replyToReview);
 
 // ── Auth required (user routes)
