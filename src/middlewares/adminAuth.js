@@ -16,14 +16,14 @@ module.exports = async (req, res, next) => {
       process.env.ADMIN_JWT_SECRET
     );
 
-    // ✅ FETCH REAL ADMIN FROM DB
+    // ✅ FETCH ADMIN FROM DB
     const admin = await Admin.findById(decoded.id);
 
-    if (!admin || !admin.isActive) {
-      return res.status(401).json({ message: "Admin not found or inactive" });
+    if (!admin) {
+      return res.status(401).json({ message: "Admin not found" });
     }
 
-    // ✅ ATTACH FULL ADMIN OBJECT
+    // ✅ IMPORTANT: attach full admin object
     req.admin = admin;
 
     next();
