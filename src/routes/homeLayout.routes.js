@@ -5,6 +5,7 @@ const {
     getAllSections,
     toggleSection,
     updateOrder,
+    updateSection,
 } = require("../controllers/homeLayout.controller");
 
 // Safe auth middleware load — won't crash if naming differs
@@ -25,6 +26,7 @@ router.get("/", getHomeLayout);                                       // GET /ap
 // ── Admin ────────────────────────────────────────────────────
 router.get("/admin/all", protect, adminOnly, getAllSections);
 router.patch("/admin/:id/toggle", protect, adminOnly, toggleSection);
+router.put("/admin/:id", protect, adminOnly, updateSection);
 router.post("/admin/reorder", protect, adminOnly, updateOrder);
 
 module.exports = router;

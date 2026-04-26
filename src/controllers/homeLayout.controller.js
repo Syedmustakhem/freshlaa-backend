@@ -64,3 +64,15 @@ exports.updateOrder = async (req, res) => {
         return res.status(500).json({ success: false, error: err.message });
     }
 };
+
+// ─── ADMIN: UPDATE SINGLE SECTION ────────────────────────────
+exports.updateSection = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const section = await HomeSection.findByIdAndUpdate(id, req.body, { new: true });
+        if (!section) return res.status(404).json({ success: false, message: "Section not found" });
+        return res.json({ success: true, section });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+};

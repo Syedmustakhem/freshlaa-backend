@@ -25,6 +25,7 @@ const HomeSectionSchema = new mongoose.Schema({
       "ALSO_BOUGHT",
       "SUGGESTED_PRODUCTS",
       "EVENT_GRID",
+      "DYNAMIC_CATEGORIES",
     ],
   },
 
