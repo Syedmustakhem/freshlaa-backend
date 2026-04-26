@@ -55,6 +55,7 @@ async function enrichSections(sections = []) {
 /* ─── PUBLIC — GET /api/home-layout ─────────────────── */
 router.get("/home-layout", async (req, res) => {
   try {
+    await ensureSystemSections(); // ✅ Ensure AI sections exist in DB
     const sections = await HomeSection.find({ isActive: true })
       .sort({ order: 1 })
       .lean();
@@ -86,25 +87,28 @@ router.get("/home-layout", async (req, res) => {
   }
 });
 
+/* ─── SHARED HELPER: Ensure System Sections Exist ───── */
+async function ensureSystemSections() {
+  const systemSections = [
+    { type: "TRENDING_TICKER", order: 1.5 },
+    { type: "FLASH_SALE", order: 1.6 },
+    { type: "STILL_LOOKING", order: 20 },
+    { type: "ALSO_BOUGHT", order: 21 },
+    { type: "SUGGESTED_PRODUCTS", order: 22 },
+  ];
+
+  for (const sys of systemSections) {
+    const exists = await HomeSection.findOne({ type: sys.type });
+    if (!exists) {
+      await HomeSection.create({ ...sys, isActive: true, data: {} });
+    }
+  }
+}
+
 /* ─── ADMIN — GET all sections ──────────────────────── */
 router.get("/admin/home-layout", adminAuth, async (req, res) => {
   try {
-    // Self-healing: Ensure system sections exist
-    const systemSections = [
-      { type: "TRENDING_TICKER", order: 1.5 },
-      { type: "FLASH_SALE", order: 1.6 },
-      { type: "STILL_LOOKING", order: 20 },
-      { type: "ALSO_BOUGHT", order: 21 },
-      { type: "SUGGESTED_PRODUCTS", order: 22 },
-    ];
-
-    for (const sys of systemSections) {
-      const exists = await HomeSection.findOne({ type: sys.type });
-      if (!exists) {
-        await HomeSection.create({ ...sys, isActive: true, data: {} });
-      }
-    }
-
+    await ensureSystemSections();
     const sections = await HomeSection.find().sort({ order: 1 }).lean();
     return res.json({
       success:  true,
@@ -173,21 +177,19 @@ router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
     }
 
     console.log(`🔄 [HomeSection] Reordering ${items.length} sections...`);
-    const bulk = items.map((item) => {
+    
+    // Switch to Promise.all with findByIdAndUpdate for better Mongoose compatibility and ID casting
+    await Promise.all(items.map(async (item) => {
       const id = item._id || item.id;
       const orderVal = Number(item.order);
-      console.log(`   - Updating section ${id} to order ${orderVal}`);
-      return {
-        updateOne: { 
-          filter: { _id: id }, 
-          update: { order: orderVal } 
-        },
-      };
-    });
+      if (id) {
+        console.log(`   - Updating section ${id} to order ${orderVal}`);
+        await HomeSection.findByIdAndUpdate(id, { order: orderVal });
+      }
+    }));
 
-    await HomeSection.bulkWrite(bulk);
-    console.log("✅ [HomeSection] Bulk write successful");
-    return res.json({ success: true, message: "Order updated" });
+    console.log("✅ [HomeSection] Reorder complete");
+    return res.json({ success: true, message: "Order updated successfully" });
   } catch (err) {
     console.error("Reorder failed:", err);
     return res.status(500).json({ success: false, message: "Reorder failed", error: err.message });
