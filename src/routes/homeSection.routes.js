@@ -178,21 +178,28 @@ router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
 
     console.log(`🔄 [HomeSection] Reordering ${items.length} sections...`);
     
-    // Switch to Promise.all with findByIdAndUpdate for better Mongoose compatibility and ID casting
-    await Promise.all(items.map(async (item) => {
+    for (const item of items) {
       const id = item._id || item.id;
-      const orderVal = Number(item.order);
-      if (id) {
-        console.log(`   - Updating section ${id} to order ${orderVal}`);
-        await HomeSection.findByIdAndUpdate(id, { order: orderVal });
+      const orderVal = parseInt(item.order);
+      
+      if (!id || isNaN(orderVal)) {
+        console.warn("⚠️ Skipping invalid reorder item:", item);
+        continue;
       }
-    }));
+
+      console.log(`   - Updating section ${id} to order ${orderVal}`);
+      await HomeSection.findByIdAndUpdate(id, { $set: { order: orderVal } });
+    }
 
     console.log("✅ [HomeSection] Reorder complete");
     return res.json({ success: true, message: "Order updated successfully" });
   } catch (err) {
-    console.error("Reorder failed:", err);
-    return res.status(500).json({ success: false, message: "Reorder failed", error: err.message });
+    console.error("🔥 REORDER CRASH:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error during reorder", 
+      error: err.message 
+    });
   }
 });
 
