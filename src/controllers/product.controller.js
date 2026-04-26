@@ -131,9 +131,6 @@ if (!product) {
 
     }
 
-    // Keep all variants so the UI can show which ones are OOS
-    // product.variants = product.variants.filter(v => v.stock > 0); 
-
     res.json({
       success: true,
       data: product,
@@ -495,10 +492,10 @@ exports.getProductsByIds = async (req, res) => {
       isActive: true,
     }).lean();
 
-    // Remove out-of-stock variants (same pattern as rest of controller)
-    products.forEach(p => {
-      p.variants = p.variants.filter(v => v.stock > 0);
-    });
+    // Keep all variants so frontend can show OOS status
+    // products.forEach(p => {
+    //   p.variants = p.variants.filter(v => v.stock > 0);
+    // });
 
     // Return in the same order as ids array
     const sorted = ids
@@ -575,11 +572,12 @@ exports.getFlashSales = async (req, res) => {
       .sort({ stock: -1, flashSaleEndTime: 1 }) // In-stock first
       .lean();
 
-    if (includeOOS !== "true") {
-      products.forEach(p => {
-        p.variants = p.variants?.filter(v => v.stock > 0);
-      });
-    }
+    // Keep all variants
+    // if (includeOOS !== "true") {
+    //   products.forEach(p => {
+    //     p.variants = p.variants?.filter(v => v.stock > 0);
+    //   });
+    // }
 
     res.json({ success: true, data: products });
   } catch (err) {
@@ -603,13 +601,13 @@ exports.getDiscoveryProducts = async (req, res) => {
       { $sample: { size: 20 } }
     ]);
 
-    // Ensure numeric fields and lean-like structure
-    const cleaned = products.map(p => {
-      if (includeOOS !== "true") {
-        p.variants = p.variants?.filter(v => v.stock > 0);
-      }
-      return p;
-    });
+    // Keep variants
+    // const cleaned = products.map(p => {
+    //   if (includeOOS !== "true") {
+    //     p.variants = p.variants?.filter(v => v.stock > 0);
+    //   }
+    //   return p;
+    // });
 
     res.json({ success: true, data: cleaned });
   } catch (err) {
