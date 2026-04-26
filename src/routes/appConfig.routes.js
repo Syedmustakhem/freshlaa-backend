@@ -124,7 +124,7 @@ router.get("/delivery-config", (req, res) => {
 const APP_CONFIG = {
   // ✅ FIX: min_version is the MINIMUM allowed — keep it at the last stable
   //         version. Only increase this when you want to force-block older builds.
-  min_version_android: "1.6.0",
+  min_version_android: "1.7.0",
   latest_version_android: "1.7.0",
   min_version_ios: "1.0.0",
 
