@@ -9,6 +9,8 @@ exports.getProfile = async (req, res) => {
         phone: req.user.phone,
         name: req.user.name,
         email: req.user.email,
+        isAdmin: req.user.isAdmin,
+        role: req.user.role,
       },
     });
   } catch (err) {
@@ -37,6 +39,8 @@ exports.updateProfile = async (req, res) => {
         phone: user.phone,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
+        role: user.role,
       },
     });
   } catch (err) {

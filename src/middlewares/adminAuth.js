@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
+const User = require("../models/User");
 
 module.exports = async (req, res, next) => {
   try {
@@ -11,20 +12,34 @@ module.exports = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(
-      token,
-      process.env.ADMIN_JWT_SECRET
-    );
+    let decoded;
+    let isAdmin = false;
 
-    // ✅ FETCH ADMIN FROM DB
-    const admin = await Admin.findById(decoded.id);
-
-    if (!admin) {
-      return res.status(401).json({ message: "Admin not found" });
+    // 1️⃣ TRY ADMIN TOKEN (Primary)
+    try {
+      decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET);
+      const admin = await Admin.findById(decoded.id);
+      if (admin) {
+        req.admin = admin;
+        isAdmin = true;
+      }
+    } catch (adminErr) {
+      // 2️⃣ TRY USER TOKEN (Fallback for mobile app admins)
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (user && user.isAdmin) {
+          req.user = user;
+          isAdmin = true;
+        }
+      } catch (userErr) {
+        // Both failed
+      }
     }
 
-    // ✅ IMPORTANT: attach full admin object
-    req.admin = admin;
+    if (!isAdmin) {
+      return res.status(401).json({ message: "Not authorized as admin" });
+    }
 
     next();
   } catch (err) {

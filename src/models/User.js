@@ -114,6 +114,17 @@ codOverride: {
       type: Boolean,
       default: false,
     },
+
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
+
+    role: {
+      type: String,
+      enum: ["user", "admin", "moderator"],
+      default: "user",
+    },
   },
 
   {
