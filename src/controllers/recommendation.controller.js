@@ -38,8 +38,8 @@ exports.getStillLooking = async (req, res) => {
       }
     }
 
-    // 🔥 FALLBACK
-    if (!products.length) {
+    // 🔥 FALLBACK (Only for guests)
+    if (!products.length && !isValidObjectId(userId)) {
       products = await Product.find({ isActive: { $ne: false } })
         .sort({ createdAt: -1 })
         .limit(10)
@@ -92,8 +92,8 @@ exports.getAlsoBought = async (req, res) => {
       }
     }
 
-    // 4. Fallback
-    if (!products.length) {
+    // 🔥 FALLBACK (Only for guests)
+    if (!products.length && !isValidObjectId(userId)) {
       products = await Product.find({ isActive: { $ne: false } })
         .sort({ createdAt: -1 })
         .limit(10)
@@ -143,8 +143,8 @@ exports.getSuggested = async (req, res) => {
       }
     }
 
-    // Fallback
-    if (!products.length) {
+    // 🔥 FALLBACK (Only for guests)
+    if (!products.length && !isValidObjectId(userId)) {
       products = await Product.find({ isActive: { $ne: false } })
         .sort({ createdAt: -1 })
         .limit(10)

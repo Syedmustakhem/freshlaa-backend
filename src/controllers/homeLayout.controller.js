@@ -6,6 +6,7 @@ exports.getHomeLayout = async (req, res) => {
         const sections = await HomeSection.find({ isActive: true })
             .sort({ order: 1 });
 
+        console.log(`🏠 Sending ${sections.length} sections to app. Types:`, sections.map(s => `${s.type}(${s.order})`).join(", "));
         return res.json({ success: true, sections });
     } catch (err) {
         console.error("HomeLayout Error:", err);
@@ -49,12 +50,16 @@ exports.updateOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid payload: sections or order array required" });
         }
 
+        console.log(`🔄 Reordering ${items.length} sections...`);
         await Promise.all(
-            items.map((item) =>
-                HomeSection.findByIdAndUpdate(item._id || item.id, { order: item.order })
-            )
+            items.map((item) => {
+                const id = item._id || item.id;
+                const order = Number(item.order);
+                console.log(`   - Updating section ${id} to order ${order}`);
+                return HomeSection.findByIdAndUpdate(id, { order });
+            })
         );
-        return res.json({ success: true });
+        return res.json({ success: true, message: "Order updated successfully" });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
     }

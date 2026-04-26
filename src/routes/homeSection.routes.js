@@ -162,14 +162,32 @@ router.patch("/admin/home-section/:id/toggle", adminAuth, async (req, res) => {
 /* ─── ADMIN — REORDER sections ──────────────────────── */
 router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
   try {
-    const { order } = req.body;
-    const bulk = order.map((item) => ({
-      updateOne: { filter: { _id: item.id }, update: { order: item.order } },
-    }));
+    const { order, sections } = req.body;
+    const items = sections || order;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: "Invalid payload: sections or order array required" });
+    }
+
+    console.log(`🔄 [HomeSection] Reordering ${items.length} sections...`);
+    const bulk = items.map((item) => {
+      const id = item._id || item.id;
+      const orderVal = Number(item.order);
+      console.log(`   - Updating section ${id} to order ${orderVal}`);
+      return {
+        updateOne: { 
+          filter: { _id: id }, 
+          update: { order: orderVal } 
+        },
+      };
+    });
+
     await HomeSection.bulkWrite(bulk);
-    return res.json({ success: true });
+    console.log("✅ [HomeSection] Bulk write successful");
+    return res.json({ success: true, message: "Order updated" });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Reorder failed" });
+    console.error("Reorder failed:", err);
+    return res.status(500).json({ success: false, message: "Reorder failed", error: err.message });
   }
 });
 
