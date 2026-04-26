@@ -73,9 +73,11 @@ router.get("/home-layout", async (req, res) => {
     return res.json({
       success:  true,
       sections: sections.map((s) => ({
-        id:   s._id,
-        type: s.type,
-        data: s.data || {},
+        id:    s._id,
+        _id:   s._id,
+        type:  s.type,
+        order: s.order, // ✅ Added for verification
+        data:  s.data || {},
       })),
     });
   } catch (err) {
