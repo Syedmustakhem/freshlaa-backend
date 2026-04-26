@@ -310,7 +310,7 @@ data.subCategory = data.category; // keep compatibility if needed
 /* ================= ZEPTO: PRODUCTS BY SUB CATEGORY ================= */
 exports.getProductsBySubCategory = async (req, res) => {
   try {
-    const { sectionId, subCategory, includeOOS } = req.query;
+    const { sectionId, subCategory } = req.query;
 
     if (!subCategory) {
       return res.status(400).json({ success: false, message: "subCategory is required" });
@@ -322,19 +322,10 @@ exports.getProductsBySubCategory = async (req, res) => {
       isActive: true,
     };
 
-    if (includeOOS !== "true") {
-      query.stock = { $gt: 0 };
-    }
-
+    // Always include OOS, sort by stock first
     const products = await Product.find(query)
       .sort({ stock: -1, createdAt: -1 })
       .lean();
-
-    if (includeOOS !== "true") {
-      products.forEach(p => {
-        p.variants = p.variants.filter(v => v.stock > 0);
-      });
-    }
 
     res.json({ success: true, data: products });
   } catch (err) {
@@ -413,7 +404,7 @@ exports.updateProduct = async (req, res) => {
 // product.controller.js
 exports.getProductsByCategorySlug = async (req, res) => {
   try {
-    const { slug, includeOOS } = req.query;
+    const { slug } = req.query;
 
     if (!slug) {
       return res.json({ success: true, data: [] });
@@ -424,19 +415,10 @@ exports.getProductsByCategorySlug = async (req, res) => {
       isActive: true,
     };
 
-    if (includeOOS !== "true") {
-      query.stock = { $gt: 0 };
-    }
-
+    // Always include OOS
     const products = await Product.find(query)
       .sort({ stock: -1, createdAt: -1 })
       .lean();
-
-    if (includeOOS !== "true") {
-      products.forEach(p => {
-        p.variants = p.variants?.filter(v => v.stock > 0);
-      });
-    }
 
     res.json({ success: true, data: products });
   } catch (err) {
@@ -532,7 +514,7 @@ exports.getProductsByIds = async (req, res) => {
 
 exports.getProductsBySection = async (req, res) => {
   try {
-    const { sectionId, subCategory, includeOOS } = req.query;
+    const { sectionId, subCategory } = req.query;
 
     if (!sectionId) {
       return res.json({ success: true, data: [] });
@@ -542,10 +524,6 @@ exports.getProductsBySection = async (req, res) => {
       sectionId,
       isActive: true,
     };
-
-    if (includeOOS !== "true") {
-      query.stock = { $gt: 0 };
-    }
 
     // 🔥 TOP PICKS (NO subCategory selected)
     if (!subCategory) {
@@ -559,12 +537,6 @@ exports.getProductsBySection = async (req, res) => {
     const products = await Product.find(query)
       .sort({ stock: -1, createdAt: -1 })
       .lean();
-
-    if (includeOOS !== "true") {
-      products.forEach(p => {
-        p.variants = p.variants.filter(v => v.stock > 0);
-      });
-    }
 
     res.json({ success: true, data: products });
 
