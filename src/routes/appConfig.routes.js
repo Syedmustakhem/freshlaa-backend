@@ -24,9 +24,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -125,7 +125,7 @@ const APP_CONFIG = {
   // ✅ FIX: min_version is the MINIMUM allowed — keep it at the last stable
   //         version. Only increase this when you want to force-block older builds.
   min_version_android: "1.6.0",
-  latest_version_android: "1.6.0",
+  latest_version_android: "1.7.0",
   min_version_ios: "1.0.0",
 
   force_update_message:
