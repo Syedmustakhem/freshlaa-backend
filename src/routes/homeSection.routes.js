@@ -205,6 +205,16 @@ router.patch("/admin/home-section/:id/toggle", adminAuth, async (req, res) => {
   }
 });
 
+/* ─── ADMIN — DELETE section ────────────────────────── */
+router.delete("/admin/home-section/:id", adminAuth, async (req, res) => {
+  try {
+    await HomeSection.findByIdAndDelete(req.params.id);
+    return res.json({ success: true, message: "Section deleted" });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Delete failed" });
+  }
+});
+
 
 /* ╔═════════════════════════════════════════════════════╗
    ║         OFFER PAGE ROUTES  (/offer-page)           ║
