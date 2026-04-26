@@ -42,10 +42,16 @@ exports.toggleSection = async (req, res) => {
 // ─── ADMIN: UPDATE SECTION ORDER ─────────────────────────────
 exports.updateOrder = async (req, res) => {
     try {
-        const { sections } = req.body; // [{ _id, order }, ...]
+        const { sections, order } = req.body;
+        const items = sections || order;
+
+        if (!Array.isArray(items)) {
+            return res.status(400).json({ success: false, message: "Invalid payload: sections or order array required" });
+        }
+
         await Promise.all(
-            sections.map(({ _id, order }) =>
-                HomeSection.findByIdAndUpdate(_id, { order })
+            items.map((item) =>
+                HomeSection.findByIdAndUpdate(item._id || item.id, { order: item.order })
             )
         );
         return res.json({ success: true });
