@@ -107,6 +107,7 @@ router.get("/admin/home-layout", adminAuth, async (req, res) => {
     return res.json({
       success:  true,
       sections: sections.map((s) => ({
+        _id:      s._id,
         id:       s._id,
         type:     s.type,
         isActive: s.isActive,
