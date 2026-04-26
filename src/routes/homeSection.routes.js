@@ -136,35 +136,6 @@ router.post("/admin/home-section", adminAuth, async (req, res) => {
   }
 });
 
-/* ─── ADMIN — UPDATE section ────────────────────────── */
-router.put("/admin/home-section/:id", adminAuth, async (req, res) => {
-  try {
-    const { type, order, data } = req.body;
-    const section = await HomeSection.findByIdAndUpdate(
-      req.params.id,
-      { type, order, data },
-      { new: true }
-    );
-    if (!section) return res.status(404).json({ success: false, message: "Section not found" });
-    return res.json({ success: true, section });
-  } catch (err) {
-    console.error("Update section error:", err);
-    return res.status(500).json({ success: false, message: "Update failed" });
-  }
-});
-
-/* ─── ADMIN — TOGGLE section ────────────────────────── */
-router.patch("/admin/home-section/:id/toggle", adminAuth, async (req, res) => {
-  try {
-    const section = await HomeSection.findById(req.params.id);
-    if (!section) return res.status(404).json({ success: false, message: "Not found" });
-    section.isActive = !section.isActive;
-    await section.save();
-    return res.json({ success: true, section });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: "Toggle failed" });
-  }
-});
 
 /* ─── ADMIN — REORDER sections ──────────────────────── */
 router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
@@ -201,6 +172,36 @@ router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
+  }
+});
+
+/* ─── ADMIN — UPDATE section ────────────────────────── */
+router.put("/admin/home-section/:id", adminAuth, async (req, res) => {
+  try {
+    const { type, order, data } = req.body;
+    const section = await HomeSection.findByIdAndUpdate(
+      req.params.id,
+      { type, order, data },
+      { new: true }
+    );
+    if (!section) return res.status(404).json({ success: false, message: "Section not found" });
+    return res.json({ success: true, section });
+  } catch (err) {
+    console.error("Update section error:", err);
+    return res.status(500).json({ success: false, message: "Update failed" });
+  }
+});
+
+/* ─── ADMIN — TOGGLE section ────────────────────────── */
+router.patch("/admin/home-section/:id/toggle", adminAuth, async (req, res) => {
+  try {
+    const section = await HomeSection.findById(req.params.id);
+    if (!section) return res.status(404).json({ success: false, message: "Not found" });
+    section.isActive = !section.isActive;
+    await section.save();
+    return res.json({ success: true, section });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Toggle failed" });
   }
 });
 
