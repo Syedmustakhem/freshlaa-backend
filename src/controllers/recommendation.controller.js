@@ -38,12 +38,13 @@ exports.getStillLooking = async (req, res) => {
       }
     }
 
-    // 🔥 FALLBACK (Only for guests)
+    // 🔥 FALLBACK (Only for guests) — Use $sample for variety
     if (!products.length && !isValidObjectId(userId)) {
-      products = await Product.find({ isActive: { $ne: false } })
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .select(PRODUCT_SELECT_FIELDS);
+      products = await Product.aggregate([
+        { $match: { isActive: { $ne: false } } },
+        { $sample: { size: 10 } },
+        { $project: { name: 1, images: 1, variants: 1, offerPercentage: 1, category: 1, subCategory: 1, isActive: 1, stock: 1 } }
+      ]);
     }
 
     res.json(products);
@@ -92,12 +93,13 @@ exports.getAlsoBought = async (req, res) => {
       }
     }
 
-    // 🔥 FALLBACK (Only for guests)
+    // 🔥 FALLBACK (Only for guests) — Use $sample for variety
     if (!products.length && !isValidObjectId(userId)) {
-      products = await Product.find({ isActive: { $ne: false } })
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .select(PRODUCT_SELECT_FIELDS);
+      products = await Product.aggregate([
+        { $match: { isActive: { $ne: false } } },
+        { $sample: { size: 10 } },
+        { $project: { name: 1, images: 1, variants: 1, offerPercentage: 1, category: 1, subCategory: 1, isActive: 1, stock: 1 } }
+      ]);
     }
 
     return res.json(products);
@@ -143,12 +145,13 @@ exports.getSuggested = async (req, res) => {
       }
     }
 
-    // 🔥 FALLBACK (Only for guests)
+    // 🔥 FALLBACK (Only for guests) — Use $sample for variety
     if (!products.length && !isValidObjectId(userId)) {
-      products = await Product.find({ isActive: { $ne: false } })
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .select(PRODUCT_SELECT_FIELDS);
+      products = await Product.aggregate([
+        { $match: { isActive: { $ne: false } } },
+        { $sample: { size: 10 } },
+        { $project: { name: 1, images: 1, variants: 1, offerPercentage: 1, category: 1, subCategory: 1, isActive: 1, stock: 1 } }
+      ]);
     }
 
     return res.json(products);
