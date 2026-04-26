@@ -176,29 +176,30 @@ router.put("/admin/home-section/reorder", adminAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid payload: sections or order array required" });
     }
 
-    console.log(`🔄 [HomeSection] Reordering ${items.length} sections...`);
+    console.log(`📡 [REORDER] Received request for ${items.length} items`);
     
     for (const item of items) {
       const id = item._id || item.id;
       const orderVal = parseInt(item.order);
       
-      if (!id || isNaN(orderVal)) {
-        console.warn("⚠️ Skipping invalid reorder item:", item);
-        continue;
-      }
+      if (!id || isNaN(orderVal)) continue;
 
-      console.log(`   - Updating section ${id} to order ${orderVal}`);
-      await HomeSection.findByIdAndUpdate(id, { $set: { order: orderVal } });
+      // Use updateOne for a direct, low-level update that bypasses most middleware/hooks
+      await HomeSection.updateOne(
+        { _id: id },
+        { $set: { order: orderVal } }
+      );
     }
 
-    console.log("✅ [HomeSection] Reorder complete");
-    return res.json({ success: true, message: "Order updated successfully" });
+    console.log("✅ [REORDER] All items updated successfully");
+    return res.json({ success: true, message: "Layout order updated" });
   } catch (err) {
-    console.error("🔥 REORDER CRASH:", err);
+    console.error("❌ [REORDER] Error:", err);
     return res.status(500).json({ 
       success: false, 
-      message: "Server error during reorder", 
-      error: err.message 
+      message: "Internal server error during reorder",
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 });
