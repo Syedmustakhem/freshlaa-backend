@@ -586,30 +586,29 @@ exports.getFlashSales = async (req, res) => {
   }
 };
 
-/* ================= GET DISCOVERY PRODUCTS (Swipe-to-Shop) ================= */
 exports.getDiscoveryProducts = async (req, res) => {
   try {
     const { includeOOS } = req.query;
-    const match = { isActive: true, "images.0": { $exists: true } };
+    const match = { isActive: true };
 
     if (includeOOS !== "true") {
       match.stock = { $gt: 0 };
     }
 
-    const products = await Product.aggregate([
+    let products = await Product.aggregate([
       { $match: match },
-      { $sample: { size: 20 } }
+      { $sample: { size: 30 } }
     ]);
 
-    // Keep variants
-    // const cleaned = products.map(p => {
-    //   if (includeOOS !== "true") {
-    //     p.variants = p.variants?.filter(v => v.stock > 0);
-    //   }
-    //   return p;
-    // });
+    // Fallback: If no active products found, try getting any products
+    if (!products || products.length === 0) {
+      console.log("Discovery: No active products found, falling back to all products");
+      products = await Product.find({}).limit(20).lean();
+      // Simple shuffle
+      products = products.sort(() => Math.random() - 0.5);
+    }
 
-    res.json({ success: true, data: cleaned });
+    res.json({ success: true, data: products });
   } catch (err) {
     console.error("getDiscoveryProducts error:", err);
     res.status(500).json({ success: false, message: "Failed to fetch discovery products" });
