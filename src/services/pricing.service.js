@@ -166,14 +166,18 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
     const originalPrice = price;
 
     // ⚡ FLASH SALE PRICE OVERRIDE & QTY LIMIT ⚡
-    const isFlashSaleActive = product.isFlashSale && 
+    const flashSaleEnd = product.flashSaleEndTime ? new Date(product.flashSaleEndTime) : null;
+    const now = new Date();
+    
+    const isFlashSaleActive = product.isFlashSale === true && 
                               product.flashSalePrice > 0 && 
-                              product.flashSaleEndTime && 
-                              new Date(product.flashSaleEndTime) > new Date();
+                              flashSaleEnd !== null && 
+                              flashSaleEnd > now;
 
     if (isFlashSaleActive) {
+      // Enforce quantity limit of 1 for flash sale items
       if (item.qty > 1) {
-        throw new Error(`Flash sale deal for ${product.name} is limited to 1 quantity per order.`);
+        throw new Error(`The flash deal for "${product.name}" is limited to 1 quantity per order. Please adjust your cart.`);
       }
       price = product.flashSalePrice;
     } else if (product.offerPercentage > 0) {
@@ -216,6 +220,7 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
       qty:               item.qty,
       total:             itemTotal,
       isCampaignProduct: false,
+      isFlashSaleItem:   isFlashSaleActive, // ✅ Let frontend know it's a flash deal
       hotelId:           item.hotelId        || null,
       selectedAddons:    item.selectedAddons || [],
       customizations:    item.customizations || {},
