@@ -165,19 +165,15 @@ exports.calculateOrder = async (items, session = null, couponCode = null) => {
 
     const originalPrice = price;
 
-    // ⚡ FLASH SALE PRICE OVERRIDE & QTY LIMIT ⚡
-    const flashSaleEnd = product.flashSaleEndTime ? new Date(product.flashSaleEndTime) : null;
-    const now = new Date();
-    
-    const isFlashSaleActive = product.isFlashSale === true && 
-                              product.flashSalePrice > 0 && 
-                              flashSaleEnd !== null && 
-                              flashSaleEnd > now;
+    // ⚡ FLASH SALE PRICE OVERRIDE ⚡
+    // We apply flash sale price if the product is marked as such and price is valid.
+    // We are lenient with the time check during checkout to prevent price jumps.
+    const isFlashSaleActive = product.isFlashSale === true && (product.flashSalePrice || 0) > 0;
 
     if (isFlashSaleActive) {
       // Enforce quantity limit of 1 for flash sale items
       if (item.qty > 1) {
-        throw new Error(`The flash deal for "${product.name}" is limited to 1 quantity per order. Please adjust your cart.`);
+        throw new Error(`The flash deal for "${product.name}" is limited to 1 quantity per order.`);
       }
       price = product.flashSalePrice;
     } else if (product.offerPercentage > 0) {
