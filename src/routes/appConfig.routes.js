@@ -133,8 +133,6 @@ router.get("/delivery-config", async (req, res) => {
   }
 });
 
-const AppConfig = require("../models/AppConfig");
-
 router.get("/app-config", async (req, res) => {
   // ✅ no-store prevents CDN/proxy caching — version check always hits live server
   res.set("Cache-Control", "no-store");
