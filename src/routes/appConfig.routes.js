@@ -31,9 +31,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-/* ───────────────── DELIVERY CONFIG API ───────────────── */
+const AppConfig = require("../models/AppConfig");
+const ServiceableArea = require("../models/ServiceableArea");
 
-router.get("/delivery-config", (req, res) => {
+router.get("/delivery-config", async (req, res) => {
   try {
     let { pincode, lat, lng } = req.query;
 
@@ -60,46 +61,70 @@ router.get("/delivery-config", (req, res) => {
         instantAvailable: false,
         estimatedTime: null,
         showTomorrowSlots: true,
-        nightMessage:
-          "⏰ Instant delivery is closed for today. Please choose a slot for tomorrow.",
+        nightMessage: "⏰ Instant delivery is closed for today. Please choose a slot for tomorrow.",
       });
     }
 
-    /* OTHER PINCODES */
-    if (pincode !== KADIRI_PINCODE) {
+    // 🔍 FETCH CONFIG FROM DB
+    const [config, area] = await Promise.all([
+      AppConfig.findOne().lean(),
+      ServiceableArea.findOne({ pincode }).lean()
+    ]);
+
+    if (!area || !area.isActive) {
       return res.json({
-        success: true,
-        instantAvailable: true,
-        estimatedTime: "45 mins",
-        distance: null,
+        success: false,
+        message: "Sorry, we don't deliver to this area yet.",
+        instantAvailable: false
       });
     }
 
-    /* KADIRI DISTANCE ETA */
-    let distance = null;
+    let estimatedTime = "30-40 mins"; // Default fallback
+    let instantAvailable = area.isInstantAvailable;
 
-    if (lat && lng) {
-      distance = calculateDistance(
+    // 1️⃣ CHECK FOR AREA-SPECIFIC OVERRIDE
+    if (area.estimatedTime) {
+      estimatedTime = area.estimatedTime;
+    } 
+    // 2️⃣ CHECK FOR DISTANCE-BASED RULES IF LAT/LNG PROVIDED
+    else if (lat && lng && config && config.deliveryTiming?.distanceRules?.length > 0) {
+      const distance = calculateDistance(
         STORE_LOCATION.lat,
         STORE_LOCATION.lng,
         Number(lat),
         Number(lng)
       );
+      
+      // Sort rules by maxKm to find the first matching range
+      const sortedRules = [...config.deliveryTiming.distanceRules].sort((a, b) => a.maxKm - b.maxKm);
+      const matchingRule = sortedRules.find(rule => distance <= rule.maxKm);
+      
+      if (matchingRule) {
+        estimatedTime = matchingRule.eta;
+      } else {
+        estimatedTime = config.deliveryTiming.baseEtaRange || "45 mins";
+      }
+    } 
+    // 3️⃣ FALLBACK TO GLOBAL BASE ETA
+    else if (config && config.deliveryTiming?.baseEtaRange) {
+      estimatedTime = config.deliveryTiming.baseEtaRange;
     }
 
-    let estimatedTime = "30 mins";
-
-    if (distance !== null) {
-      if (distance <= 0.5) estimatedTime = "25 mins";
-      else if (distance <= 1) estimatedTime = "30 mins";
-      else estimatedTime = "30-35 mins";
+    // 4️⃣ APPLY GLOBAL DELAY (SURGE)
+    if (config && config.deliveryTiming?.globalDelayMins > 0) {
+      // Simple string manipulation to add " (+10m surge)" or similar if it's a string
+      // Or just keep it as is if it's already a descriptive string.
+      // Better idea: append " (Delayed due to traffic/rain)" if delay is significant
+      if (config.deliveryTiming.globalDelayMins >= 15) {
+        estimatedTime += " (High Demand)";
+      }
     }
 
     return res.json({
       success: true,
-      instantAvailable: true,
+      instantAvailable,
       estimatedTime,
-      distance: distance ? distance.toFixed(2) + " km" : null,
+      distance: (lat && lng) ? calculateDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, Number(lat), Number(lng)).toFixed(2) + " km" : null,
       showTomorrowSlots: false,
     });
   } catch (err) {

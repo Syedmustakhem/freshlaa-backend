@@ -8,6 +8,16 @@ const appConfigSchema = new mongoose.Schema({
   surgeEnabled: { type: Boolean, default: false },
   surgeMultiplier: { type: Number, default: 1 },
 
+  // Dynamic Delivery Timing
+  deliveryTiming: {
+    globalDelayMins: { type: Number, default: 0 },
+    baseEtaRange: { type: String, default: "30-40 mins" },
+    distanceRules: [{
+      maxKm: { type: Number },
+      eta: { type: String }
+    }]
+  },
+
   // App Versioning
   min_version_android: { type: String, default: "1.0.0" },
   latest_version_android: { type: String, default: "1.0.0" },
