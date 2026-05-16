@@ -12,7 +12,7 @@ const STORE_LOCATION = {
 
 const KADIRI_PINCODE = "515591";
 
-const NIGHT_START = 21; // 9 PM
+const NIGHT_START = 22; // 10 PM
 const NIGHT_END = 8;   // 8 AM
 
 /* ───────────────── DISTANCE FUNCTION ───────────────── */
@@ -44,27 +44,6 @@ router.get("/delivery-config", async (req, res) => {
 
     pincode = pincode.trim();
 
-    /* 🕒 NIGHT CHECK */
-    const hour = Number(
-      new Date().toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "numeric",
-        hour12: false,
-      })
-    );
-
-    const isNight = hour >= NIGHT_START || hour < NIGHT_END;
-
-    if (isNight) {
-      return res.json({
-        success: true,
-        instantAvailable: false,
-        estimatedTime: null,
-        showTomorrowSlots: true,
-        nightMessage: "⏰ Instant delivery is closed for today. Please choose a slot for tomorrow.",
-      });
-    }
-
     // 🔍 FETCH CONFIG FROM DB
     const [config, area] = await Promise.all([
       AppConfig.findOne().lean(),
@@ -76,6 +55,28 @@ router.get("/delivery-config", async (req, res) => {
         success: false,
         message: "Sorry, we don't deliver to this area yet.",
         instantAvailable: false
+      });
+    }
+
+    /* 🕒 NIGHT CHECK (Dynamic) */
+    const hour = Number(
+      new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "numeric",
+        hour12: false,
+      })
+    );
+
+    const cutoffHour = config?.deliveryTiming?.cutoffHour || NIGHT_START;
+    const isNight = hour >= cutoffHour || hour < NIGHT_END;
+
+    if (isNight) {
+      return res.json({
+        success: true,
+        instantAvailable: false,
+        estimatedTime: null,
+        showTomorrowSlots: true,
+        nightMessage: "⏰ Instant delivery is closed for today. Please choose a slot for tomorrow.",
       });
     }
 

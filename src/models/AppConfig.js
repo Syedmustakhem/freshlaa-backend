@@ -12,6 +12,7 @@ const appConfigSchema = new mongoose.Schema({
   deliveryTiming: {
     globalDelayMins: { type: Number, default: 0 },
     baseEtaRange: { type: String, default: "30-40 mins" },
+    cutoffHour: { type: Number, default: 22 }, // 10 PM
     distanceRules: [{
       maxKm: { type: Number },
       eta: { type: String }
