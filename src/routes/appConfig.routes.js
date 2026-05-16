@@ -108,60 +108,48 @@ router.get("/delivery-config", (req, res) => {
   }
 });
 
-/* ───────────────── APP CONFIG ───────────────── */
+const AppConfig = require("../models/AppConfig");
 
-// ✅ FIX: When you release a new version, update ONLY min_version_android.
-//         Do NOT set min_version to the same as the new version immediately —
-//         doing so blocks users who haven't updated yet from opening the app.
-//         Only bump min_version when you want to FORCE users off an old version.
-//
-//         Example flow for releasing v1.4.0:
-//           latest_version_android: "1.4.0"   ← new release
-//           min_version_android:    "1.3.0"   ← still allow v1.3.0 users in
-//
-//         Then after most users have updated, bump min_version to "1.4.0".
-
-const APP_CONFIG = {
-  // ✅ FIX: min_version is the MINIMUM allowed — keep it at the last stable
-  //         version. Only increase this when you want to force-block older builds.
-  min_version_android: "1.8.0",
-  latest_version_android: "1.8.0",
-  min_version_ios: "1.0.0",
-
-  force_update_message:
-    "A new version of FreshLaa is available with important improvements.",
-
-  maintenance_mode: false,
-
-  maintenance_message:
-    "FreshLaa is currently under maintenance. Please try again later.",
-
-  splash: {
-    type: "image",
-
-    lottie_url:
-      "https://assets10.lottiefiles.com/packages/lf20_xlmz9xwm.json",
-
-    // ✅ TIP: This image_url is loaded remotely — make sure it's fast to load.
-    //         Consider using a small optimized PNG (< 200KB) for best splash speed.
-    image_url:
-      "https://res.cloudinary.com/dxiujfq7i/image/upload/v1778394012/Freshlaa_Mother_s_Day_splash_screen_202605101149_qzvd43.jpg",
-
-    // bg_color: "#ffffff",
-
-    // tagline: "Fresh delivery in 30 mins ⚡",
-
-    // tagline_color: "#16a34a",
-
-    // ✅ FIX: Reduced from 3000ms → 1500ms for faster perceived startup time
-    duration_ms: 1500,
-  },
-};
-
-router.get("/app-config", (req, res) => {
+router.get("/app-config", async (req, res) => {
   // ✅ no-store prevents CDN/proxy caching — version check always hits live server
   res.set("Cache-Control", "no-store");
-  res.json({ success: true, ...APP_CONFIG });
+  
+  try {
+    const config = await AppConfig.findOne().lean();
+    
+    if (config) {
+      return res.json({ 
+        success: true, 
+        ...config,
+        // Ensure splash structure matches what the app expects if it was stored differently
+        splash: config.splash || {
+          type: "image",
+          image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1778394012/Freshlaa_Mother_s_Day_splash_screen_202605101149_qzvd43.jpg",
+          duration_ms: 1500
+        }
+      });
+    }
+
+    // Fallback to hardcoded values if DB is empty
+    return res.json({ 
+      success: true, 
+      min_version_android: "1.8.0",
+      latest_version_android: "1.8.0",
+      min_version_ios: "1.0.0",
+      force_update_message: "A new version of FreshLaa is available with important improvements.",
+      maintenance_mode: false,
+      maintenance_message: "FreshLaa is currently under maintenance. Please try again later.",
+      splash: {
+        type: "image",
+        lottie_url: "https://assets10.lottiefiles.com/packages/lf20_xlmz9xwm.json",
+        image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1778394012/Freshlaa_Mother_s_Day_splash_screen_202605101149_qzvd43.jpg",
+        duration_ms: 1500,
+      },
+    });
+  } catch (err) {
+    console.error("APP CONFIG FETCH ERROR:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
 });
 
 module.exports = router;
