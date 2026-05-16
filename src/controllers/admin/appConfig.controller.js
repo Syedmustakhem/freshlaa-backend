@@ -33,6 +33,13 @@ exports.getAppConfig = async (req, res) => {
 exports.updateAppConfig = async (req, res) => {
   try {
     const updates = req.body;
+    
+    // Remove internal fields that shouldn't be updated manually
+    delete updates._id;
+    delete updates.__v;
+    delete updates.createdAt;
+    delete updates.updatedAt;
+
     let config = await AppConfig.findOne();
     
     if (!config) {
