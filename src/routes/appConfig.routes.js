@@ -124,7 +124,7 @@ router.get("/app-config", async (req, res) => {
         // Ensure splash structure matches what the app expects if it was stored differently
         splash: config.splash || {
           type: "image",
-          image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1778394012/Freshlaa_Mother_s_Day_splash_screen_202605101149_qzvd43.jpg",
+          image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1778951679/Freshlaa_splash_screen_design_202605162244_dbjxym.jpg",
           duration_ms: 1500
         }
       });
