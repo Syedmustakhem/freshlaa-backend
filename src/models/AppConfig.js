@@ -7,6 +7,8 @@ const appConfigSchema = new mongoose.Schema({
   handlingFee: { type: Number, default: 2 },
   surgeEnabled: { type: Boolean, default: false },
   surgeMultiplier: { type: Number, default: 1 },
+  is_active: { type: Boolean, default: true },
+  night_mode: { type: Boolean, default: false },
 
   // Dynamic Delivery Timing
   deliveryTiming: {

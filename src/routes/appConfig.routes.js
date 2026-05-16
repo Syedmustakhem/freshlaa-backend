@@ -145,6 +145,8 @@ router.get("/app-config", async (req, res) => {
       return res.json({ 
         success: true, 
         ...config,
+        is_active: config.is_active ?? true,
+        night_mode: config.night_mode ?? false,
         // Ensure splash structure matches what the app expects if it was stored differently
         splash: config.splash || {
           type: "image",
