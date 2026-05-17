@@ -17,6 +17,11 @@ const APP_CONFIG_INITIAL = {
     image_url: "https://res.cloudinary.com/dxiujfq7i/image/upload/v1778394012/Freshlaa_Mother_s_Day_splash_screen_202605101149_qzvd43.jpg",
     duration_ms: 1500,
   },
+  features: {
+    checkoutInterceptEnabled: true,
+    printServiceEnabled: true,
+    pharmacyServiceEnabled: true,
+  },
 };
 
 async function seed() {
@@ -36,6 +41,11 @@ async function seed() {
           config[key] = APP_CONFIG_INITIAL[key];
         }
       });
+      // Ensure features object is merged
+      config.features = {
+        ...APP_CONFIG_INITIAL.features,
+        ...config.features
+      };
       await config.save();
       console.log("Updated existing AppConfig document with new fields");
     }

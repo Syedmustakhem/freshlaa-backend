@@ -10,6 +10,7 @@ const cartItemSchema = new mongoose.Schema({
   selectedVariant: { type: mongoose.Schema.Types.Mixed, default: null },
   selectedAddons:  { type: Array,  default: [] },
   hotelId:         { type: mongoose.Schema.Types.ObjectId, default: null },
+  isCampaignProduct: { type: Boolean, default: false },
 }, { _id: false });
 
 const cartSchema = new mongoose.Schema({

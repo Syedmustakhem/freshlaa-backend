@@ -44,6 +44,13 @@ const appConfigSchema = new mongoose.Schema({
     image_url: { type: String },
     duration_ms: { type: Number, default: 1500 },
   },
+
+  // Dynamic Feature Flags
+  features: {
+    checkoutInterceptEnabled: { type: Boolean, default: true },
+    printServiceEnabled: { type: Boolean, default: true },
+    pharmacyServiceEnabled: { type: Boolean, default: true },
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("AppConfig", appConfigSchema);
