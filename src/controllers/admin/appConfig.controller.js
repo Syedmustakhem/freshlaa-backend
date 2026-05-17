@@ -80,21 +80,43 @@ async function sendDeliveryTimingNotifications(baseEtaRange) {
       ]
     }).select("_id fcmToken expoPushToken");
 
-    console.log(`👥 Found ${users.length} active users with valid push tokens.`);
+    console.log(`👥 Found ${users.length} active users with valid push tokens in DB.`);
     if (users.length === 0) return;
 
+    // De-duplicate users by unique tokens to prevent sending duplicate notifications to the same device
+    const sentTokens = new Set();
+    const uniqueUsers = [];
+    
+    for (const user of users) {
+      const fcm = user.fcmToken;
+      const expo = user.expoPushToken;
+      
+      let isDuplicate = false;
+      if (fcm && sentTokens.has(fcm)) isDuplicate = true;
+      if (expo && sentTokens.has(expo)) isDuplicate = true;
+      
+      if (!isDuplicate) {
+        if (fcm) sentTokens.add(fcm);
+        if (expo) sentTokens.add(expo);
+        uniqueUsers.push(user);
+      }
+    }
+
+    console.log(`👥 Filtered to ${uniqueUsers.length} unique devices/tokens.`);
+    if (uniqueUsers.length === 0) return;
+
     const batchSize = 100;
-    for (let i = 0; i < users.length; i += batchSize) {
-      const batch = users.slice(i, i + batchSize);
-      console.log(`📤 Dispatching batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(users.length / batchSize)} (${batch.length} users)...`);
+    for (let i = 0; i < uniqueUsers.length; i += batchSize) {
+      const batch = uniqueUsers.slice(i, i + batchSize);
+      console.log(`📤 Dispatching batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(uniqueUsers.length / batchSize)} (${batch.length} users)...`);
       await Promise.all(
         batch.map(user => 
           notifyUser({
             userId: user._id,
             type: "MARKETING",
             pushData: {
-              title: "Super-Fast Delivery Update! ⚡",
-              body: `We are now delivering fresh groceries to you in just ${baseEtaRange}! Order your favorites now.`,
+              title: `Delivered in just ${baseEtaRange}! ⚡`,
+              body: `We've updated our delivery timings. Order fresh groceries and get them in ${baseEtaRange} now!`,
               data: { screen: "Home" }
             }
           }).catch(e => console.error(`❌ Timing notification failed for user ${user._id}:`, e.message))
