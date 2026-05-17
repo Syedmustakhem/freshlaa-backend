@@ -75,8 +75,8 @@ async function sendDeliveryTimingNotifications(baseEtaRange) {
     const users = await User.find({
       isBlocked: false,
       $or: [
-        { fcmToken: { $exists: true, $ne: null, $ne: "" } },
-        { expoPushToken: { $exists: true, $ne: null, $ne: "" } }
+        { fcmToken: { $type: "string", $ne: "" } },
+        { expoPushToken: { $type: "string", $ne: "" } }
       ]
     }).select("_id fcmToken expoPushToken");
 
