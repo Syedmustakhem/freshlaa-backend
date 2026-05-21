@@ -60,6 +60,7 @@ const supportTicketRoutes = require(path.join(routesPath, "supportTicket.routes"
 const serviceabilityRoutes = require(path.join(routesPath, "serviceability.routes"));
 const homeLayoutRoutes = require(path.join(routesPath, "homeLayout.routes"));
 const adminAppConfigRoutes = require(path.join(routesPath, "adminAppConfig.routes"));
+const popupModalRoutes = require(path.join(routesPath, "popupModal.routes"));
 
 /* ================= MIDDLEWARE ================= */
 app.use(cors({
@@ -118,6 +119,7 @@ app.use("/api/tickets", supportTicketRoutes);
 app.use("/api/serviceability", serviceabilityRoutes);
 app.use("/api/home-layout", homeLayoutRoutes);
 app.use("/api/admin/app-config", adminAppConfigRoutes);
+app.use("/api", popupModalRoutes);
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Freshlaa Backend Running ✅" });
