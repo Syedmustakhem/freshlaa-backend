@@ -51,6 +51,15 @@ const appConfigSchema = new mongoose.Schema({
     printServiceEnabled: { type: Boolean, default: true },
     pharmacyServiceEnabled: { type: Boolean, default: true },
   },
+
+  // Loyalty Coin System
+  loyaltyCoins: {
+    enabled: { type: Boolean, default: false },
+    coinsPer100Spent: { type: Number, default: 10 },
+    coinsPerRupeeDiscount: { type: Number, default: 5 }, // e.g. 5 coins = 1 Rs off
+    minOrderValueForCoins: { type: Number, default: 100 },
+    maxRedemptionPercentage: { type: Number, default: 50 },
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("AppConfig", appConfigSchema);

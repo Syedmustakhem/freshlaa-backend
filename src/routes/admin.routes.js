@@ -15,6 +15,7 @@ const Address = require("../models/Address");
 const Order = require("../models/Order");
 const Coupon = require("../models/Coupon");
 const Product = require("../models/Product");
+const CoinTransaction = require("../models/CoinTransaction");
 /* ================= ADMIN SETUP ================= */
 
 /* TEMP – USE ONCE */
@@ -581,6 +582,40 @@ router.get("/users/:id/cod-status", adminAuth, async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// ✅ GET user coin transactions
+router.get("/users/:id/coin-transactions", adminAuth, async (req, res) => {
+  try {
+    const logs = await CoinTransaction.find({ userId: req.params.id }).sort({ createdAt: -1 });
+    res.json({ success: true, data: logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ✅ POST manually adjust user coins
+router.post("/users/:id/adjust-coins", adminAuth, async (req, res) => {
+  try {
+    const { amount, description } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    user.coinsBalance = Math.max(0, (user.coinsBalance || 0) + Number(amount));
+    await user.save();
+
+    await CoinTransaction.create({
+      userId: user._id,
+      type: 'admin_adjustment',
+      amount: Number(amount),
+      description: description || "Admin manual adjustment"
+    });
+
+    res.json({ success: true, balance: user.coinsBalance });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.post("/coupons", adminAuth, async (req, res) => {
   try {
     const {

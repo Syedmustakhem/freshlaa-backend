@@ -5,6 +5,8 @@ const webpush     = require("web-push");
 const Product       = require("../models/Product");
 const Order         = require("../models/Order");
 const User          = require("../models/User");
+const CoinTransaction = require("../models/CoinTransaction");
+const AppConfig     = require("../models/AppConfig");
 const AdminPush     = require("../models/AdminPush");
 const HotelMenuItem = require("../models/HotelMenuItem");
 const ServiceableArea = require("../models/ServiceableArea");
@@ -115,6 +117,89 @@ async function buildFormattedItems(validatedItems) {
   });
 }
 
+async function awardCoinsForOrder(order) {
+  try {
+    if (order.coinsEarned > 0) return;
+
+    const configObj = await AppConfig.findOne().lean();
+    const coinConfig = configObj?.loyaltyCoins;
+    if (coinConfig?.enabled && order.total >= (coinConfig.minOrderValueForCoins || 100)) {
+      const coinsEarned = Math.floor(order.total / 100) * (coinConfig.coinsPer100Spent || 10);
+      if (coinsEarned > 0) {
+        order.coinsEarned = coinsEarned;
+        await order.save();
+
+        await User.findByIdAndUpdate(order.user._id || order.user, {
+          $inc: { coinsBalance: coinsEarned }
+        });
+
+        await CoinTransaction.create({
+          userId: order.user._id || order.user,
+          orderId: order._id,
+          type: 'earn',
+          amount: coinsEarned,
+          description: `Earned ${coinsEarned} coins for order ${order.orderId}`
+        });
+        console.log(`🪙 Awarded ${coinsEarned} coins to user for order ${order.orderId}`);
+      }
+    }
+  } catch (err) {
+    console.error("❌ Failed to award coins for order:", err.message);
+  }
+}
+
+async function refundCoinsForOrder(order) {
+  try {
+    // Refund coins redeemed
+    if (order.coinsRedeemed > 0) {
+      const alreadyRefunded = await CoinTransaction.findOne({
+        orderId: order._id,
+        type: 'refund',
+        amount: order.coinsRedeemed
+      });
+      if (!alreadyRefunded) {
+        await User.findByIdAndUpdate(order.user._id || order.user, {
+          $inc: { coinsBalance: order.coinsRedeemed }
+        });
+        await CoinTransaction.create({
+          userId: order.user._id || order.user,
+          orderId: order._id,
+          type: 'refund',
+          amount: order.coinsRedeemed,
+          description: `Refunded ${order.coinsRedeemed} coins from cancelled order ${order.orderId}`
+        });
+        console.log(`🪙 Refunded ${order.coinsRedeemed} coins to user for order ${order.orderId}`);
+      }
+    }
+
+    // Deduct coins earned if the order was already marked Delivered previously and is now Cancelled
+    if (order.coinsEarned > 0) {
+      const alreadyReversed = await CoinTransaction.findOne({
+        orderId: order._id,
+        type: 'refund',
+        amount: -order.coinsEarned
+      });
+      if (!alreadyReversed) {
+        await User.findByIdAndUpdate(order.user._id || order.user, {
+          $inc: { coinsBalance: -order.coinsEarned }
+        });
+        await CoinTransaction.create({
+          userId: order.user._id || order.user,
+          orderId: order._id,
+          type: 'refund',
+          amount: -order.coinsEarned,
+          description: `Reversed ${order.coinsEarned} earned coins from cancelled/returned order ${order.orderId}`
+        });
+        console.log(`🪙 Reversed ${order.coinsEarned} earned coins from user for order ${order.orderId}`);
+        order.coinsEarned = 0;
+        await order.save();
+      }
+    }
+  } catch (err) {
+    console.error("❌ Failed to refund/reverse coins for order:", err.message);
+  }
+}
+
 async function notifyAdmins(payload) {
   try {
     const subs  = await AdminPush.find().select("subscription");
@@ -143,13 +228,13 @@ async function notifyAdmins(payload) {
 
 exports.previewCheckout = async (req, res) => {
   try {
-    const { items, couponCode } = req.body;
+    const { items, couponCode, redeemCoins = 0 } = req.body;
 
     if (!Array.isArray(items) || !items.length) {
       return res.status(400).json({ success: false, message: "No items provided" });
     }
 
-    const result = await calculateOrder(items, null, couponCode || null);
+    const result = await calculateOrder(items, null, couponCode || null, Number(redeemCoins), req.user._id);
     return res.json({ success: true, ...result });
 
   } catch (error) {
@@ -174,6 +259,7 @@ exports.createOrder = async (req, res) => {
       orderForSomeone,
       recipient,
       deliveryInstructions,
+      redeemCoins       = 0,
     } = req.body;
 
     /* ── Basic validation ── */
@@ -218,7 +304,7 @@ exports.createOrder = async (req, res) => {
     }
 
     /* ── Pricing ── */
-    const result = await calculateOrder(items, null, couponCode);
+    const result = await calculateOrder(items, null, couponCode, Number(redeemCoins), req.user._id);
 
     /* ── Payment method eligibility ── */
     const methods = await checkoutService.getCheckoutPaymentOptions({
@@ -300,6 +386,8 @@ exports.createOrder = async (req, res) => {
       paymentDetails: razorpayData,
 
       couponCode: couponCode || null,
+      coinsRedeemed: result.coinsRedeemed || 0,
+      coinDiscountAmount: result.coinDiscount || 0,
       pricing: {
         itemsTotal:       result.itemsTotal       ?? 0,
         deliveryFee:      result.deliveryFee      ?? 0,
@@ -307,6 +395,7 @@ exports.createOrder = async (req, res) => {
         codFee:           result.codFee           ?? 0,
         couponDiscount:   result.couponDiscount   ?? 0,
         campaignDiscount: result.campaignDiscount ?? 0,
+        coinDiscount:     result.coinDiscount     ?? 0,
         totalSavings:     result.totalSavings     ?? 0,
         grandTotal:       result.grandTotal,
       },
@@ -314,6 +403,20 @@ exports.createOrder = async (req, res) => {
       total:  result.grandTotal,
       status: "Placed",
     });
+
+    /* ── Deduct loyalty coins ── */
+    if (result.coinsRedeemed > 0) {
+      await User.findByIdAndUpdate(req.user._id, {
+        $inc: { coinsBalance: -result.coinsRedeemed }
+      });
+      await CoinTransaction.create({
+        userId: req.user._id,
+        orderId: order._id,
+        type: 'redeem',
+        amount: -result.coinsRedeemed,
+        description: `Redeemed ${result.coinsRedeemed} coins for discount of ₹${result.coinDiscount}`
+      });
+    }
 
     /* ── Post-save side effects ── */
     const user = await User.findById(req.user._id).lean();
@@ -530,6 +633,8 @@ exports.cancelOrder = async (req, res) => {
     order.cancellationReason = req.body.reason || null;
     order.cancelledAt        = new Date();
     await order.save();
+
+    await refundCoinsForOrder(order);
 
     return res.json({ success: true, message: "Order cancelled", order });
 
@@ -763,6 +868,8 @@ exports.verifyDeliveryOTP = async (req, res) => {
     order.otpVerified  = true;
     await order.save();
 
+    await awardCoinsForOrder(order);
+
     // Emit to customer app in real time
     if (global.io) {
       const roomId = order._id.toString();
@@ -864,6 +971,13 @@ if (status === "OutForDelivery") {
 
 // ✅ ALWAYS SAVE FIRST — OTP must be persisted before anything else
 await order.save();
+
+// Adjust loyalty coins if status transitions to Delivered or Cancelled
+if (status === "Delivered") {
+  await awardCoinsForOrder(order);
+} else if (status === "Cancelled") {
+  await refundCoinsForOrder(order);
+}
 
 // ✅ Send WhatsApp OTP — only after save, only for OutForDelivery
 if (status === "OutForDelivery") {

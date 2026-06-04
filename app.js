@@ -77,8 +77,8 @@ app.use(cors({
 /* 🔥 Razorpay Webhook RAW */
 app.use("/api/razorpay/webhook", express.raw({ type: "*/*" }));
 /* Normal JSON for everything else */
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 /* ================= STATIC INVOICES ================= */
 app.use("/invoices", express.static(path.join(__dirname, "../freshlaa-backend/invoices")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

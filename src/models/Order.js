@@ -31,6 +31,7 @@ const pricingSchema = new mongoose.Schema(
     codFee:           { type: Number, default: 0 }, // ✅ ADD THIS
     couponDiscount:   { type: Number, default: 0 },
     campaignDiscount: { type: Number, default: 0 },
+    coinDiscount:     { type: Number, default: 0 }, // Loyalty Coin Discount
     totalSavings:     { type: Number, default: 0 },
     grandTotal:       { type: Number, required: true },
   },
@@ -272,6 +273,20 @@ otpFailedAttempts: {
         "Cancelled",
       ],
       default: "Placed",
+    },
+
+    /* ─────────────── LOYALTY COINS ─────────────── */
+    coinsEarned: {
+      type:    Number,
+      default: 0,
+    },
+    coinsRedeemed: {
+      type:    Number,
+      default: 0,
+    },
+    coinDiscountAmount: {
+      type:    Number,
+      default: 0,
     },
 
     /* ─────────────── CANCELLATION ─────────────── */

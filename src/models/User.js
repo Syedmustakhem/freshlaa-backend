@@ -115,6 +115,12 @@ codOverride: {
       default: false,
     },
 
+    coinsBalance: {
+      type: Number,
+      default: 0,
+      min: [0, 'Coins balance cannot be negative']
+    },
+
     isAdmin: {
       type: Boolean,
       default: false,

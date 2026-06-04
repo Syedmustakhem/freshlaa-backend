@@ -2,6 +2,7 @@ const Product       = require("../models/Product");
 const HotelMenuItem = require("../models/HotelMenuItem");
 const Campaign      = require("../models/Campaign");
 const Coupon        = require("../models/Coupon");
+const User          = require("../models/User");
 
 const { getConfig }    = require("./config.service");
 const { applyCoupon }  = require("./coupon.service");
@@ -31,7 +32,7 @@ exports.invalidateConfigCache = () => {
    CALCULATE ORDER
 ═══════════════════════════════════════════════════════════════ */
 
-exports.calculateOrder = async (items, session = null, couponCode = null) => {
+exports.calculateOrder = async (items, session = null, couponCode = null, redeemCoins = 0, userId = null) => {
 
   const allProductIds = items.map((i) => i.productId).filter(Boolean);
 
@@ -289,12 +290,35 @@ const handlingFee = 0;
   }
 
   /* ═══════════════════════════════════════════════════════════
+     LOYALTY COINS
+  ═══════════════════════════════════════════════════════════ */
+
+  let coinDiscount = 0;
+  let validatedRedeemCoins = 0;
+  
+  const coinConfig = config?.loyaltyCoins || { enabled: false, coinsPerRupeeDiscount: 5 };
+  if (coinConfig.enabled && redeemCoins > 0 && userId) {
+    const userObj = await User.findById(userId).lean();
+    if (userObj && userObj.coinsBalance > 0) {
+      validatedRedeemCoins = Math.min(userObj.coinsBalance, redeemCoins);
+      coinDiscount = Math.round(validatedRedeemCoins / (coinConfig.coinsPerRupeeDiscount || 5));
+      
+      // Limit to maximum percentage of itemsTotal
+      const maxDiscount = Math.round((itemsTotal * (coinConfig.maxRedemptionPercentage || 50)) / 100);
+      if (coinDiscount > maxDiscount) {
+        coinDiscount = maxDiscount;
+        validatedRedeemCoins = coinDiscount * (coinConfig.coinsPerRupeeDiscount || 5);
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      GRAND TOTAL
   ═══════════════════════════════════════════════════════════ */
 
   const grandTotal = Math.max(
     0,
-    Math.round(surgedItemsTotal + baseFees - campaignDiscount - couponDiscount)
+    Math.round(surgedItemsTotal + baseFees - campaignDiscount - couponDiscount - coinDiscount)
   );
 
   /* ═══════════════════════════════════════════════════════════
@@ -346,9 +370,11 @@ const handlingFee = 0;
     handlingFee,
     couponDiscount,
     campaignDiscount,
+    coinDiscount,
+    coinsRedeemed:    validatedRedeemCoins,
     campaignProducts,
     cartProgress,
-    totalSavings:     Math.round(couponDiscount + campaignDiscount),
+    totalSavings:     Math.round(couponDiscount + campaignDiscount + coinDiscount),
     grandTotal,
     availableCoupons,
   };

@@ -11,6 +11,7 @@ exports.getProfile = async (req, res) => {
         email: req.user.email,
         isAdmin: req.user.isAdmin,
         role: req.user.role,
+        coinsBalance: req.user.coinsBalance || 0,
       },
     });
   } catch (err) {
@@ -41,6 +42,7 @@ exports.updateProfile = async (req, res) => {
         email: user.email,
         isAdmin: user.isAdmin,
         role: user.role,
+        coinsBalance: user.coinsBalance || 0,
       },
     });
   } catch (err) {
