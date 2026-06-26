@@ -159,8 +159,8 @@ router.get("/app-config", async (req, res) => {
     // Fallback to hardcoded values if DB is empty
     return res.json({ 
       success: true, 
-      min_version_android: "1.8.0",
-      latest_version_android: "1.8.0",
+      min_version_android: "1.6.0",
+      latest_version_android: "1.6.0",
       min_version_ios: "1.0.0",
       force_update_message: "A new version of FreshLaa is available with important improvements.",
       maintenance_mode: false,
