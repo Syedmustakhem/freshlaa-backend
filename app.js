@@ -11,7 +11,7 @@ setTimeout(async () => {
   try {
     const exists = await ServiceableArea.findOne({ pincode: "515591" });
     if (!exists) {
-      await ServiceableArea.create({ pincode: "515591", areaName: "Default Area", isActive: true });
+      await ServiceableArea.create({ pincode: "515592", areaName: "Default Area", isActive: true });
       console.log("✅ Auto-seeded initial pincode: 515591");
     }
   } catch (err) {
